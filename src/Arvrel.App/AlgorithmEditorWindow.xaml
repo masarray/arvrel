@@ -2,31 +2,98 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Arvrel.App.Controls"
-        Title="ARVREL Algorithm Editor"
-        Width="1080"
-        Height="720"
-        MinWidth="900"
-        MinHeight="600"
+        Title="ARVREL Algorithm Laboratory"
+        Width="1260"
+        Height="780"
+        MinWidth="1060"
+        MinHeight="660"
         WindowStartupLocation="CenterOwner">
     <Grid Margin="12">
-        <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="42" /></Grid.RowDefinitions>
-        <Border Style="{StaticResource PanelBorder}" Padding="12,0">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock Text="Protection Algorithm Editor" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Typed laboratory DSL · validation and staging only · no arbitrary C# execution" Foreground="{StaticResource MutedBrush}" FontSize="10.5" /></StackPanel><ComboBox Grid.Column="1" x:Name="ElementCombo" Width="180" SelectedIndex="0" SelectionChanged="ElementCombo_SelectionChanged"><ComboBoxItem Content="50P-1" /><ComboBoxItem Content="51P" /><ComboBoxItem Content="50N" /><ComboBoxItem Content="51N" /></ComboBox></Grid>
+        <Grid.RowDefinitions><RowDefinition Height="58" /><RowDefinition Height="*" /><RowDefinition Height="46" /></Grid.RowDefinitions>
+        <Border Style="{StaticResource PanelBorder}" Padding="13,0">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="Code2" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" Margin="0,0,8,0" />
+                        <TextBlock Text="Protection Algorithm Laboratory" FontSize="15.5" FontWeight="SemiBold" />
+                        <Border Margin="10,0,0,0" Padding="7,2" CornerRadius="4" Background="#FBF2E3" BorderBrush="#E2C58F" BorderThickness="1">
+                            <TextBlock Text="RESEARCH MODE" Foreground="{StaticResource WarningBrush}" FontSize="9.2" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="Active standard source is read-only. Custom source is validated and staged as a deterministic shadow definition." Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="26,3,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="ACTIVE SETTINGS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="SettingsStatusText" FontFamily="Cascadia Mono, Consolas" FontSize="10" HorizontalAlignment="Right" Margin="0,3,0,0" />
+                </StackPanel>
+                <ComboBox Grid.Column="2" x:Name="ElementCombo" Width="180" SelectedIndex="0" SelectionChanged="ElementCombo_SelectionChanged" VerticalAlignment="Center">
+                    <ComboBoxItem Content="50P-1" />
+                    <ComboBoxItem Content="51P" />
+                    <ComboBoxItem Content="50N" />
+                    <ComboBoxItem Content="51N" />
+                </ComboBox>
+            </Grid>
         </Border>
-        <Grid Grid.Row="1" Margin="0,9"><Grid.ColumnDefinitions><ColumnDefinition Width="2.2*" /><ColumnDefinition Width="9" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource PanelBorder}" Padding="10"><TextBox x:Name="EditorText" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="12" TextWrapping="NoWrap" /></Border>
-            <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Padding="12"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="SAFE LABORATORY POLICY" Style="{StaticResource SectionLabel}" /><TextBlock Grid.Row="1" Margin="0,8,0,0" Text="• smv.allowsTrip is mandatory&#x0a;• file, network and process access forbidden&#x0a;• no unmanaged calls or unbounded loops&#x0a;• staged algorithms remain shadow-only in P1" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" /><TextBlock Grid.Row="2" Text="VALIDATION" Style="{StaticResource SectionLabel}" Margin="0,18,0,0" /><TextBox Grid.Row="3" x:Name="ValidationText" Margin="0,7,0,0" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" /></Grid></Border>
+
+        <Grid Grid.Row="1" Margin="0,9">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.12*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="1.12*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="0.74*" /></Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource PanelBorder}" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="30" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="ACTIVE STANDARD ALGORITHM" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" />
+                        <Border Margin="8,0,0,0" Padding="6,2" CornerRadius="4" Background="#EAF5EC" BorderBrush="#B9D8BF" BorderThickness="1">
+                            <TextBlock Text="EXECUTING" Foreground="{StaticResource HealthyBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                    <TextBox Grid.Row="1" x:Name="StandardSourceText" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="11.2" TextWrapping="NoWrap" Background="#F7F9FB" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="30" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="CUSTOM SHADOW ALGORITHM" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" />
+                        <Border Margin="8,0,0,0" Padding="6,2" CornerRadius="4" Background="#EEF3F7" BorderBrush="#CAD8E2" BorderThickness="1">
+                            <TextBlock Text="NOT ACTIVE" Foreground="{StaticResource MutedBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                    <TextBox Grid.Row="1" x:Name="EditorText" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="11.2" TextWrapping="NoWrap" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource PanelBorder}" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <TextBlock Text="DETERMINISTIC POLICY" Style="{StaticResource SectionLabel}" />
+                    <TextBlock Grid.Row="1" Margin="0,8,0,0" Text="• smv.allowsTrip is mandatory&#x0a;• no file, network or process access&#x0a;• no unmanaged calls or unbounded loops&#x0a;• staged source remains virtual-output only" Foreground="{StaticResource MutedBrush}" FontSize="10.5" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="2" Text="CURVE REFERENCE" Style="{StaticResource SectionLabel}" Margin="0,17,0,0" />
+                    <TextBlock Grid.Row="3" x:Name="CurveReferenceText" Margin="0,7,0,0" FontFamily="Cascadia Mono, Consolas" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                    <TextBox Grid.Row="4" x:Name="ValidationText" Margin="0,14,0,0" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="10.2" />
+                </Grid>
+            </Border>
         </Grid>
-        <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="StatusText" Text="Edit a template, validate it, then stage an immutable versioned copy." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="10.5" /><StackPanel Grid.Column="1" Orientation="Horizontal">
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText" Text="Select an element to inspect the exact active standard algorithm." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="CopyStandard_Click">
+                    <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="FileInput" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Copy active source" /></StackPanel>
+                </Button>
                 <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="ResetTemplate_Click">
-                    <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="RotateCcw" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Reset template" /></StackPanel>
+                    <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="RotateCcw" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Discard edits" /></StackPanel>
                 </Button>
                 <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="Validate_Click">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="ShieldAlert" Width="14" Height="14" Foreground="{StaticResource WarningBrush}" Margin="0,0,6,0" /><TextBlock Text="Validate" /></StackPanel>
                 </Button>
                 <Button Style="{StaticResource PrimaryButton}" Click="Stage_Click">
-                    <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="Save" Width="14" Height="14" Foreground="White" Margin="0,0,6,0" /><TextBlock Text="Stage algorithm" /></StackPanel>
+                    <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="Save" Filled="True" Width="14" Height="14" Foreground="White" Margin="0,0,6,0" /><TextBlock Text="Stage shadow" /></StackPanel>
                 </Button>
-            </StackPanel></Grid>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

@@ -58,13 +58,17 @@
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox x:Name="OperatingModeCombo" Width="132" Height="28" Margin="0,0,8,0" SelectedIndex="0" SelectionChanged="OperatingModeCombo_SelectionChanged" ToolTip="Switch between native relay operation and exposed algorithm research">
+                        <ComboBoxItem Content="Practitioner mode" />
+                        <ComboBoxItem Content="Research mode" />
+                    </ComboBox>
                     <Border Padding="8,4" CornerRadius="4" Background="#203440" BorderBrush="#355262" BorderThickness="1" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse x:Name="TopHealthLed" Style="{StaticResource Led}" Width="8" Height="8" Margin="0,0,6,0" />
                             <TextBlock x:Name="TopHealthText" Text="LAB READY" Foreground="#B9C7D0" FontSize="10.2" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="EngineModeText" Text="P1 PROCESS BUS" Foreground="#758895" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" VerticalAlignment="Center" />
+                    <TextBlock x:Name="EngineModeText" Text="P1.1 RELAY SETTINGS" Foreground="#758895" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -102,11 +106,14 @@
                     <Button Style="{StaticResource IconOnlyButton}" ToolTip="Import IEC 61850 SCL" Margin="0,0,5,0" Click="ImportScl_Click">
                         <controls:LucideIcon Kind="FileInput" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
                     </Button>
-                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="CT and measurement context" Margin="0,0,5,0" Click="MeasurementContext_Click">
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="Native relay protection settings" Margin="0,0,5,0" Click="ProtectionSettings_Click">
                         <controls:LucideIcon Kind="SlidersHorizontal" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
                     </Button>
-                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="Protection Algorithm Editor" Margin="0,0,5,0" Click="OpenAlgorithmEditor_Click">
-                        <controls:LucideIcon Kind="Code2" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="CT and measurement context" Margin="0,0,5,0" Click="MeasurementContext_Click">
+                        <controls:LucideIcon Kind="Activity" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    </Button>
+                    <Button x:Name="AlgorithmButton" Style="{StaticResource IconOnlyButton}" ToolTip="Protection Algorithm Laboratory" Margin="0,0,5,0" Click="OpenAlgorithmEditor_Click" Visibility="Collapsed">
+                        <controls:LucideIcon Kind="Code2" Width="17" Height="17" Foreground="{StaticResource WarningBrush}" />
                     </Button>
                     <Button Style="{StaticResource IconOnlyButton}" ToolTip="Export evidence JSON" Margin="0,0,6,0" Click="ExportEvidence_Click">
                         <controls:LucideIcon Kind="Download" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
@@ -199,10 +206,10 @@
                         </Border>
                         <Grid Grid.Row="1" Margin="11,9">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.32*" /></Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="50P-1 · 4.00 A / 60 ms" FontSize="10.2" /></Border><TextBlock x:Name="Phase50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase50Progress" Height="5" Maximum="100" /></StackPanel>
-                            <StackPanel Grid.Column="1" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="51P · IEC SI / TMS 0.12" FontSize="10.2" /></Border><TextBlock x:Name="Phase51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase51Progress" Height="5" Maximum="100" /></StackPanel>
-                            <StackPanel Grid.Column="2" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="50N · 0.80 A / 100 ms" FontSize="10.2" /></Border><TextBlock x:Name="Earth50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth50Progress" Height="5" Maximum="100" /></StackPanel>
-                            <StackPanel Grid.Column="3" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="51N · IEC SI / TMS 0.15" FontSize="10.2" /></Border><TextBlock x:Name="Earth51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth51Progress" Height="5" Maximum="100" /></StackPanel>
+                            <StackPanel Grid.Column="0" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock x:Name="Phase50SettingText" Text="50P-1 · 4.00 A / 60 ms" FontSize="10.2" /></Border><TextBlock x:Name="Phase50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase50Progress" Height="5" Maximum="100" /></StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock x:Name="Phase51SettingText" Text="51P · IEC SI / TMS 0.12" FontSize="10.2" /></Border><TextBlock x:Name="Phase51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase51Progress" Height="5" Maximum="100" /></StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock x:Name="Earth50SettingText" Text="50N · 0.80 A / 100 ms" FontSize="10.2" /></Border><TextBlock x:Name="Earth50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth50Progress" Height="5" Maximum="100" /></StackPanel>
+                            <StackPanel Grid.Column="3" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock x:Name="Earth51SettingText" Text="51N · IEC SI / TMS 0.15" FontSize="10.2" /></Border><TextBlock x:Name="Earth51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth51Progress" Height="5" Maximum="100" /></StackPanel>
                             <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10">
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="EVENT TRACE" Style="{StaticResource SectionLabel}" /><TextBlock Grid.Row="1" x:Name="EventTraceText" Text="READY       Protection engine initialized&#x0a;HEALTH      SMV trust guard permits trip" FontFamily="Cascadia Mono, Consolas" FontSize="9.7" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap" /></Grid>
                             </Border>
@@ -283,6 +290,7 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusText" Text="Ready. Internal deterministic laboratory is selected." Foreground="{StaticResource MutedBrush}" FontSize="10.3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="ActiveSettingsStatusText" Text="GROUP A · REV 1 · IEC SI" Foreground="{StaticResource AccentBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" Margin="0,0,14,0" />
                     <TextBlock x:Name="SclStatusText" Text="NO SCL" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" Margin="0,0,14,0" />
                     <TextBlock Text="VIRTUAL OUTPUT · NO GOOSE · NO PHYSICAL TRIP" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" />
                 </StackPanel>
