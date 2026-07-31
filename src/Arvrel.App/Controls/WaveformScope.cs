@@ -25,12 +25,13 @@ public sealed record WaveformFrame(
 
 public sealed class WaveformScope : FrameworkElement
 {
-    // R-S-T-N phase identification used by the protection waveform view.
     private static readonly Color PhaseRColor = Color.FromRgb(239, 74, 74);
     private static readonly Color PhaseSColor = Color.FromRgb(255, 211, 61);
     private static readonly Color PhaseTColor = Color.FromRgb(63, 145, 255);
-    private static readonly Color NeutralColor = Color.FromRgb(17, 22, 27);
-    private static readonly Color NeutralHaloColor = Color.FromRgb(207, 216, 222);
+    private static readonly Color ResidualColor = Color.FromRgb(62, 218, 120);
+
+    private double _retainedMaximum = 1.2;
+    private double _lastTriggerFraction;
 
     public static readonly DependencyProperty FrameProperty = DependencyProperty.Register(
         nameof(Frame),
@@ -59,35 +60,81 @@ public sealed class WaveformScope : FrameworkElement
             4,
             4);
 
-        DrawGrid(drawingContext, plot);
-        DrawMarker(drawingContext, plot, Frame.PickupPosition, Color.FromRgb(204, 151, 52), "PICKUP");
-        DrawMarker(drawingContext, plot, Frame.TripPosition, Color.FromRgb(214, 77, 72), "TRIP");
+        var triggerFraction = ResolveTriggerFraction(Frame.PhaseA);
+        var pickupPosition = RotateMarker(Frame.PickupPosition, triggerFraction);
+        var tripPosition = RotateMarker(Frame.TripPosition, triggerFraction);
 
-        var maximum = ResolveMaximum(Frame);
-        DrawTrace(drawingContext, plot, Frame.PhaseA, maximum, PhaseRColor);
-        DrawTrace(drawingContext, plot, Frame.PhaseB, maximum, PhaseSColor);
-        DrawTrace(drawingContext, plot, Frame.PhaseC, maximum, PhaseTColor);
-        DrawTrace(
-            drawingContext,
-            plot,
-            Frame.Residual,
-            maximum,
-            NeutralColor,
-            1.55,
-            NeutralHaloColor,
-            3.55);
+        DrawGrid(drawingContext, plot);
+        DrawMarker(drawingContext, plot, pickupPosition, Color.FromRgb(204, 151, 52), "PICKUP");
+        DrawMarker(drawingContext, plot, tripPosition, Color.FromRgb(214, 77, 72), "TRIP");
+
+        var maximum = ResolveDisplayMaximum(Frame);
+        DrawTrace(drawingContext, plot, Frame.PhaseA, maximum, PhaseRColor, triggerFraction);
+        DrawTrace(drawingContext, plot, Frame.PhaseB, maximum, PhaseSColor, triggerFraction);
+        DrawTrace(drawingContext, plot, Frame.PhaseC, maximum, PhaseTColor, triggerFraction);
+        DrawTrace(drawingContext, plot, Frame.Residual, maximum, ResidualColor, triggerFraction, 1.7);
         DrawScale(drawingContext, plot, maximum, Frame.Frequency);
         DrawLegend(drawingContext, plot);
     }
 
-    private static double ResolveMaximum(WaveformFrame frame)
+    private double ResolveDisplayMaximum(WaveformFrame frame)
     {
-        var maximum = new[] { frame.PhaseA, frame.PhaseB, frame.PhaseC, frame.Residual }
-            .SelectMany(values => values)
+        var values = new[] { frame.PhaseA, frame.PhaseB, frame.PhaseC, frame.Residual }
+            .SelectMany(channel => channel)
             .Select(Math.Abs)
-            .DefaultIfEmpty(1)
-            .Max();
-        return Math.Max(1.2, maximum * 1.12);
+            .ToArray();
+
+        if (values.Length == 0)
+        {
+            _retainedMaximum = 1.2;
+            return _retainedMaximum;
+        }
+
+        var target = Math.Max(1.2, values.Max() * 1.12);
+        _retainedMaximum = target >= _retainedMaximum
+            ? target
+            : Math.Max(target, Math.Max(1.2, _retainedMaximum * 0.94));
+        return _retainedMaximum;
+    }
+
+    private double ResolveTriggerFraction(IReadOnlyList<double> reference)
+    {
+        if (reference.Count < 4)
+            return 0;
+
+        var searchLimit = Math.Min(reference.Count - 1, Math.Max(2, reference.Count / 2 + 1));
+        var bestIndex = -1;
+        var bestSlope = 0.0;
+        for (var index = 1; index <= searchLimit; index++)
+        {
+            var previous = reference[index - 1];
+            var current = reference[index];
+            if (previous > 0 || current <= 0)
+                continue;
+
+            var slope = current - previous;
+            if (slope <= bestSlope)
+                continue;
+
+            bestSlope = slope;
+            bestIndex = index;
+        }
+
+        if (bestIndex >= 0)
+            _lastTriggerFraction = bestIndex / (double)reference.Count;
+
+        return Math.Clamp(_lastTriggerFraction, 0, 0.999999);
+    }
+
+    private static double RotateMarker(double normalizedPosition, double triggerFraction)
+    {
+        if (!double.IsFinite(normalizedPosition) || normalizedPosition is < 0 or > 1)
+            return normalizedPosition;
+
+        var rotated = normalizedPosition - triggerFraction;
+        if (rotated < 0)
+            rotated += 1;
+        return rotated;
     }
 
     private static void DrawGrid(DrawingContext dc, Rect plot)
@@ -115,24 +162,25 @@ public sealed class WaveformScope : FrameworkElement
         IReadOnlyList<double> values,
         double maximum,
         Color color,
-        double thickness = 1.75,
-        Color? haloColor = null,
-        double haloThickness = 0)
+        double triggerFraction,
+        double thickness = 1.8)
     {
         if (values.Count < 2)
             return;
 
+        var startIndex = (int)Math.Round(triggerFraction * values.Count) % values.Count;
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            for (var index = 0; index < values.Count; index++)
+            for (var displayIndex = 0; displayIndex < values.Count; displayIndex++)
             {
-                var normalizedX = index / (double)(values.Count - 1);
+                var sourceIndex = (startIndex + displayIndex) % values.Count;
+                var normalizedX = displayIndex / (double)(values.Count - 1);
                 var x = plot.Left + normalizedX * plot.Width;
-                var normalizedY = Math.Clamp(values[index] / maximum, -1, 1);
+                var normalizedY = Math.Clamp(values[sourceIndex] / maximum, -1, 1);
                 var y = plot.Top + plot.Height / 2 - normalizedY * plot.Height * 0.43;
                 var point = new Point(x, y);
-                if (index == 0)
+                if (displayIndex == 0)
                     context.BeginFigure(point, false, false);
                 else
                     context.LineTo(point, true, false);
@@ -140,8 +188,6 @@ public sealed class WaveformScope : FrameworkElement
         }
 
         geometry.Freeze();
-        if (haloColor.HasValue && haloThickness > thickness)
-            dc.DrawGeometry(null, new Pen(new SolidColorBrush(haloColor.Value), haloThickness), geometry);
         dc.DrawGeometry(null, new Pen(new SolidColorBrush(color), thickness), geometry);
     }
 
@@ -171,28 +217,19 @@ public sealed class WaveformScope : FrameworkElement
     {
         var entries = new[]
         {
-            (Name: "R / IA", Color: PhaseRColor, Neutral: false),
-            (Name: "S / IB", Color: PhaseSColor, Neutral: false),
-            (Name: "T / IC", Color: PhaseTColor, Neutral: false),
-            (Name: "N / 3I0", Color: NeutralColor, Neutral: true)
+            (Name: "R / IA", Color: PhaseRColor, Width: 70.0),
+            (Name: "S / IB", Color: PhaseSColor, Width: 70.0),
+            (Name: "T / IC", Color: PhaseTColor, Width: 70.0),
+            (Name: "3I0 / IN", Color: ResidualColor, Width: 82.0)
         };
 
-        var x = plot.Right - 286;
+        var x = plot.Right - 292;
         foreach (var entry in entries)
         {
             var brush = new SolidColorBrush(entry.Color);
-            if (entry.Neutral)
-            {
-                dc.DrawLine(
-                    new Pen(new SolidColorBrush(NeutralHaloColor), 4),
-                    new Point(x, plot.Top + 10),
-                    new Point(x + 15, plot.Top + 10));
-            }
-
             dc.DrawLine(new Pen(brush, 2), new Point(x, plot.Top + 10), new Point(x + 15, plot.Top + 10));
-            var textBrush = entry.Neutral ? new SolidColorBrush(NeutralHaloColor) : brush;
-            dc.DrawText(CreateText(entry.Name, 9.2, textBrush), new Point(x + 20, plot.Top + 3));
-            x += entry.Neutral ? 76 : 70;
+            dc.DrawText(CreateText(entry.Name, 9.2, brush), new Point(x + 20, plot.Top + 3));
+            x += entry.Width;
         }
     }
 
