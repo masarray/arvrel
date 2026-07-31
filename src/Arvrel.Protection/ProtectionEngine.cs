@@ -2,7 +2,7 @@ namespace Arvrel.Protection;
 
 public sealed class ProtectionEngine
 {
-    private readonly ProtectionSettings _settings;
+    private ProtectionSettings _settings;
     private TimeSpan _phase50Elapsed;
     private TimeSpan _earth50Elapsed;
     private double _phase51Progress;
@@ -14,6 +14,17 @@ public sealed class ProtectionEngine
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _settings.Validate();
+    }
+
+    public ProtectionSettings Settings => _settings;
+
+    public void UpdateSettings(ProtectionSettings settings, bool keepTripLatch = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings.Validate();
+        _settings = settings;
+        ResetDynamicState(keepTripLatch);
+        _previousTimestamp = null;
     }
 
     public ProtectionSnapshot Evaluate(MeasurementFrame frame)
@@ -30,41 +41,69 @@ public sealed class ProtectionEngine
         var maxPhase = Math.Max(0, frame.MaximumPhase);
         var residual = Math.Max(0, frame.Residual);
 
-        var phase50Pickup = frame.SmvTrust.AllowsPickup && maxPhase >= _settings.PhaseInstantaneousPickupA;
-        var phase51Pickup = frame.SmvTrust.AllowsPickup && maxPhase >= _settings.PhaseTimePickupA;
-        var earth50Pickup = frame.SmvTrust.AllowsPickup && residual >= _settings.EarthInstantaneousPickupA;
-        var earth51Pickup = frame.SmvTrust.AllowsPickup && residual >= _settings.EarthTimePickupA;
+        var phase50Pickup = _settings.PhaseInstantaneousEnabled &&
+                            frame.SmvTrust.AllowsPickup &&
+                            maxPhase >= _settings.PhaseInstantaneousPickupA;
+        var phase51Pickup = _settings.PhaseTimeEnabled &&
+                            frame.SmvTrust.AllowsPickup &&
+                            maxPhase >= _settings.PhaseTimePickupA;
+        var earth50Pickup = _settings.EarthInstantaneousEnabled &&
+                            frame.SmvTrust.AllowsPickup &&
+                            residual >= _settings.EarthInstantaneousPickupA;
+        var earth51Pickup = _settings.EarthTimeEnabled &&
+                            frame.SmvTrust.AllowsPickup &&
+                            residual >= _settings.EarthTimePickupA;
 
         _phase50Elapsed = AccumulateDefiniteTime(
             _phase50Elapsed,
             phase50Pickup,
             delta,
-            maxPhase < _settings.PhaseInstantaneousPickupA * _settings.DropoutRatio);
+            !_settings.PhaseInstantaneousEnabled ||
+            maxPhase < _settings.PhaseInstantaneousPickupA * _settings.PhaseInstantaneousDropoutRatio);
         _earth50Elapsed = AccumulateDefiniteTime(
             _earth50Elapsed,
             earth50Pickup,
             delta,
-            residual < _settings.EarthInstantaneousPickupA * _settings.DropoutRatio);
+            !_settings.EarthInstantaneousEnabled ||
+            residual < _settings.EarthInstantaneousPickupA * _settings.EarthInstantaneousDropoutRatio);
 
-        _phase51Progress = AccumulateIecStandardInverse(
+        _phase51Progress = AccumulateTimeCharacteristic(
             _phase51Progress,
             maxPhase,
             _settings.PhaseTimePickupA,
+            _settings.PhaseTimeCurve,
             _settings.PhaseTimeMultiplier,
+            _settings.PhaseTimeDefiniteDelay,
+            _settings.PhaseTimeMinimumOperateTime,
+            _settings.PhaseTimeResetMode,
+            _settings.PhaseTimeResetDelay,
+            _settings.PhaseTimeUserK,
+            _settings.PhaseTimeUserAlpha,
+            _settings.PhaseTimeUserC,
             delta,
-            phase51Pickup);
-        _earth51Progress = AccumulateIecStandardInverse(
+            phase51Pickup,
+            !_settings.PhaseTimeEnabled || maxPhase < _settings.PhaseTimePickupA * _settings.PhaseTimeDropoutRatio);
+        _earth51Progress = AccumulateTimeCharacteristic(
             _earth51Progress,
             residual,
             _settings.EarthTimePickupA,
+            _settings.EarthTimeCurve,
             _settings.EarthTimeMultiplier,
+            _settings.EarthTimeDefiniteDelay,
+            _settings.EarthTimeMinimumOperateTime,
+            _settings.EarthTimeResetMode,
+            _settings.EarthTimeResetDelay,
+            _settings.EarthTimeUserK,
+            _settings.EarthTimeUserAlpha,
+            _settings.EarthTimeUserC,
             delta,
-            earth51Pickup);
+            earth51Pickup,
+            !_settings.EarthTimeEnabled || residual < _settings.EarthTimePickupA * _settings.EarthTimeDropoutRatio);
 
-        var phase50Operate = _phase50Elapsed >= _settings.PhaseInstantaneousDelay;
-        var earth50Operate = _earth50Elapsed >= _settings.EarthInstantaneousDelay;
-        var phase51Operate = _phase51Progress >= 1;
-        var earth51Operate = _earth51Progress >= 1;
+        var phase50Operate = _settings.PhaseInstantaneousEnabled && _phase50Elapsed >= _settings.PhaseInstantaneousDelay;
+        var earth50Operate = _settings.EarthInstantaneousEnabled && _earth50Elapsed >= _settings.EarthInstantaneousDelay;
+        var phase51Operate = _settings.PhaseTimeEnabled && _phase51Progress >= 1;
+        var earth51Operate = _settings.EarthTimeEnabled && _earth51Progress >= 1;
 
         var operationRequested = phase50Operate || phase51Operate || earth50Operate || earth51Operate;
         var blocked = operationRequested && !frame.SmvTrust.AllowsTrip;
@@ -72,9 +111,12 @@ public sealed class ProtectionEngine
         if (tripRequested)
             _tripLatched = true;
 
-        var phaseA = frame.PhaseA >= Math.Min(_settings.PhaseInstantaneousPickupA, _settings.PhaseTimePickupA);
-        var phaseB = frame.PhaseB >= Math.Min(_settings.PhaseInstantaneousPickupA, _settings.PhaseTimePickupA);
-        var phaseC = frame.PhaseC >= Math.Min(_settings.PhaseInstantaneousPickupA, _settings.PhaseTimePickupA);
+        var minimumPhasePickup = Math.Min(
+            _settings.PhaseInstantaneousEnabled ? _settings.PhaseInstantaneousPickupA : double.PositiveInfinity,
+            _settings.PhaseTimeEnabled ? _settings.PhaseTimePickupA : double.PositiveInfinity);
+        var phaseA = double.IsFinite(minimumPhasePickup) && frame.PhaseA >= minimumPhasePickup;
+        var phaseB = double.IsFinite(minimumPhasePickup) && frame.PhaseB >= minimumPhasePickup;
+        var phaseC = double.IsFinite(minimumPhasePickup) && frame.PhaseC >= minimumPhasePickup;
         var earth = earth50Pickup || earth51Pickup;
 
         var activeElement = ResolveActiveElement(
@@ -99,6 +141,7 @@ public sealed class ProtectionEngine
             frame.Timestamp,
             BuildDefiniteSnapshot(
                 ProtectionElementId.PhaseInstantaneous50P,
+                _settings.PhaseInstantaneousEnabled,
                 phase50Pickup,
                 phase50Operate,
                 blocked && phase50Operate,
@@ -106,16 +149,25 @@ public sealed class ProtectionEngine
                 _settings.PhaseInstantaneousDelay,
                 maxPhase,
                 _settings.PhaseInstantaneousPickupA),
-            BuildInverseSnapshot(
+            BuildTimeSnapshot(
                 ProtectionElementId.PhaseTime51P,
+                _settings.PhaseTimeEnabled,
                 phase51Pickup,
                 phase51Operate,
                 blocked && phase51Operate,
                 _phase51Progress,
                 maxPhase,
-                _settings.PhaseTimePickupA),
+                _settings.PhaseTimePickupA,
+                _settings.PhaseTimeCurve,
+                _settings.PhaseTimeMultiplier,
+                _settings.PhaseTimeDefiniteDelay,
+                _settings.PhaseTimeMinimumOperateTime,
+                _settings.PhaseTimeUserK,
+                _settings.PhaseTimeUserAlpha,
+                _settings.PhaseTimeUserC),
             BuildDefiniteSnapshot(
                 ProtectionElementId.EarthInstantaneous50N,
+                _settings.EarthInstantaneousEnabled,
                 earth50Pickup,
                 earth50Operate,
                 blocked && earth50Operate,
@@ -123,14 +175,22 @@ public sealed class ProtectionEngine
                 _settings.EarthInstantaneousDelay,
                 residual,
                 _settings.EarthInstantaneousPickupA),
-            BuildInverseSnapshot(
+            BuildTimeSnapshot(
                 ProtectionElementId.EarthTime51N,
+                _settings.EarthTimeEnabled,
                 earth51Pickup,
                 earth51Operate,
                 blocked && earth51Operate,
                 _earth51Progress,
                 residual,
-                _settings.EarthTimePickupA),
+                _settings.EarthTimePickupA,
+                _settings.EarthTimeCurve,
+                _settings.EarthTimeMultiplier,
+                _settings.EarthTimeDefiniteDelay,
+                _settings.EarthTimeMinimumOperateTime,
+                _settings.EarthTimeUserK,
+                _settings.EarthTimeUserAlpha,
+                _settings.EarthTimeUserC),
             phaseA,
             phaseB,
             phaseC,
@@ -181,6 +241,7 @@ public sealed class ProtectionEngine
 
     private static ElementSnapshot BuildDefiniteSnapshot(
         ProtectionElementId element,
+        bool enabled,
         bool pickup,
         bool operated,
         bool blocked,
@@ -189,6 +250,8 @@ public sealed class ProtectionEngine
         double quantity,
         double setting)
     {
+        if (!enabled)
+            return DisabledElement(element, quantity, setting);
         var progress = delay <= TimeSpan.Zero ? (pickup ? 1 : 0) : elapsed.TotalMilliseconds / delay.TotalMilliseconds;
         return new ElementSnapshot(
             element,
@@ -201,15 +264,41 @@ public sealed class ProtectionEngine
             blocked ? "Operation reached but trip permission is blocked." : pickup ? "Definite-time accumulator active." : "Ready");
     }
 
-    private static ElementSnapshot BuildInverseSnapshot(
+    private static ElementSnapshot BuildTimeSnapshot(
         ProtectionElementId element,
+        bool enabled,
         bool pickup,
         bool operated,
         bool blocked,
         double progress,
         double quantity,
-        double setting)
+        double setting,
+        IecCurveFamily curve,
+        double timeMultiplier,
+        TimeSpan definiteDelay,
+        TimeSpan minimumOperate,
+        double userK,
+        double userAlpha,
+        double userC)
     {
+        if (!enabled)
+            return DisabledElement(element, quantity, setting);
+
+        var curveName = IecCurveCalculator.GetParameters(curve, userK, userAlpha, userC).DisplayName;
+        var multiple = setting > 0 ? quantity / setting : 0;
+        var time = IecCurveCalculator.GetOperateTimeSeconds(
+            curve,
+            multiple,
+            timeMultiplier,
+            definiteDelay,
+            minimumOperate,
+            userK,
+            userAlpha,
+            userC);
+        var timingDetail = double.IsFinite(time)
+            ? $"{curveName} integration active · target {time:0.###} s at {multiple:0.##} × pickup."
+            : $"{curveName} ready.";
+
         return new ElementSnapshot(
             element,
             ResolveStageState(pickup, operated, blocked),
@@ -218,8 +307,11 @@ public sealed class ProtectionEngine
             Math.Clamp(progress, 0, 1),
             quantity,
             setting,
-            blocked ? "Inverse operation reached but trip permission is blocked." : pickup ? "IEC standard-inverse integration active." : "Ready");
+            blocked ? "Time-overcurrent operation reached but trip permission is blocked." : pickup ? timingDetail : $"{curveName} ready.");
     }
+
+    private static ElementSnapshot DisabledElement(ProtectionElementId element, double quantity, double setting)
+        => new(element, ProtectionStageState.Disabled, false, false, 0, quantity, setting, "Element disabled by active setting group.");
 
     private static ProtectionStageState ResolveStageState(bool pickup, bool operated, bool blocked)
     {
@@ -239,25 +331,49 @@ public sealed class ProtectionEngine
         return droppedOut ? TimeSpan.Zero : current;
     }
 
-    private static double AccumulateIecStandardInverse(
+    private static double AccumulateTimeCharacteristic(
         double current,
         double measured,
         double pickup,
+        IecCurveFamily curve,
         double timeMultiplier,
+        TimeSpan definiteDelay,
+        TimeSpan minimumOperate,
+        ProtectionResetMode resetMode,
+        TimeSpan resetDelay,
+        double userK,
+        double userAlpha,
+        double userC,
         TimeSpan delta,
-        bool started)
+        bool started,
+        bool droppedOut)
     {
-        if (!started || pickup <= 0 || measured <= pickup)
-            return Math.Max(0, current - delta.TotalSeconds * 2);
+        if (started && pickup > 0 && measured > pickup)
+        {
+            var operatingSeconds = IecCurveCalculator.GetOperateTimeSeconds(
+                curve,
+                measured / pickup,
+                timeMultiplier,
+                definiteDelay,
+                minimumOperate,
+                userK,
+                userAlpha,
+                userC);
+            if (double.IsFinite(operatingSeconds) && operatingSeconds > 0)
+                return current + delta.TotalSeconds / operatingSeconds;
+            return current;
+        }
 
-        var multiple = measured / pickup;
-        var denominator = Math.Pow(multiple, 0.02) - 1;
-        if (denominator <= 0.000001)
+        if (!droppedOut)
             return current;
 
-        var operatingSeconds = timeMultiplier * 0.14 / denominator;
-        operatingSeconds = Math.Clamp(operatingSeconds, 0.02, 120);
-        return current + delta.TotalSeconds / operatingSeconds;
+        return resetMode switch
+        {
+            ProtectionResetMode.Instantaneous => 0,
+            ProtectionResetMode.DefiniteTime => Math.Max(0, current - delta.TotalSeconds / resetDelay.TotalSeconds),
+            ProtectionResetMode.InverseMemory => Math.Max(0, current - delta.TotalSeconds * 2),
+            _ => 0
+        };
     }
 
     private static string ResolveActiveElement(
