@@ -25,6 +25,7 @@ public enum LucideIconKind
     SlidersHorizontal,
     Activity,
     Radio,
+    Info,
     CircleStop
 }
 
@@ -161,6 +162,10 @@ public sealed class LucideIcon : FrameworkElement
                 P("M8.5,8.5 A5,5 0 0 0 8.5,15.5"),
                 P("M15.5,8.5 A5,5 0 0 1 15.5,15.5"),
                 P("M12,12 H12.01")),
+            [LucideIconKind.Info] = Def(
+                P("M12,2 A10,10 0 1 1 12,22 A10,10 0 1 1 12,2 Z"),
+                P("M12,10 V17"),
+                P("M12,7 H12.01")),
             [LucideIconKind.CircleStop] = Def(
                 P("M12,2 A10,10 0 1 1 12,22 A10,10 0 1 1 12,2 Z"),
                 P("M8,8 H16 V16 H8 Z", true))
