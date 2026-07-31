@@ -147,7 +147,7 @@ internal static class RelayTactileButtonBehavior
                                         VerticalAlignment="Top"
                                         Background="#9AFFFFFF"
                                         CornerRadius="1" />
-                                <Border x:Name="HoverOverlay"
+                                <Border x:Name="PressOverlay"
                                         Background="Transparent"
                                         CornerRadius="5" />
                                 <ContentPresenter x:Name="KeyContent"
@@ -159,16 +159,12 @@ internal static class RelayTactileButtonBehavior
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Face" Property="BorderBrush" Value="#A9BBC5" />
-                            <Setter TargetName="HoverOverlay" Property="Background" Value="#12FFFFFF" />
-                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Face" Property="Margin" Value="1,5,1,0" />
                             <Setter TargetName="Depth" Property="Opacity" Value="0.18" />
                             <Setter TargetName="Recess" Property="Background" Value="#0D1418" />
                             <Setter TargetName="TopHighlight" Property="Opacity" Value="0.18" />
-                            <Setter TargetName="HoverOverlay" Property="Background" Value="#22000000" />
+                            <Setter TargetName="PressOverlay" Property="Background" Value="#22000000" />
                             <Setter TargetName="KeyContent" Property="Margin" Value="0,2,0,0" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
@@ -236,7 +232,7 @@ internal static class RelayTactileButtonBehavior
                                         HorizontalAlignment="Left"
                                         Background="#5FA4CE"
                                         CornerRadius="2" />
-                                <Border x:Name="HoverOverlay"
+                                <Border x:Name="PressOverlay"
                                         Background="Transparent"
                                         CornerRadius="5" />
                                 <ContentPresenter x:Name="ResetContent"
@@ -248,16 +244,12 @@ internal static class RelayTactileButtonBehavior
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Face" Property="BorderBrush" Value="#B0C2CC" />
-                            <Setter TargetName="HoverOverlay" Property="Background" Value="#12FFFFFF" />
-                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Face" Property="Margin" Value="2,6,2,0" />
                             <Setter TargetName="Depth" Property="Opacity" Value="0.16" />
                             <Setter TargetName="Bezel" Property="Background" Value="#64727B" />
                             <Setter TargetName="TopHighlight" Property="Opacity" Value="0.15" />
-                            <Setter TargetName="HoverOverlay" Property="Background" Value="#26000000" />
+                            <Setter TargetName="PressOverlay" Property="Background" Value="#26000000" />
                             <Setter TargetName="ResetContent" Property="Margin" Value="14,2,14,0" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
