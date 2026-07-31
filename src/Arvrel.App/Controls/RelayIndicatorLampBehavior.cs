@@ -1,0 +1,194 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+using System.Windows.Shapes;
+
+namespace Arvrel.App.Controls;
+
+internal static class RelayIndicatorLampBehavior
+{
+    private static readonly DependencyProperty IsAttachedProperty = DependencyProperty.RegisterAttached(
+        "IsAttached",
+        typeof(bool),
+        typeof(RelayIndicatorLampBehavior),
+        new PropertyMetadata(false));
+
+    private static readonly DependencyPropertyDescriptor FillDescriptor =
+        DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Ellipse));
+
+    private static readonly Color OffReference = Color.FromRgb(81, 96, 106);
+
+    private static readonly Brush OffLampBrush = CreateLampBrush(
+        Color.FromRgb(129, 143, 152),
+        Color.FromRgb(76, 90, 99),
+        Color.FromRgb(46, 57, 65));
+
+    private static readonly Brush GreenLampBrush = CreateLampBrush(
+        Color.FromRgb(237, 255, 241),
+        Color.FromRgb(55, 235, 105),
+        Color.FromRgb(10, 130, 52));
+
+    private static readonly Brush OrangeLampBrush = CreateLampBrush(
+        Color.FromRgb(255, 249, 224),
+        Color.FromRgb(255, 180, 43),
+        Color.FromRgb(191, 91, 0));
+
+    private static readonly Brush RedLampBrush = CreateLampBrush(
+        Color.FromRgb(255, 238, 235),
+        Color.FromRgb(255, 76, 66),
+        Color.FromRgb(166, 12, 20));
+
+    private static readonly Brush OffStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(56, 68, 76)));
+    private static readonly Brush GreenStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(142, 255, 171)));
+    private static readonly Brush OrangeStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 220, 134)));
+    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 166, 159)));
+
+    private static readonly Effect GreenGlow = CreateGlow(Color.FromRgb(36, 230, 91));
+    private static readonly Effect OrangeGlow = CreateGlow(Color.FromRgb(255, 157, 24));
+    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 48, 48));
+
+    [ModuleInitializer]
+    internal static void Initialize()
+    {
+        EventManager.RegisterClassHandler(
+            typeof(Ellipse),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler(OnLoaded));
+
+        EventManager.RegisterClassHandler(
+            typeof(Ellipse),
+            FrameworkElement.UnloadedEvent,
+            new RoutedEventHandler(OnUnloaded));
+    }
+
+    private static void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Ellipse ellipse || !IsRelayIndicator(ellipse) || (bool)ellipse.GetValue(IsAttachedProperty))
+            return;
+
+        ellipse.SetValue(IsAttachedProperty, true);
+        FillDescriptor.AddValueChanged(ellipse, OnFillChanged);
+        ApplyVisualState(ellipse);
+    }
+
+    private static void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Ellipse ellipse || !(bool)ellipse.GetValue(IsAttachedProperty))
+            return;
+
+        FillDescriptor.RemoveValueChanged(ellipse, OnFillChanged);
+        ellipse.SetValue(IsAttachedProperty, false);
+    }
+
+    private static void OnFillChanged(object? sender, EventArgs e)
+    {
+        if (sender is Ellipse ellipse)
+            ApplyVisualState(ellipse);
+    }
+
+    private static void ApplyVisualState(Ellipse ellipse)
+    {
+        if (ellipse.Fill is RadialGradientBrush)
+            return;
+
+        var active = IsActive(ellipse.Fill);
+        var state = active ? ResolveActiveState(ellipse.Name, ellipse.Fill) : LampState.Off;
+
+        switch (state)
+        {
+            case LampState.Green:
+                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow);
+                break;
+            case LampState.Orange:
+                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow);
+                break;
+            case LampState.Red:
+                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow);
+                break;
+            default:
+                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null);
+                break;
+        }
+    }
+
+    private static void SetLamp(Ellipse ellipse, Brush fill, Brush stroke, Effect? effect)
+    {
+        ellipse.Fill = fill;
+        ellipse.Stroke = stroke;
+        ellipse.StrokeThickness = 1;
+        ellipse.Effect = effect;
+    }
+
+    private static LampState ResolveActiveState(string name, Brush source)
+    {
+        return name switch
+        {
+            "PickupLed" => LampState.Orange,
+            "TripLed" or "BlockLed" => LampState.Red,
+            "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? LampState.Green : LampState.Red,
+            "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" => LampState.Green,
+            _ => LampState.Green
+        };
+    }
+
+    private static bool IsRelayIndicator(Ellipse ellipse)
+        => ellipse.Name.EndsWith("Led", StringComparison.Ordinal);
+
+    private static bool IsActive(Brush? brush)
+    {
+        if (brush is not SolidColorBrush solid)
+            return brush is not null;
+
+        var color = solid.Color;
+        var distance = Math.Sqrt(
+            Math.Pow(color.R - OffReference.R, 2) +
+            Math.Pow(color.G - OffReference.G, 2) +
+            Math.Pow(color.B - OffReference.B, 2));
+        return distance > 42;
+    }
+
+    private static bool IsHealthyColor(Brush? brush)
+        => brush is SolidColorBrush solid && solid.Color.G > solid.Color.R && solid.Color.G > solid.Color.B;
+
+    private static Brush CreateLampBrush(Color highlight, Color core, Color edge)
+    {
+        var brush = new RadialGradientBrush
+        {
+            Center = new Point(0.5, 0.5),
+            GradientOrigin = new Point(0.32, 0.28),
+            RadiusX = 0.72,
+            RadiusY = 0.72
+        };
+        brush.GradientStops.Add(new GradientStop(highlight, 0));
+        brush.GradientStops.Add(new GradientStop(core, 0.38));
+        brush.GradientStops.Add(new GradientStop(edge, 1));
+        return Freeze(brush);
+    }
+
+    private static Effect CreateGlow(Color color)
+        => Freeze(new DropShadowEffect
+        {
+            BlurRadius = 12,
+            Color = color,
+            Direction = 0,
+            Opacity = 0.9,
+            ShadowDepth = 0,
+            RenderingBias = RenderingBias.Quality
+        });
+
+    private static T Freeze<T>(T value) where T : Freezable
+    {
+        value.Freeze();
+        return value;
+    }
+
+    private enum LampState
+    {
+        Off,
+        Green,
+        Orange,
+        Red
+    }
+}
