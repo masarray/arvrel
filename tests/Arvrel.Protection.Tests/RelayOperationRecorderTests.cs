@@ -36,8 +36,9 @@ public sealed class RelayOperationRecorderTests
 
         Assert.IsTrue(transition.TripOccurred);
         Assert.IsNotNull(transition.Operation);
+        Assert.IsNotNull(transition.Operation.OperateTime);
         Assert.AreEqual("50P-1", transition.Operation.TripElement);
-        Assert.AreEqual(20, transition.Operation.OperateTime?.TotalMilliseconds, 0.001);
+        Assert.AreEqual(20, transition.Operation.OperateTime.Value.TotalMilliseconds, 0.001);
         Assert.AreEqual(4, transition.Operation.TripCurrentA, 0.001);
     }
 
