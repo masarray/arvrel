@@ -26,16 +26,17 @@ public static class PcapPacketReader
         stream.Position = 0;
 
         var firstLittle = BinaryPrimitives.ReadUInt32LittleEndian(signature);
-        if (firstLittle == SectionHeaderBlock)
-            return ReadPcapNg(stream).ToArray();
-
-        return ReadClassicPcap(stream).ToArray();
+        return firstLittle == SectionHeaderBlock
+            ? ReadPcapNg(stream).ToArray()
+            : ReadClassicPcap(stream).ToArray();
     }
 
     private static IEnumerable<PcapPacket> ReadClassicPcap(Stream stream)
     {
-        var header = new byte[24];
-        ReadExactly(stream, header);
+        using var reader = new BinaryReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+        var header = reader.ReadBytes(24);
+        if (header.Length != 24)
+            throw new InvalidDataException("Classic PCAP global header is truncated.");
 
         var magic = header.AsSpan(0, 4);
         var littleEndian = magic.SequenceEqual(PcapMicrosecondsLittle) ||
@@ -51,22 +52,28 @@ public static class PcapPacketReader
         if (linkType != EthernetLinkType)
             throw new InvalidDataException($"Unsupported PCAP link type {linkType}; Ethernet link type 1 is required.");
 
-        var packetHeader = new byte[16];
-        while (TryReadExactly(stream, packetHeader))
+        while (stream.Position < stream.Length)
         {
+            var remaining = stream.Length - stream.Position;
+            if (remaining < 16)
+                throw new InvalidDataException("Classic PCAP packet header is truncated.");
+
+            var packetHeader = reader.ReadBytes(16);
+            if (packetHeader.Length != 16)
+                throw new InvalidDataException("Classic PCAP packet header is truncated.");
+
             var seconds = ReadUInt32(packetHeader.AsSpan(0, 4), littleEndian);
             var fraction = ReadUInt32(packetHeader.AsSpan(4, 4), littleEndian);
             var capturedLength = ReadUInt32(packetHeader.AsSpan(8, 4), littleEndian);
             ValidatePacketLength(capturedLength);
 
-            if (capturedLength > stream.Length - stream.Position)
+            var frame = reader.ReadBytes(checked((int)capturedLength));
+            if (frame.Length != capturedLength)
             {
                 throw new InvalidDataException(
-                    $"Capture packet declares {capturedLength} byte(s), but only {stream.Length - stream.Position} remain.");
+                    $"Classic PCAP packet declares {capturedLength} byte(s), but only {frame.Length} were available.");
             }
 
-            var frame = new byte[checked((int)capturedLength)];
-            ReadExactly(stream, frame);
             var ticks = nanosecondResolution ? fraction / 100 : fraction * 10;
             yield return new PcapPacket(DateTimeOffset.FromUnixTimeSeconds(seconds).AddTicks(ticks), frame);
         }
@@ -139,7 +146,7 @@ public static class PcapPacketReader
                     var timestampLow = ReadUInt32(block.AsSpan(16, 4), littleEndian);
                     var capturedLength = ReadUInt32(block.AsSpan(20, 4), littleEndian);
                     ValidatePacketLength(capturedLength);
-                    var dataOffset = 28;
+                    const int dataOffset = 28;
                     if (dataOffset + capturedLength > blockLength - 4)
                         throw new InvalidDataException("PCAPNG packet data is truncated.");
 
