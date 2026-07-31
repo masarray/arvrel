@@ -28,6 +28,7 @@ jobs:
           set -euo pipefail
           wc -c .p1-source/chunk-*
           sha256sum .p1-source/chunk-*
+          head -c 12000 .p1-source/chunk-02 | sha256sum
           cat .p1-source/chunk-00 .p1-source/chunk-01 > /tmp/p1-source.b64
           head -c 12000 .p1-source/chunk-02 >> /tmp/p1-source.b64
           cat .p1-source/chunk-03 .p1-source/chunk-04 >> /tmp/p1-source.b64
