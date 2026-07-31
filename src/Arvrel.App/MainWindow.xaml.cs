@@ -22,10 +22,10 @@ public partial class MainWindow : Window
     private static readonly Brush TripBrush = Freeze(new SolidColorBrush(Color.FromRgb(199, 71, 67)));
     private static readonly Brush PhaseBrush = Freeze(new SolidColorBrush(Color.FromRgb(65, 139, 191)));
 
-    private readonly ProtectionSettings _settings = new();
+    private ProtectionSettings _settings = new();
     private readonly ProtectionEngine _internalEngine;
     private readonly DeterministicLabScenario _scenario = new();
-    private readonly SmvProcessBusController _processBus;
+    private SmvProcessBusController _processBus;
     private readonly DispatcherTimer _timer;
     private readonly Queue<string> _events = new();
     private ProtectionSnapshot _snapshot;
@@ -37,14 +37,14 @@ public partial class MainWindow : Window
     private double _pickupPosition = double.NaN;
     private double _tripPosition = double.NaN;
     private string? _selectedStreamKey;
+    private string? _loadedSclPath;
     private int _streamRefreshDivider;
 
     public MainWindow()
     {
         InitializeComponent();
         _internalEngine = new ProtectionEngine(_settings);
-        _processBus = new SmvProcessBusController(_settings);
-        _processBus.EventRaised += ProcessBus_EventRaised;
+        _processBus = CreateProcessBus(_settings);
         _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
         _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -55,12 +55,14 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
 
         EngineModeText.Text = SmvProcessBusController.IsAvailable
-            ? "P1 · ARIEC61850 SIBLING READY"
+            ? "P1.1 · ARIEC61850 SIBLING READY"
             : SiblingEngineStatus.Label;
         StreamCombo.ItemsSource = new[] { new SmvStreamInfo("internal", 0x4000, "MU01", "Internal", null, "GOOD", true) };
         StreamCombo.SelectedIndex = 0;
         AddEvent("READY", "Protection engine initialized");
         AddEvent("HEALTH", "SMV trust guard permits trip");
+        UpdateSettingSummaries();
+        UpdateOperatingModeUi();
         RenderInitialFrame();
     }
 
@@ -68,6 +70,7 @@ public partial class MainWindow : Window
     {
         RefreshAdapters();
         UpdateSourceUi();
+        UpdateOperatingModeUi();
     }
 
     private async void RunButton_Click(object sender, RoutedEventArgs e)
@@ -223,8 +226,62 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OperatingModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (IsInitialized)
+            UpdateOperatingModeUi();
+    }
+
+    private void UpdateOperatingModeUi()
+    {
+        if (AlgorithmButton is null)
+            return;
+        var research = OperatingModeCombo.SelectedIndex == 1;
+        AlgorithmButton.Visibility = research ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded)
+        {
+            StatusText.Text = research
+                ? "Research mode active. Standard algorithm source and deterministic shadow staging are exposed."
+                : "Practitioner mode active. Configure and operate the relay through native settings.";
+            AddEvent("MODE", research ? "Research algorithm laboratory exposed" : "Practitioner relay workflow active");
+        }
+    }
+
     private void OpenAlgorithmEditor_Click(object sender, RoutedEventArgs e)
-        => new AlgorithmEditorWindow { Owner = this }.ShowDialog();
+    {
+        if (OperatingModeCombo.SelectedIndex != 1)
+        {
+            MessageBox.Show(this, "Switch to Research mode to expose active algorithm source and shadow staging.", "ARVREL operating mode", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        new AlgorithmEditorWindow(_settings) { Owner = this }.ShowDialog();
+    }
+
+    private async void ProtectionSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ProtectionSettingsWindow(_settings, _processBus.MeasurementContext) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.Result is not { } settings)
+            return;
+
+        try
+        {
+            settings.Validate();
+            _settings = settings;
+            _internalEngine.UpdateSettings(settings, keepTripLatch: false);
+            _scenario.Reset();
+            _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
+            ResetTransitionMarkers();
+            await RecreateProcessBusAsync().ConfigureAwait(true);
+            UpdateSettingSummaries();
+            RenderInitialFrame();
+            AddEvent("SETTINGS", $"{settings.GroupName} rev {settings.Revision} · {settings.Fingerprint()[..12]}");
+            StatusText.Text = $"Protection settings applied · {settings.GroupName} revision {settings.Revision}. Timers and virtual trip latch reset.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "Protection settings apply failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void MeasurementContext_Click(object sender, RoutedEventArgs e)
     {
@@ -256,6 +313,7 @@ public partial class MainWindow : Window
         try
         {
             _processBus.LoadScl(dialog.FileName);
+            _loadedSclPath = dialog.FileName;
             SclStatusText.Text = _processBus.SclSummary.ToUpperInvariant();
             StatusText.Text = $"SCL loaded · {_processBus.SclSummary}. Existing and new streams will be matched by APPID, destination, VLAN, svID, and dataset evidence.";
         }
@@ -321,12 +379,16 @@ public partial class MainWindow : Window
         {
             evidence = new
             {
+                schemaVersion = 2,
                 exportedAt = DateTimeOffset.Now,
                 application = "ARVREL",
+                operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
                 sourceMode = "Internal deterministic laboratory",
                 measurement = new { phaseA = _scenario.FaultActive ? 8.4 : 1.0, phaseB = 1.02, phaseC = 0.98 },
                 protection = _snapshot,
                 protectionSettings = _settings,
+                settingsFingerprint = _settings.Fingerprint(),
+                algorithmMode = "standard-active/custom-shadow-only",
                 events = _events.Reverse().ToArray()
             };
         }
@@ -346,6 +408,32 @@ public partial class MainWindow : Window
         File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         AddEvent("EXPORT", System.IO.Path.GetFileName(dialog.FileName));
         StatusText.Text = $"Evidence exported to {dialog.FileName}.";
+    }
+
+    private SmvProcessBusController CreateProcessBus(ProtectionSettings settings)
+    {
+        var controller = new SmvProcessBusController(settings);
+        controller.EventRaised += ProcessBus_EventRaised;
+        return controller;
+    }
+
+    private async Task RecreateProcessBusAsync()
+    {
+        var previous = _processBus;
+        var context = previous.MeasurementContext;
+        previous.EventRaised -= ProcessBus_EventRaised;
+        await previous.DisposeAsync().ConfigureAwait(true);
+
+        _processBus = CreateProcessBus(_settings);
+        _processBus.SetMeasurementContext(context);
+        if (!string.IsNullOrWhiteSpace(_loadedSclPath) && File.Exists(_loadedSclPath))
+            _processBus.LoadScl(_loadedSclPath);
+
+        _sourceRunning = false;
+        _selectedStreamKey = SourceCombo.SelectedIndex == 0 ? "internal" : null;
+        RefreshAdapters();
+        UpdateSourceUi();
+        SclStatusText.Text = _processBus.SclSummary == "No SCL loaded" ? "NO SCL" : _processBus.SclSummary.ToUpperInvariant();
     }
 
     private void RefreshAdapters()
@@ -388,7 +476,7 @@ public partial class MainWindow : Window
         FpsText.Text = "  ·  deterministic";
         StreamHealthText.Text = "  ·  INTERNAL · GOOD";
         WaveformSubtitleText.Text = "Stationary deterministic evidence window · pickup and trip markers remain visible";
-        RelayFooterText.Text = "Deterministic SMV health gate active";
+        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · deterministic SMV health gate active";
     }
 
     private void RenderSelectedProcessBusStream()
@@ -430,7 +518,7 @@ public partial class MainWindow : Window
             _ => TripBrush
         };
         WaveformSubtitleText.Text = $"{snapshot.MappingSummary} · {snapshot.ScalingSummary} · gaps {snapshot.SequenceGapCount} · quality {snapshot.InvalidQualityCount}";
-        RelayFooterText.Text = snapshot.TrustSummary;
+        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · {snapshot.TrustSummary}";
         LcdHeaderText.Text = ViewCombo.SelectedIndex == 1 ? "PRIMARY CURRENT" : "SECONDARY CURRENT";
     }
 
@@ -476,7 +564,7 @@ public partial class MainWindow : Window
                 : pickup
                     ? $"PICKUP\n{snapshot.ActiveElement}"
                     : snapshot.SmvTrust.AllowsMeasurement
-                        ? "READY · TRIP PERMITTED"
+                        ? $"READY · {_settings.GroupName.ToUpperInvariant()}"
                         : $"MEASUREMENT BLOCKED\n{snapshot.SmvTrust.Code}";
     }
 
@@ -535,6 +623,26 @@ public partial class MainWindow : Window
         }
     }
 
+    private void UpdateSettingSummaries()
+    {
+        Phase50SettingText.Text = _settings.PhaseInstantaneousEnabled
+            ? $"50P-1 · {_settings.PhaseInstantaneousPickupA:0.###} A / {_settings.PhaseInstantaneousDelay.TotalMilliseconds:0.###} ms"
+            : "50P-1 · DISABLED";
+        Earth50SettingText.Text = _settings.EarthInstantaneousEnabled
+            ? $"50N · {_settings.EarthInstantaneousPickupA:0.###} A / {_settings.EarthInstantaneousDelay.TotalMilliseconds:0.###} ms"
+            : "50N · DISABLED";
+        Phase51SettingText.Text = _settings.PhaseTimeEnabled
+            ? $"51P · {CurveShortName(_settings.PhaseTimeCurve, _settings.PhaseTimeUserK, _settings.PhaseTimeUserAlpha, _settings.PhaseTimeUserC)} / TMS {_settings.PhaseTimeMultiplier:0.###}"
+            : "51P · DISABLED";
+        Earth51SettingText.Text = _settings.EarthTimeEnabled
+            ? $"51N · {CurveShortName(_settings.EarthTimeCurve, _settings.EarthTimeUserK, _settings.EarthTimeUserAlpha, _settings.EarthTimeUserC)} / TMS {_settings.EarthTimeMultiplier:0.###}"
+            : "51N · DISABLED";
+        ActiveSettingsStatusText.Text = $"{_settings.GroupName.ToUpperInvariant()} · REV {_settings.Revision} · {_settings.Fingerprint()[..12]}";
+    }
+
+    private static string CurveShortName(IecCurveFamily family, double k, double alpha, double c)
+        => IecCurveCalculator.GetParameters(family, k, alpha, c).ShortName;
+
     private void UpdateRunButton()
     {
         switch (SourceCombo.SelectedIndex)
@@ -575,6 +683,7 @@ public partial class MainWindow : Window
             ProtectionStageState.Operated => TripBrush,
             ProtectionStageState.Blocked => WarningBrush,
             ProtectionStageState.Timing or ProtectionStageState.Pickup => WarningBrush,
+            ProtectionStageState.Disabled => BrushFrom("#8A98A5"),
             _ => BrushFrom("#657586")
         };
         progress.Value = element.Progress * 100;
