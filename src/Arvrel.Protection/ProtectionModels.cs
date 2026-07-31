@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Arvrel.Protection;
 
 public enum ProtectionElementId
@@ -14,7 +17,25 @@ public enum ProtectionStageState
     Pickup,
     Timing,
     Operated,
-    Blocked
+    Blocked,
+    Disabled
+}
+
+public enum IecCurveFamily
+{
+    DefiniteTime,
+    StandardInverse,
+    VeryInverse,
+    ExtremelyInverse,
+    LongTimeInverse,
+    UserDefined
+}
+
+public enum ProtectionResetMode
+{
+    Instantaneous,
+    DefiniteTime,
+    InverseMemory
 }
 
 public sealed record SmvTrustState(
@@ -41,31 +62,141 @@ public sealed record SmvTrustState(
 
 public sealed record ProtectionSettings
 {
+    public string GroupName { get; init; } = "GROUP A";
+    public int Revision { get; init; } = 1;
+
+    public bool PhaseInstantaneousEnabled { get; init; } = true;
     public double PhaseInstantaneousPickupA { get; init; } = 4.00;
     public TimeSpan PhaseInstantaneousDelay { get; init; } = TimeSpan.FromMilliseconds(60);
+    public double PhaseInstantaneousDropoutRatio { get; init; } = 0.95;
+
+    public bool PhaseTimeEnabled { get; init; } = true;
     public double PhaseTimePickupA { get; init; } = 1.25;
+    public IecCurveFamily PhaseTimeCurve { get; init; } = IecCurveFamily.StandardInverse;
     public double PhaseTimeMultiplier { get; init; } = 0.12;
+    public TimeSpan PhaseTimeDefiniteDelay { get; init; } = TimeSpan.FromMilliseconds(600);
+    public TimeSpan PhaseTimeMinimumOperateTime { get; init; } = TimeSpan.FromMilliseconds(20);
+    public double PhaseTimeDropoutRatio { get; init; } = 0.95;
+    public ProtectionResetMode PhaseTimeResetMode { get; init; } = ProtectionResetMode.InverseMemory;
+    public TimeSpan PhaseTimeResetDelay { get; init; } = TimeSpan.FromSeconds(1);
+    public double PhaseTimeUserK { get; init; } = 0.14;
+    public double PhaseTimeUserAlpha { get; init; } = 0.02;
+    public double PhaseTimeUserC { get; init; }
+
+    public bool EarthInstantaneousEnabled { get; init; } = true;
     public double EarthInstantaneousPickupA { get; init; } = 0.80;
     public TimeSpan EarthInstantaneousDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+    public double EarthInstantaneousDropoutRatio { get; init; } = 0.95;
+
+    public bool EarthTimeEnabled { get; init; } = true;
     public double EarthTimePickupA { get; init; } = 0.30;
+    public IecCurveFamily EarthTimeCurve { get; init; } = IecCurveFamily.StandardInverse;
     public double EarthTimeMultiplier { get; init; } = 0.15;
-    public double DropoutRatio { get; init; } = 0.95;
+    public TimeSpan EarthTimeDefiniteDelay { get; init; } = TimeSpan.FromMilliseconds(800);
+    public TimeSpan EarthTimeMinimumOperateTime { get; init; } = TimeSpan.FromMilliseconds(20);
+    public double EarthTimeDropoutRatio { get; init; } = 0.95;
+    public ProtectionResetMode EarthTimeResetMode { get; init; } = ProtectionResetMode.InverseMemory;
+    public TimeSpan EarthTimeResetDelay { get; init; } = TimeSpan.FromSeconds(1);
+    public double EarthTimeUserK { get; init; } = 0.14;
+    public double EarthTimeUserAlpha { get; init; } = 0.02;
+    public double EarthTimeUserC { get; init; }
 
     public void Validate()
     {
-        ValidatePositive(PhaseInstantaneousPickupA, nameof(PhaseInstantaneousPickupA));
-        ValidatePositive(PhaseTimePickupA, nameof(PhaseTimePickupA));
-        ValidatePositive(EarthInstantaneousPickupA, nameof(EarthInstantaneousPickupA));
-        ValidatePositive(EarthTimePickupA, nameof(EarthTimePickupA));
-        ValidatePositive(PhaseTimeMultiplier, nameof(PhaseTimeMultiplier));
-        ValidatePositive(EarthTimeMultiplier, nameof(EarthTimeMultiplier));
+        if (string.IsNullOrWhiteSpace(GroupName))
+            throw new ArgumentException("Setting group name is required.", nameof(GroupName));
+        if (Revision < 1)
+            throw new ArgumentOutOfRangeException(nameof(Revision));
 
-        if (PhaseInstantaneousDelay < TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(PhaseInstantaneousDelay));
-        if (EarthInstantaneousDelay < TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(EarthInstantaneousDelay));
-        if (DropoutRatio is <= 0 or > 1)
-            throw new ArgumentOutOfRangeException(nameof(DropoutRatio));
+        ValidateElement(PhaseInstantaneousPickupA, PhaseInstantaneousDelay, PhaseInstantaneousDropoutRatio,
+            nameof(PhaseInstantaneousPickupA), nameof(PhaseInstantaneousDelay), nameof(PhaseInstantaneousDropoutRatio));
+        ValidateElement(EarthInstantaneousPickupA, EarthInstantaneousDelay, EarthInstantaneousDropoutRatio,
+            nameof(EarthInstantaneousPickupA), nameof(EarthInstantaneousDelay), nameof(EarthInstantaneousDropoutRatio));
+
+        ValidateTimeElement(
+            PhaseTimePickupA,
+            PhaseTimeMultiplier,
+            PhaseTimeDefiniteDelay,
+            PhaseTimeMinimumOperateTime,
+            PhaseTimeDropoutRatio,
+            PhaseTimeResetDelay,
+            PhaseTimeUserK,
+            PhaseTimeUserAlpha,
+            PhaseTimeUserC,
+            nameof(PhaseTimePickupA));
+        ValidateTimeElement(
+            EarthTimePickupA,
+            EarthTimeMultiplier,
+            EarthTimeDefiniteDelay,
+            EarthTimeMinimumOperateTime,
+            EarthTimeDropoutRatio,
+            EarthTimeResetDelay,
+            EarthTimeUserK,
+            EarthTimeUserAlpha,
+            EarthTimeUserC,
+            nameof(EarthTimePickupA));
+    }
+
+    public string Fingerprint()
+    {
+        var canonical = string.Join('|',
+            GroupName.Trim(), Revision,
+            PhaseInstantaneousEnabled, PhaseInstantaneousPickupA, PhaseInstantaneousDelay.Ticks, PhaseInstantaneousDropoutRatio,
+            PhaseTimeEnabled, PhaseTimePickupA, PhaseTimeCurve, PhaseTimeMultiplier, PhaseTimeDefiniteDelay.Ticks,
+            PhaseTimeMinimumOperateTime.Ticks, PhaseTimeDropoutRatio, PhaseTimeResetMode, PhaseTimeResetDelay.Ticks,
+            PhaseTimeUserK, PhaseTimeUserAlpha, PhaseTimeUserC,
+            EarthInstantaneousEnabled, EarthInstantaneousPickupA, EarthInstantaneousDelay.Ticks, EarthInstantaneousDropoutRatio,
+            EarthTimeEnabled, EarthTimePickupA, EarthTimeCurve, EarthTimeMultiplier, EarthTimeDefiniteDelay.Ticks,
+            EarthTimeMinimumOperateTime.Ticks, EarthTimeDropoutRatio, EarthTimeResetMode, EarthTimeResetDelay.Ticks,
+            EarthTimeUserK, EarthTimeUserAlpha, EarthTimeUserC);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
+    private static void ValidateElement(
+        double pickup,
+        TimeSpan delay,
+        double dropout,
+        string pickupName,
+        string delayName,
+        string dropoutName)
+    {
+        ValidatePositive(pickup, pickupName);
+        if (delay < TimeSpan.Zero || delay > TimeSpan.FromMinutes(10))
+            throw new ArgumentOutOfRangeException(delayName);
+        ValidateDropout(dropout, dropoutName);
+    }
+
+    private static void ValidateTimeElement(
+        double pickup,
+        double timeMultiplier,
+        TimeSpan definiteDelay,
+        TimeSpan minimumOperate,
+        double dropout,
+        TimeSpan resetDelay,
+        double userK,
+        double userAlpha,
+        double userC,
+        string prefix)
+    {
+        ValidatePositive(pickup, prefix);
+        ValidatePositive(timeMultiplier, $"{prefix}.TMS");
+        if (definiteDelay <= TimeSpan.Zero || definiteDelay > TimeSpan.FromMinutes(10))
+            throw new ArgumentOutOfRangeException($"{prefix}.DefiniteDelay");
+        if (minimumOperate < TimeSpan.Zero || minimumOperate > TimeSpan.FromMinutes(1))
+            throw new ArgumentOutOfRangeException($"{prefix}.MinimumOperateTime");
+        if (resetDelay <= TimeSpan.Zero || resetDelay > TimeSpan.FromMinutes(10))
+            throw new ArgumentOutOfRangeException($"{prefix}.ResetDelay");
+        ValidateDropout(dropout, $"{prefix}.DropoutRatio");
+        ValidatePositive(userK, $"{prefix}.UserK");
+        ValidatePositive(userAlpha, $"{prefix}.UserAlpha");
+        if (!double.IsFinite(userC) || userC < 0)
+            throw new ArgumentOutOfRangeException($"{prefix}.UserC");
+    }
+
+    private static void ValidateDropout(double value, string name)
+    {
+        if (!double.IsFinite(value) || value is <= 0 or > 1)
+            throw new ArgumentOutOfRangeException(name);
     }
 
     private static void ValidatePositive(double value, string name)
