@@ -4,18 +4,22 @@ on:
   push:
     branches:
       - feature/p1-process-bus-lucide
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: ${{ !contains(github.event.head_commit.message, '[p1-source-applied]') }}
+    if: ${{ github.event_name == 'pull_request' || !contains(github.event.head_commit.message, '[p1-source-applied]') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
+          ref: feature/p1-process-bus-lucide
           fetch-depth: 0
 
       - name: Reconstruct and apply P1 source
