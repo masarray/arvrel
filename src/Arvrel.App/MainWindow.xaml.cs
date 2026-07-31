@@ -1,11 +1,14 @@
+using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
+using Arvrel.App.Controls;
 using Arvrel.App.Infrastructure;
 using Arvrel.App.Services;
+using Arvrel.ProcessBus;
 using Arvrel.Protection;
 using Microsoft.Win32;
 
@@ -20,75 +23,179 @@ public partial class MainWindow : Window
     private static readonly Brush PhaseBrush = Freeze(new SolidColorBrush(Color.FromRgb(65, 139, 191)));
 
     private readonly ProtectionSettings _settings = new();
-    private readonly ProtectionEngine _engine;
+    private readonly ProtectionEngine _internalEngine;
     private readonly DeterministicLabScenario _scenario = new();
+    private readonly SmvProcessBusController _processBus;
     private readonly DispatcherTimer _timer;
     private readonly Queue<string> _events = new();
     private ProtectionSnapshot _snapshot;
-    private bool _running;
+    private bool _internalRunning;
+    private bool _sourceRunning;
     private bool _lastPickup;
     private bool _lastTrip;
     private bool _lastBlocked;
     private double _pickupPosition = double.NaN;
     private double _tripPosition = double.NaN;
+    private string? _selectedStreamKey;
+    private int _streamRefreshDivider;
 
     public MainWindow()
     {
         InitializeComponent();
-        _engine = new ProtectionEngine(_settings);
+        _internalEngine = new ProtectionEngine(_settings);
+        _processBus = new SmvProcessBusController(_settings);
+        _processBus.EventRaised += ProcessBus_EventRaised;
         _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
         _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(40)
         };
         _timer.Tick += Timer_Tick;
-        EngineModeText.Text = SiblingEngineStatus.Label;
+        _timer.Start();
+        Loaded += MainWindow_Loaded;
+
+        EngineModeText.Text = SmvProcessBusController.IsAvailable
+            ? "P1 · ARIEC61850 SIBLING READY"
+            : SiblingEngineStatus.Label;
+        StreamCombo.ItemsSource = new[] { new SmvStreamInfo("internal", 0x4000, "MU01", "Internal", null, "GOOD", true) };
+        StreamCombo.SelectedIndex = 0;
         AddEvent("READY", "Protection engine initialized");
         AddEvent("HEALTH", "SMV trust guard permits trip");
         RenderInitialFrame();
     }
 
-    private void RunButton_Click(object sender, RoutedEventArgs e)
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        _running = !_running;
-        RunButton.Content = _running ? "Pause lab" : "Run lab";
-        StatusText.Text = _running
-            ? "Laboratory running. Inject A-G fault to observe pickup, timing and virtual trip."
-            : "Laboratory paused; the two-cycle evidence window remains stationary.";
-        if (_running)
-            _timer.Start();
-        else
-            _timer.Stop();
+        RefreshAdapters();
+        UpdateSourceUi();
+    }
+
+    private async void RunButton_Click(object sender, RoutedEventArgs e)
+    {
+        RunButton.IsEnabled = false;
+        try
+        {
+            switch (SourceCombo.SelectedIndex)
+            {
+                case 0:
+                    ToggleInternalRun();
+                    break;
+                case 1:
+                    await ToggleLiveCaptureAsync().ConfigureAwait(true);
+                    break;
+                case 2:
+                    await ReplayCaptureAsync().ConfigureAwait(true);
+                    break;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException or ArgumentException)
+        {
+            AddEvent("ERROR", ex.Message);
+            StatusText.Text = ex.Message;
+            MessageBox.Show(this, ex.Message, "ARVREL process bus", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            RunButton.IsEnabled = true;
+            UpdateRunButton();
+        }
+    }
+
+    private void ToggleInternalRun()
+    {
+        _internalRunning = !_internalRunning;
+        StatusText.Text = _internalRunning
+            ? "Internal laboratory running. Inject A-G fault to observe pickup, timing, and virtual trip."
+            : "Internal laboratory paused; the two-cycle evidence window remains stationary.";
+        AddEvent(_internalRunning ? "RUN" : "PAUSE", _internalRunning ? "Internal laboratory started" : "Internal laboratory paused");
+        UpdateRunButton();
+    }
+
+    private async Task ToggleLiveCaptureAsync()
+    {
+        if (_sourceRunning)
+        {
+            await _processBus.StopAsync().ConfigureAwait(true);
+            _sourceRunning = false;
+            StatusText.Text = "Live Npcap capture stopped.";
+            return;
+        }
+
+        if (AdapterCombo.SelectedItem is not ProcessBusAdapter adapter)
+            throw new InvalidOperationException("Select an Npcap adapter before starting live capture.");
+
+        ResetTransitionMarkers();
+        await _processBus.StartLiveAsync(adapter.Selector).ConfigureAwait(true);
+        _sourceRunning = true;
+        StatusText.Text = $"Listening for IEC 61850 Sampled Values on {adapter.DisplayName}.";
+        AddEvent("LIVE", adapter.DisplayName);
+    }
+
+    private async Task ReplayCaptureAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open IEC 61850 Sampled Values capture",
+            Filter = "Packet capture (*.pcap;*.pcapng)|*.pcap;*.pcapng|Classic PCAP (*.pcap)|*.pcap|PCAPNG (*.pcapng)|*.pcapng|All files (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        ResetTransitionMarkers();
+        StatusText.Text = $"Replaying {System.IO.Path.GetFileName(dialog.FileName)}...";
+        var count = await _processBus.ReplayAsync(dialog.FileName).ConfigureAwait(true);
+        RefreshStreamList(force: true);
+        RenderSelectedProcessBusStream();
+        StatusText.Text = $"Replay complete · {count:N0} captured frame(s) processed.";
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
     {
-        // Evaluate protection with 5 ms frames while rendering UI at 25 fps.
-        ScenarioStep? last = null;
-        for (var index = 0; index < 8; index++)
+        if (SourceCombo.SelectedIndex == 0)
         {
-            last = _scenario.Advance(TimeSpan.FromMilliseconds(5), _pickupPosition, _tripPosition);
-            _snapshot = _engine.Evaluate(last.Measurement);
-            ObserveTransitions(_snapshot);
+            if (_internalRunning)
+            {
+                ScenarioStep? last = null;
+                for (var index = 0; index < 8; index++)
+                {
+                    last = _scenario.Advance(TimeSpan.FromMilliseconds(5), _pickupPosition, _tripPosition);
+                    _snapshot = _internalEngine.Evaluate(last.Measurement);
+                    ObserveTransitions(_snapshot);
+                }
+                if (last is not null)
+                    RenderInternal(last, _snapshot);
+            }
+            return;
         }
 
-        if (last is not null)
-            Render(last, _snapshot);
+        _streamRefreshDivider++;
+        if (_streamRefreshDivider >= 6)
+        {
+            _streamRefreshDivider = 0;
+            RefreshStreamList(force: false);
+        }
+        RenderSelectedProcessBusStream();
     }
 
     private void InjectFault_Click(object sender, RoutedEventArgs e)
     {
+        if (SourceCombo.SelectedIndex != 0)
+            return;
+
         _scenario.FaultActive = !_scenario.FaultActive;
         AddEvent(_scenario.FaultActive ? "FAULT" : "CLEAR", _scenario.FaultActive ? "A-G fault scenario injected" : "Fault scenario removed");
         StatusText.Text = _scenario.FaultActive
             ? "A-G fault active. Phase A and residual current are ramping into the protection elements."
             : "Fault removed. Observe dropout and keep the latched trip until reset.";
-        if (!_running)
-            RunButton_Click(RunButton, new RoutedEventArgs());
+        if (!_internalRunning)
+            ToggleInternalRun();
     }
 
     private void DegradeSmv_Click(object sender, RoutedEventArgs e)
     {
+        if (SourceCombo.SelectedIndex != 0)
+            return;
+
         _scenario.SmvDegraded = !_scenario.SmvDegraded;
         AddEvent(_scenario.SmvDegraded ? "SMV WARN" : "SMV GOOD", _scenario.SmvDegraded ? "smpCnt discontinuity: trip permission removed" : "SMV trust restored");
         StatusText.Text = _scenario.SmvDegraded
@@ -98,26 +205,46 @@ public partial class MainWindow : Window
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
-        _engine.Reset();
-        _scenario.Reset();
-        _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
-        _pickupPosition = double.NaN;
-        _tripPosition = double.NaN;
-        _lastPickup = false;
-        _lastTrip = false;
-        _lastBlocked = false;
-        AddEvent("RESET", "Trip latch, timers and scenario reset");
-        RenderInitialFrame();
-        StatusText.Text = "Reset complete. Laboratory returned to healthy nominal current.";
+        ResetTransitionMarkers();
+        if (SourceCombo.SelectedIndex == 0)
+        {
+            _internalEngine.Reset();
+            _scenario.Reset();
+            _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
+            RenderInitialFrame();
+            AddEvent("RESET", "Internal trip latch, timers, and scenario reset");
+            StatusText.Text = "Reset complete. Laboratory returned to healthy nominal current.";
+        }
+        else
+        {
+            _processBus.ResetProtection(_selectedStreamKey);
+            AddEvent("RESET", "Selected live/replay relay state reset");
+            RenderSelectedProcessBusStream();
+        }
     }
 
     private void OpenAlgorithmEditor_Click(object sender, RoutedEventArgs e)
+        => new AlgorithmEditorWindow { Owner = this }.ShowDialog();
+
+    private void MeasurementContext_Click(object sender, RoutedEventArgs e)
     {
-        new AlgorithmEditorWindow { Owner = this }.ShowDialog();
+        var dialog = new MeasurementContextWindow(_processBus.MeasurementContext) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Result is { } context)
+        {
+            _processBus.SetMeasurementContext(context);
+            StatusText.Text = $"CT context applied · {context.CtPrimaryA:0.###}/{context.CtSecondaryA:0.###} A · {context.NominalFrequencyHz:0.###} Hz.";
+            RenderSelectedProcessBusStream();
+        }
     }
 
     private void ImportScl_Click(object sender, RoutedEventArgs e)
     {
+        if (!SmvProcessBusController.IsAvailable)
+        {
+            MessageBox.Show(this, "Importing SCL requires the sibling ARIEC61850 repository at C:\\Git\\ARIEC61850.", "ARVREL SCL", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         var dialog = new OpenFileDialog
         {
             Title = "Select IEC 61850 SCL file",
@@ -126,37 +253,231 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true)
             return;
 
-        AddEvent("SCL", $"Selected {System.IO.Path.GetFileName(dialog.FileName)}");
-        StatusText.Text = SiblingEngineStatus.IsAvailable
-            ? "SCL selected. P1 binding adapter can now be connected to the sibling ARIEC61850 parser."
-            : "SCL selected, but sibling ARIEC61850 was not found at build time; P0 does not parse the file.";
+        try
+        {
+            _processBus.LoadScl(dialog.FileName);
+            SclStatusText.Text = _processBus.SclSummary.ToUpperInvariant();
+            StatusText.Text = $"SCL loaded · {_processBus.SclSummary}. Existing and new streams will be matched by APPID, destination, VLAN, svID, and dataset evidence.";
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
+        {
+            MessageBox.Show(this, ex.Message, "SCL import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private void SourceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void SourceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded || SourceCombo.SelectedIndex == 0)
+        if (!IsLoaded)
             return;
 
-        var requested = SourceCombo.SelectedIndex == 1 ? "Live Npcap subscriber" : "PCAP replay";
-        if (!SiblingEngineStatus.IsAvailable)
+        if (SourceCombo.SelectedIndex != 0 && !SmvProcessBusController.IsAvailable)
         {
             SourceCombo.SelectedIndex = 0;
-            MessageBox.Show(
-                this,
-                $"{requested} requires the sibling ARIEC61850 repository and the P1 subscriber adapter.\n\nExpected layout:\nGit\\ARIEC61850\nGit\\arvrel",
-                "ARVREL source boundary",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            MessageBox.Show(this, "Live Npcap and PCAP replay require the sibling ARIEC61850 checkout.\n\nExpected layout:\nC:\\Git\\ARIEC61850\nC:\\Git\\arvrel", "ARVREL process-bus engine", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        SourceCombo.SelectedIndex = 0;
-        MessageBox.Show(
-            this,
-            $"The sibling engine is available, but {requested} remains intentionally disabled in this P0 extraction. The integration seam is preserved for P1.",
-            "ARVREL P0",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        if (_sourceRunning)
+        {
+            await _processBus.StopAsync().ConfigureAwait(true);
+            _sourceRunning = false;
+        }
+        _internalRunning = false;
+        ResetTransitionMarkers();
+        UpdateSourceUi();
+        UpdateRunButton();
+    }
+
+    private void StreamCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (StreamCombo.SelectedItem is SmvStreamInfo stream)
+        {
+            if (!string.Equals(_selectedStreamKey, stream.Key, StringComparison.Ordinal))
+                ResetTransitionMarkers();
+            _selectedStreamKey = stream.Key;
+            RenderSelectedProcessBusStream();
+        }
+    }
+
+    private void ViewCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (IsLoaded)
+            RenderSelectedProcessBusStream();
+    }
+
+    private void ExportEvidence_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export ARVREL evidence",
+            Filter = "ARVREL evidence JSON (*.json)|*.json|All files (*.*)|*.*",
+            FileName = $"ARVREL-evidence-{DateTime.Now:yyyyMMdd-HHmmss}.json"
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        object evidence;
+        if (SourceCombo.SelectedIndex == 0)
+        {
+            evidence = new
+            {
+                exportedAt = DateTimeOffset.Now,
+                application = "ARVREL",
+                sourceMode = "Internal deterministic laboratory",
+                measurement = new { phaseA = _scenario.FaultActive ? 8.4 : 1.0, phaseB = 1.02, phaseC = 0.98 },
+                protection = _snapshot,
+                protectionSettings = _settings,
+                events = _events.Reverse().ToArray()
+            };
+        }
+        else
+        {
+            var snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
+            evidence = new ProcessBusEvidence(
+                DateTimeOffset.Now,
+                "ARVREL",
+                SourceCombo.SelectedIndex == 1 ? "Live Npcap" : "PCAP/PCAPNG replay",
+                snapshot,
+                _settings,
+                _processBus.MeasurementContext,
+                _events.Reverse().ToArray());
+        }
+
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
+        AddEvent("EXPORT", System.IO.Path.GetFileName(dialog.FileName));
+        StatusText.Text = $"Evidence exported to {dialog.FileName}.";
+    }
+
+    private void RefreshAdapters()
+    {
+        var adapters = _processBus.ListAdapters();
+        AdapterCombo.ItemsSource = adapters;
+        AdapterCombo.SelectedIndex = adapters.Count > 0 ? 0 : -1;
+        if (SmvProcessBusController.IsAvailable && adapters.Count == 0)
+            StatusText.Text = "No Npcap adapter found. Install Npcap and refresh the application.";
+    }
+
+    private void RefreshStreamList(bool force)
+    {
+        var streams = _processBus.GetStreams();
+        if (!force && streams.Count == StreamCombo.Items.Count && streams.Any(stream => stream.Key == _selectedStreamKey))
+            return;
+
+        var previousKey = _selectedStreamKey;
+        StreamCombo.ItemsSource = streams;
+        var selected = streams.FirstOrDefault(stream => string.Equals(stream.Key, previousKey, StringComparison.Ordinal)) ?? streams.FirstOrDefault();
+        StreamCombo.SelectedItem = selected;
+        _selectedStreamKey = selected?.Key;
+    }
+
+    private void RenderInitialFrame()
+    {
+        var step = _scenario.Advance(TimeSpan.Zero, _pickupPosition, _tripPosition);
+        RenderInternal(step, _snapshot);
+    }
+
+    private void RenderInternal(ScenarioStep step, ProtectionSnapshot snapshot)
+    {
+        SmvScope.Frame = step.Waveform with { PickupPosition = _pickupPosition, TripPosition = _tripPosition };
+        RenderMeasurements(step.Measurement, snapshot);
+        FrequencyText.Text = "50.000 Hz";
+        SamplesPerCycleText.Text = "  ·  80 samples/cycle";
+        SampleCounterText.Text = $"  ·  smpCnt {_scenario.SampleCounter:0000}";
+        SyncText.Text = "  ·  smpSynch 2";
+        SyncText.Foreground = HealthyBrush;
+        FpsText.Text = "  ·  deterministic";
+        StreamHealthText.Text = "  ·  INTERNAL · GOOD";
+        WaveformSubtitleText.Text = "Stationary deterministic evidence window · pickup and trip markers remain visible";
+        RelayFooterText.Text = "Deterministic SMV health gate active";
+    }
+
+    private void RenderSelectedProcessBusStream()
+    {
+        if (SourceCombo.SelectedIndex == 0)
+            return;
+
+        var snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
+        if (string.IsNullOrWhiteSpace(snapshot.Stream.Key))
+        {
+            StreamHealthText.Text = "  ·  WAITING FOR SV";
+            WaveformSubtitleText.Text = SourceCombo.SelectedIndex == 1
+                ? "Listening for EtherType 0x88BA on the selected Npcap adapter"
+                : "Open a PCAP or PCAPNG file to discover Sampled Values streams";
+            return;
+        }
+
+        ObserveTransitions(snapshot.Protection);
+        SmvScope.Frame = new WaveformFrame(
+            snapshot.Waveform.PhaseA,
+            snapshot.Waveform.PhaseB,
+            snapshot.Waveform.PhaseC,
+            snapshot.Waveform.Residual,
+            snapshot.Waveform.FrequencyHz,
+            _pickupPosition,
+            _tripPosition);
+        RenderMeasurements(snapshot.Measurement, snapshot.Protection);
+        FrequencyText.Text = $"{snapshot.Waveform.FrequencyHz:0.000} Hz";
+        SamplesPerCycleText.Text = $"  ·  {snapshot.SamplesPerCycle} samples/cycle";
+        SampleCounterText.Text = $"  ·  smpCnt {snapshot.SampleCounter:0000}";
+        SyncText.Text = $"  ·  smpSynch {snapshot.SampleSynchronization}";
+        SyncText.Foreground = snapshot.SampleSynchronization > 0 ? HealthyBrush : WarningBrush;
+        FpsText.Text = $"  ·  {snapshot.FramesPerSecond:0.0} fps";
+        StreamHealthText.Text = $"  ·  {snapshot.Stream.Health} · APPID 0x{snapshot.Stream.AppId:X4}";
+        StreamHealthText.Foreground = snapshot.Stream.Health switch
+        {
+            "GOOD" => HealthyBrush,
+            "WARN" => WarningBrush,
+            _ => TripBrush
+        };
+        WaveformSubtitleText.Text = $"{snapshot.MappingSummary} · {snapshot.ScalingSummary} · gaps {snapshot.SequenceGapCount} · quality {snapshot.InvalidQualityCount}";
+        RelayFooterText.Text = snapshot.TrustSummary;
+        LcdHeaderText.Text = ViewCombo.SelectedIndex == 1 ? "PRIMARY CURRENT" : "SECONDARY CURRENT";
+    }
+
+    private void RenderMeasurements(MeasurementFrame measurement, ProtectionSnapshot snapshot)
+    {
+        IaValueText.Text = FormatCurrent(measurement.PhaseA);
+        IbValueText.Text = FormatCurrent(measurement.PhaseB);
+        IcValueText.Text = FormatCurrent(measurement.PhaseC);
+        ResidualValueText.Text = FormatCurrent(measurement.Residual);
+        LcdIaText.Text = IaValueText.Text;
+        LcdIbText.Text = IbValueText.Text;
+        LcdIcText.Text = IcValueText.Text;
+        LcdResidualText.Text = ResidualValueText.Text;
+
+        SetElement(Phase50StateText, Phase50Progress, snapshot.Phase50);
+        SetElement(Phase51StateText, Phase51Progress, snapshot.Phase51);
+        SetElement(Earth50StateText, Earth50Progress, snapshot.Earth50);
+        SetElement(Earth51StateText, Earth51Progress, snapshot.Earth51);
+
+        ProtectionReasonText.Text = $"  ·  {snapshot.DecisionReason}";
+        var permitted = snapshot.SmvTrust.AllowsTrip;
+        PermissionText.Text = permitted ? "TRIP PERMITTED" : "TRIP BLOCKED";
+        PermissionText.Foreground = permitted ? HealthyBrush : WarningBrush;
+        PermissionBadge.Background = permitted ? BrushFrom("#EAF5EC") : BrushFrom("#FBF2E3");
+        PermissionBadge.BorderBrush = permitted ? BrushFrom("#B9D8BF") : BrushFrom("#E2C58F");
+
+        var pickup = snapshot.Phase50.Pickup || snapshot.Phase51.Pickup || snapshot.Earth50.Pickup || snapshot.Earth51.Pickup;
+        HealthyLed.Fill = snapshot.SmvTrust.AllowsMeasurement ? HealthyBrush : WarningBrush;
+        TopHealthLed.Fill = snapshot.SmvTrust.AllowsTrip ? HealthyBrush : WarningBrush;
+        TopHealthText.Text = snapshot.SmvTrust.AllowsTrip ? "LAB READY" : "TRIP BLOCKED";
+        PickupLed.Fill = pickup ? WarningBrush : LedOffBrush;
+        TripLed.Fill = snapshot.TripLatched ? TripBrush : LedOffBrush;
+        PhaseALed.Fill = snapshot.PhaseAPickup ? PhaseBrush : LedOffBrush;
+        PhaseBLed.Fill = snapshot.PhaseBPickup ? PhaseBrush : LedOffBrush;
+        PhaseCLed.Fill = snapshot.PhaseCPickup ? PhaseBrush : LedOffBrush;
+        EarthLed.Fill = snapshot.EarthPickup ? WarningBrush : LedOffBrush;
+        BlockLed.Fill = snapshot.Blocked || !snapshot.SmvTrust.AllowsTrip ? WarningBrush : LedOffBrush;
+
+        LcdStatusText.Text = snapshot.Blocked
+            ? $"TRIP BLOCKED\n{snapshot.SmvTrust.Code}"
+            : snapshot.TripLatched
+                ? $"TRIP LATCHED\n{snapshot.ActiveElement}"
+                : pickup
+                    ? $"PICKUP\n{snapshot.ActiveElement}"
+                    : snapshot.SmvTrust.AllowsMeasurement
+                        ? "READY · TRIP PERMITTED"
+                        : $"MEASUREMENT BLOCKED\n{snapshot.SmvTrust.Code}";
     }
 
     private void ObserveTransitions(ProtectionSnapshot snapshot)
@@ -180,56 +501,70 @@ public partial class MainWindow : Window
         _lastBlocked = snapshot.Blocked;
     }
 
-    private void RenderInitialFrame()
+    private void ResetTransitionMarkers()
     {
-        var step = _scenario.Advance(TimeSpan.Zero, _pickupPosition, _tripPosition);
-        Render(step, _snapshot);
+        _pickupPosition = double.NaN;
+        _tripPosition = double.NaN;
+        _lastPickup = false;
+        _lastTrip = false;
+        _lastBlocked = false;
     }
 
-    private void Render(ScenarioStep step, ProtectionSnapshot snapshot)
+    private void UpdateSourceUi()
     {
-        SmvScope.Frame = step.Waveform with { PickupPosition = _pickupPosition, TripPosition = _tripPosition };
-        IaValueText.Text = FormatCurrent(step.Measurement.PhaseA);
-        IbValueText.Text = FormatCurrent(step.Measurement.PhaseB);
-        IcValueText.Text = FormatCurrent(step.Measurement.PhaseC);
-        ResidualValueText.Text = FormatCurrent(step.Measurement.Residual);
-        LcdIaText.Text = IaValueText.Text;
-        LcdIbText.Text = IbValueText.Text;
-        LcdIcText.Text = IcValueText.Text;
-        LcdResidualText.Text = ResidualValueText.Text;
-        SampleCounterText.Text = $"  ·  smpCnt {_scenario.SampleCounter:0000}";
+        var internalMode = SourceCombo.SelectedIndex == 0;
+        AdapterCombo.IsEnabled = SourceCombo.SelectedIndex == 1;
+        InjectFaultButton.IsEnabled = internalMode;
+        DegradeSmvButton.IsEnabled = internalMode;
+        if (internalMode)
+        {
+            StreamCombo.ItemsSource = new[] { new SmvStreamInfo("internal", 0x4000, "MU01", "Internal", null, "GOOD", true) };
+            StreamCombo.SelectedIndex = 0;
+            _selectedStreamKey = "internal";
+            RenderInitialFrame();
+            StatusText.Text = "Internal deterministic laboratory selected.";
+        }
+        else
+        {
+            StreamCombo.ItemsSource = Array.Empty<SmvStreamInfo>();
+            _selectedStreamKey = null;
+            StreamHealthText.Text = "  ·  WAITING FOR SV";
+            StatusText.Text = SourceCombo.SelectedIndex == 1
+                ? "Select an Npcap adapter, import SCL, then start live capture."
+                : "Select Run to open a PCAP or PCAPNG capture.";
+        }
+    }
 
-        SetElement(Phase50StateText, Phase50Progress, snapshot.Phase50);
-        SetElement(Phase51StateText, Phase51Progress, snapshot.Phase51);
-        SetElement(Earth50StateText, Earth50Progress, snapshot.Earth50);
-        SetElement(Earth51StateText, Earth51Progress, snapshot.Earth51);
+    private void UpdateRunButton()
+    {
+        switch (SourceCombo.SelectedIndex)
+        {
+            case 0:
+                RunButtonText.Text = _internalRunning ? "Pause lab" : "Run lab";
+                RunButtonIcon.Kind = _internalRunning ? LucideIconKind.Pause : LucideIconKind.Play;
+                RunButtonIcon.Filled = true;
+                break;
+            case 1:
+                RunButtonText.Text = _sourceRunning ? "Stop capture" : "Start capture";
+                RunButtonIcon.Kind = _sourceRunning ? LucideIconKind.CircleStop : LucideIconKind.Radio;
+                RunButtonIcon.Filled = _sourceRunning;
+                break;
+            default:
+                RunButtonText.Text = "Open capture";
+                RunButtonIcon.Kind = LucideIconKind.FolderOpen;
+                RunButtonIcon.Filled = false;
+                break;
+        }
+    }
 
-        ProtectionReasonText.Text = $"  ·  {snapshot.DecisionReason}";
-        var permitted = snapshot.SmvTrust.AllowsTrip;
-        PermissionText.Text = permitted ? "TRIP PERMITTED" : "TRIP BLOCKED";
-        PermissionText.Foreground = permitted ? HealthyBrush : WarningBrush;
-        PermissionBadge.Background = permitted ? BrushFrom("#EAF5EC") : BrushFrom("#FBF2E3");
-        PermissionBadge.BorderBrush = permitted ? BrushFrom("#B9D8BF") : BrushFrom("#E2C58F");
-
-        HealthyLed.Fill = snapshot.SmvTrust.AllowsMeasurement ? HealthyBrush : WarningBrush;
-        TopHealthLed.Fill = snapshot.SmvTrust.AllowsTrip ? HealthyBrush : WarningBrush;
-        TopHealthText.Text = snapshot.SmvTrust.AllowsTrip ? "LAB READY" : "TRIP BLOCKED";
-        PickupLed.Fill = _lastPickup ? WarningBrush : LedOffBrush;
-        TripLed.Fill = snapshot.TripLatched ? TripBrush : LedOffBrush;
-        PhaseALed.Fill = snapshot.PhaseAPickup ? PhaseBrush : LedOffBrush;
-        PhaseBLed.Fill = snapshot.PhaseBPickup ? PhaseBrush : LedOffBrush;
-        PhaseCLed.Fill = snapshot.PhaseCPickup ? PhaseBrush : LedOffBrush;
-        EarthLed.Fill = snapshot.EarthPickup ? WarningBrush : LedOffBrush;
-        BlockLed.Fill = snapshot.Blocked || !snapshot.SmvTrust.AllowsTrip ? WarningBrush : LedOffBrush;
-
-        LcdStatusText.Text = snapshot.Blocked
-            ? $"TRIP BLOCKED\n{snapshot.SmvTrust.Code}"
-            : snapshot.TripLatched
-                ? $"TRIP LATCHED\n{snapshot.ActiveElement}"
-                : _lastPickup
-                    ? $"PICKUP\n{snapshot.ActiveElement}"
-                    : "READY · TRIP PERMITTED";
-        RelayFooterText.Text = snapshot.SmvTrust.AllowsTrip ? "SMV health gate active" : snapshot.SmvTrust.Detail;
+    private void ProcessBus_EventRaised(object? sender, ProcessBusEventArgs e)
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            AddEvent(e.Code, e.Message);
+            if (e.Code is "ERROR" or "REPLAY")
+                StatusText.Text = e.Message;
+        }));
     }
 
     private static void SetElement(TextBlock stateText, System.Windows.Controls.Primitives.RangeBase progress, ElementSnapshot element)
@@ -247,10 +582,20 @@ public partial class MainWindow : Window
 
     private void AddEvent(string code, string detail)
     {
-        _events.Enqueue($"{code,-11}{detail}");
-        while (_events.Count > 5)
+        var normalized = detail.ReplaceLineEndings(" ");
+        if (normalized.Length > 76)
+            normalized = normalized[..73] + "...";
+        _events.Enqueue($"{code,-11}{normalized}");
+        while (_events.Count > 6)
             _events.Dequeue();
         EventTraceText.Text = string.Join(Environment.NewLine, _events.Reverse());
+    }
+
+    private void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        _timer.Stop();
+        _processBus.EventRaised -= ProcessBus_EventRaised;
+        _processBus.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
     private static string FormatCurrent(double value) => value.ToString("0.00 'A'", CultureInfo.InvariantCulture);

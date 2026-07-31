@@ -1,121 +1,99 @@
 # ARVREL
 
-**Premium IEC 61850 Sampled Values virtual protection relay laboratory for Windows.**
+**IEC 61850 Sampled Values virtual protection relay laboratory for Windows.**
 
-ARVREL presents the complete cause-and-effect chain in one engineering workspace:
+ARVREL presents the protection cause-and-effect chain in one engineering workspace:
 
 ```text
-SMV waveform → measurement → 50/51 pickup → timing → virtual trip → evidence
+SMV waveform → stream trust → RMS measurement → 50/51 pickup → timing → virtual trip → evidence
 ```
 
-The P0 repository contains a deterministic, testable 50/51 phase and earth-fault protection engine, a stationary two-cycle oscilloscope, an original vendor-neutral relay faceplate, an SMV trip-permission guard, and a typed Algorithm Editor prototype.
+> ARVREL is an engineering and educational laboratory. It is not a certified protection IED, calibrated relay test set, deterministic real-time platform, or authorization to operate primary equipment. Outputs are virtual only: no GOOSE trip, MMS control, relay contact, or physical trip path.
 
-> ARVREL is an engineering and educational laboratory. It is not a certified protection IED, deterministic real-time platform, calibrated relay test set, or authorization to operate primary equipment. P0 produces virtual indications only: no GOOSE trip, MMS control, relay contact, or physical output.
+## P1 capabilities
+
+- live IEC 61850 Sampled Values capture through Npcap;
+- classic PCAP and PCAPNG replay;
+- dynamic stream discovery by source, destination, VLAN, APPID, and `svID`;
+- SCL/SCD/CID/ICD/IID import through the sibling ARIEC61850 parser;
+- SCL-assisted stream binding and ordered payload decoding;
+- fixed value-quality fallback for common current and 4I+4V payloads;
+- explicit CT primary/secondary context and 50/60 Hz selection;
+- one-cycle RMS feeding real 50P, 51P, 50N, and 51N elements;
+- stationary two-cycle IA/IB/IC/3I0 waveform;
+- `smpCnt`, freshness, quality, scaling, mapping, and configuration trust gates;
+- JSON evidence export;
+- compact premium WPF interface with Lucide-derived icon geometry and filled icon-button treatment.
+
+The internal deterministic source remains available for repeatable demonstrations and regression checks.
 
 ## Repository relationship
 
-The intended local layout is:
+Use sibling checkouts:
 
 ```text
-Git/
-├── ARIEC61850/   # existing protocol engine repository
-└── arvrel/       # this application repository
+C:\Git\
+├── ARIEC61850\
+└── arvrel\
 ```
 
-`Directory.Build.props` automatically detects:
+`Directory.Build.props` detects the sibling engine automatically. The application remains buildable in deterministic simulation mode without it; live Npcap, replay decoding, and SCL workflows require the sibling.
 
-```text
-..\ARIEC61850\src\AR.Iec61850\AR.Iec61850.csproj
-..\ARIEC61850\src\AR.Iec61850.Transports.Npcap\AR.Iec61850.Transports.Npcap.csproj
-```
-
-When found, both projects are referenced as sibling dependencies and the app is compiled with `ARIEC61850_SIBLING`. The P0 deterministic laboratory can still build without the sibling; live Npcap, PCAP replay, SCL binding and real SMV measurement remain the P1 integration boundary.
-
-## Included
-
-- premium clean lean one-screen WPF workspace;
-- stationary two-cycle IA/IB/IC/3I0 waveform;
-- fault, pickup and trip causality markers;
-- 50P definite-time phase overcurrent;
-- 51P IEC standard-inverse phase overcurrent;
-- 50N definite-time earth fault;
-- 51N IEC standard-inverse earth fault;
-- trip latch and reset;
-- SMV trust policy that can expose pickup while blocking unsafe trip;
-- original virtual-relay LCD, LEDs and keypad;
-- typed Algorithm Editor validation and immutable shadow staging;
-- deterministic regression tests;
-- Windows GitHub Actions workflow;
-- GPL-3.0-or-later public repository baseline.
-
-## Build
+## Build and run
 
 Requirements:
 
 - Windows 10/11 x64;
 - .NET 8 SDK;
-- Visual Studio 2022, Rider, or VS Code with C# tooling;
-- optional sibling `ARIEC61850` checkout for the process-bus engine foundation.
+- Npcap for live capture;
+- sibling `ARIEC61850` checkout for P1 process-bus workflows.
 
 ```powershell
-cd Git\arvrel
-.\scripts\verify-sibling.ps1
-.\scripts\build.ps1
+cd C:\Git\arvrel
+git pull origin main
+.\scripts\verify-sibling.cmd
+.\scripts\build.cmd
+.\scripts\run.cmd
 ```
 
-Run:
-
-```powershell
-.\scripts\run.ps1
-```
-
-Or:
+Direct command:
 
 ```powershell
 dotnet run --project .\src\Arvrel.App\Arvrel.App.csproj -c Release
 ```
 
-## Publish the new sibling repository
+## P1 workflow
 
-Authenticate GitHub CLI once:
+1. Select **Live Npcap** or **PCAP replay**.
+2. Import the matching SCL when available.
+3. Open **CT context** and set CT primary, secondary, and nominal frequency.
+4. Start capture or open a capture file.
+5. Select a discovered SV stream.
+6. Review mapping, scaling, continuity, quality, RMS, protection operation, and evidence.
 
-```powershell
-gh auth login
+A decoded but unbound or unscaled stream remains visible while trip permission is explicitly blocked. This prevents uncertain measurement provenance from silently producing a virtual trip.
+
+## Architecture
+
+```text
+Arvrel.App
+  ↓ immutable UI snapshots
+Arvrel.ProcessBus
+  ├─ Npcap live source
+  ├─ PCAP / PCAPNG reader
+  ├─ ARIEC61850 SV parser and SCL profiles
+  ├─ stream runtime and sample rings
+  ├─ RMS and measurement context
+  └─ trust and evidence
+  ↓ MeasurementFrame
+Arvrel.Protection
+  └─ guarded 50P / 51P / 50N / 51N
 ```
 
-Then:
-
-```powershell
-cd Git\arvrel
-.\scripts\publish-github.ps1 -Owner masarray -Repository arvrel -Visibility public
-```
-
-The script initializes Git when needed, creates the first commit, creates `masarray/arvrel` when it does not exist, and pushes `main`.
-
-## Protection boundary
-
-The protection engine runs independently from UI refresh. In P0, deterministic measurement frames feed the same protection contract that the P1 ArSubsv/ARIEC61850 adapter will implement.
-
-A degraded SMV condition can remain measurable and visible while `AllowsTrip=false`. Once an element reaches operation, ARVREL records `TRIP BLOCKED` rather than silently continuing with uncertain process-bus data.
-
-## Roadmap
-
-P1 connects the actual sibling engine:
-
-- Npcap live capture;
-- PCAP/PCAPNG replay;
-- SCL binding and dataset-order mapping;
-- CT/VT measurement context and primary/secondary scaling;
-- real circular sample buffers and measurement frames;
-- stream freshness, continuity, quality and configuration evidence;
-- versioned event and disturbance packages.
-
-P2 completes the typed algorithm compiler, deterministic sandbox, A/B reference-versus-custom evaluation, live variables and algorithm evidence.
-
-See [`docs/PRD.md`](docs/PRD.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PRD.md`](docs/PRD.md).
 
 ## License
 
 Copyright (C) 2026 Ari Sulistiono.
 
-ARVREL is licensed under GNU General Public License v3.0 or later. Third-party and sibling repositories retain their own notices and licensing boundaries.
+ARVREL is licensed under GNU GPL v3.0 or later. Sibling and third-party components retain their own notices and licensing boundaries.
