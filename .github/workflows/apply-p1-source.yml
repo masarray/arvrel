@@ -26,12 +26,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          wc -c .p1-source/chunk-*
-          sha256sum .p1-source/chunk-*
-          head -c 12000 .p1-source/chunk-02 | sha256sum
-          cat .p1-source/chunk-00 .p1-source/chunk-01 > /tmp/p1-source.b64
-          head -c 12000 .p1-source/chunk-02 >> /tmp/p1-source.b64
-          cat .p1-source/chunk-03 .p1-source/chunk-04 >> /tmp/p1-source.b64
+          cat .p1-source/chunk-02-p00 .p1-source/chunk-02-p01 .p1-source/chunk-02-p02 \
+              .p1-source/chunk-02-p03 .p1-source/chunk-02-p04 .p1-source/chunk-02-p05 > /tmp/chunk-02
+          echo "2d0c2169cc3e678221f40c9019d042db57c427b88dc7f4bac5cf3995e6e75bad  /tmp/chunk-02" | sha256sum --check
+          cat .p1-source/chunk-00 .p1-source/chunk-01 /tmp/chunk-02 \
+              .p1-source/chunk-03 .p1-source/chunk-04 > /tmp/p1-source.b64
           echo "8eaa17f0a34ceb9fddbcc6412aba46640b916bafe4717e08e5c8cab9ff8c227c  /tmp/p1-source.b64" | sha256sum --check
           base64 --decode /tmp/p1-source.b64 > /tmp/p1-source.tar.gz
           echo "679438b5e9f9a31dfe149d029c7fbb83477d459c87254d153661190c5d613a08  /tmp/p1-source.tar.gz" | sha256sum --check
