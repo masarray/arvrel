@@ -1,29 +1,55 @@
 # ARVREL
 
-**IEC 61850 Sampled Values virtual protection relay laboratory for Windows.**
+**IEC 61850 Sampled Values virtual protection relay and protection-algorithm laboratory for Windows.**
 
 ARVREL presents the protection cause-and-effect chain in one engineering workspace:
 
 ```text
-SMV waveform → stream trust → RMS measurement → 50/51 pickup → timing → virtual trip → evidence
+SMV waveform → stream trust → RMS measurement → active algorithm → native settings → virtual trip → evidence
 ```
 
 > ARVREL is an engineering and educational laboratory. It is not a certified protection IED, calibrated relay test set, deterministic real-time platform, or authorization to operate primary equipment. Outputs are virtual only: no GOOSE trip, MMS control, relay contact, or physical trip path.
 
-## P1 capabilities
+## Two operating modes
+
+### Practitioner mode
+
+Configure and operate ARVREL through native numerical-relay-style settings without opening code:
+
+- setting group name, revision and fingerprint;
+- 50P-1 and 50N enable, pickup, definite delay and dropout;
+- 51P and 51N enable, pickup, characteristic, TMS, definite delay, minimum operate time, dropout and reset behavior;
+- IEC Standard/Normal, Very, Extremely and Long-Time Inverse;
+- Definite Time and user-defined IEC-form curves;
+- secondary-ampere entry with primary-equivalent CT readout;
+- save/load `.arvsettings` presets and restore defaults.
+
+### Research mode
+
+Inspect the exact standard algorithm generated from the active setting group and edit a separate custom shadow definition:
+
+- read-only active standard source;
+- editable typed laboratory DSL;
+- deterministic safety-policy validation;
+- immutable shadow staging tied to the active settings fingerprint;
+- visible virtual-output-only boundary.
+
+Custom source remains shadow-only in P1.1 and does not replace the running standard algorithm. Runtime A/B comparison and explicit custom activation remain future research-engine work.
+
+## Process-bus capabilities
 
 - live IEC 61850 Sampled Values capture through Npcap;
 - classic PCAP and PCAPNG replay;
-- dynamic stream discovery by source, destination, VLAN, APPID, and `svID`;
+- dynamic stream discovery by source, destination, VLAN, APPID and `svID`;
 - SCL/SCD/CID/ICD/IID import through the sibling ARIEC61850 parser;
 - SCL-assisted stream binding and ordered payload decoding;
 - fixed value-quality fallback for common current and 4I+4V payloads;
 - explicit CT primary/secondary context and 50/60 Hz selection;
-- one-cycle RMS feeding real 50P, 51P, 50N, and 51N elements;
+- one-cycle RMS feeding real 50P, 51P, 50N and 51N elements;
 - stationary two-cycle IA/IB/IC/3I0 waveform;
-- `smpCnt`, freshness, quality, scaling, mapping, and configuration trust gates;
+- `smpCnt`, freshness, quality, scaling, mapping and configuration trust gates;
 - JSON evidence export;
-- compact premium WPF interface with Lucide-derived icon geometry and filled icon-button treatment.
+- compact WPF interface with locally rendered Lucide-derived icon geometry.
 
 The internal deterministic source remains available for repeatable demonstrations and regression checks.
 
@@ -37,7 +63,7 @@ C:\Git\
 └── arvrel\
 ```
 
-`Directory.Build.props` detects the sibling engine automatically. The application remains buildable in deterministic simulation mode without it; live Npcap, replay decoding, and SCL workflows require the sibling.
+`Directory.Build.props` detects the sibling engine automatically. The application remains buildable in deterministic simulation mode without it; live Npcap, replay decoding and SCL workflows require the sibling.
 
 ## Build and run
 
@@ -46,7 +72,7 @@ Requirements:
 - Windows 10/11 x64;
 - .NET 8 SDK;
 - Npcap for live capture;
-- sibling `ARIEC61850` checkout for P1 process-bus workflows.
+- sibling `ARIEC61850` checkout for process-bus workflows.
 
 ```powershell
 cd C:\Git\arvrel
@@ -62,14 +88,15 @@ Direct command:
 dotnet run --project .\src\Arvrel.App\Arvrel.App.csproj -c Release
 ```
 
-## P1 workflow
+## Laboratory workflow
 
-1. Select **Live Npcap** or **PCAP replay**.
-2. Import the matching SCL when available.
-3. Open **CT context** and set CT primary, secondary, and nominal frequency.
-4. Start capture or open a capture file.
-5. Select a discovered SV stream.
-6. Review mapping, scaling, continuity, quality, RMS, protection operation, and evidence.
+1. Open **Relay Settings** and configure the active setting group.
+2. Open **CT context** and enter CT primary, CT secondary and nominal frequency.
+3. Select the internal source, **Live Npcap**, or **PCAP replay**.
+4. Import the matching SCL when available.
+5. Start capture or open a capture file, then select a discovered SV stream.
+6. Review mapping, scaling, continuity, quality, RMS, protection operation and evidence.
+7. Switch to **Research mode** to inspect or stage algorithm source.
 
 A decoded but unbound or unscaled stream remains visible while trip permission is explicitly blocked. This prevents uncertain measurement provenance from silently producing a virtual trip.
 
@@ -77,7 +104,10 @@ A decoded but unbound or unscaled stream remains visible while trip permission i
 
 ```text
 Arvrel.App
-  ↓ immutable UI snapshots
+  ├─ practitioner relay settings
+  ├─ research algorithm workspace
+  └─ immutable UI snapshots
+       ↓
 Arvrel.ProcessBus
   ├─ Npcap live source
   ├─ PCAP / PCAPNG reader
@@ -85,12 +115,14 @@ Arvrel.ProcessBus
   ├─ stream runtime and sample rings
   ├─ RMS and measurement context
   └─ trust and evidence
-  ↓ MeasurementFrame
+       ↓ MeasurementFrame
 Arvrel.Protection
+  ├─ IEC curve calculator
+  ├─ active ProtectionSettings snapshot
   └─ guarded 50P / 51P / 50N / 51N
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PRD.md`](docs/PRD.md).
+See [`docs/P1_1_DUAL_MODE.md`](docs/P1_1_DUAL_MODE.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PRD.md`](docs/PRD.md).
 
 ## License
 
