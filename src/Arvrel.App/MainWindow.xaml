@@ -3,13 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Arvrel.App.Controls"
         Title="ARVREL — Virtual Protection Relay Lab"
-        Width="1480"
-        Height="880"
+        Width="1520"
+        Height="900"
         MinWidth="1280"
-        MinHeight="720"
+        MinHeight="740"
         WindowStartupLocation="CenterScreen"
         SnapsToDevicePixels="True"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        Closing="Window_Closing">
     <Window.Resources>
         <Style x:Key="Led" TargetType="Ellipse">
             <Setter Property="Width" Value="11" />
@@ -26,8 +27,6 @@
             <Setter Property="Background" Value="#26323B" />
             <Setter Property="Foreground" Value="#EDF2F5" />
             <Setter Property="BorderBrush" Value="#4D5B65" />
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style x:Key="ElementTag" TargetType="Border">
             <Setter Property="CornerRadius" Value="4" />
@@ -41,20 +40,16 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="52" />
-            <RowDefinition Height="50" />
+            <RowDefinition Height="54" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="28" />
+            <RowDefinition Height="29" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="#17232D" BorderBrush="#2D3C47" BorderThickness="0,0,0,1">
             <Grid Margin="16,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="29" Height="29" CornerRadius="4" Background="#2E6F9E" Margin="0,0,9,0">
+                    <Border Width="29" Height="29" CornerRadius="5" Background="#2E6F9E" Margin="0,0,9,0">
                         <TextBlock Text="AR" Foreground="White" FontSize="11.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel>
@@ -69,7 +64,7 @@
                             <TextBlock x:Name="TopHealthText" Text="LAB READY" Foreground="#B9C7D0" FontSize="10.2" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="EngineModeText" Text="P0 SIMULATION MODE" Foreground="#758895" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" VerticalAlignment="Center" />
+                    <TextBlock x:Name="EngineModeText" Text="P1 PROCESS BUS" Foreground="#758895" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -77,36 +72,51 @@
         <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
             <Grid Margin="13,8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="180" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="185" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="150" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="165" /><ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="210" /><ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="190" /><ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="125" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
                 <TextBlock Text="SOURCE" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
                 <ComboBox Grid.Column="1" x:Name="SourceCombo" SelectedIndex="0" SelectionChanged="SourceCombo_SelectionChanged">
-                    <ComboBoxItem Content="Internal deterministic demo" />
-                    <ComboBoxItem Content="Live Npcap subscriber" />
+                    <ComboBoxItem Content="Internal demo" />
+                    <ComboBoxItem Content="Live Npcap" />
                     <ComboBoxItem Content="PCAP replay" />
                 </ComboBox>
-                <TextBlock Grid.Column="3" Text="SV STREAM" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
-                <ComboBox Grid.Column="4" x:Name="StreamCombo" SelectedIndex="0">
-                    <ComboBoxItem Content="MU01 / APPID 0x4000" />
+
+                <TextBlock Grid.Column="3" Text="ADAPTER" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                <ComboBox Grid.Column="4" x:Name="AdapterCombo" IsEnabled="False" />
+
+                <TextBlock Grid.Column="6" Text="SV STREAM" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                <ComboBox Grid.Column="7" x:Name="StreamCombo" SelectionChanged="StreamCombo_SelectionChanged" />
+
+                <TextBlock Grid.Column="9" Text="VIEW" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                <ComboBox Grid.Column="10" x:Name="ViewCombo" SelectedIndex="0" SelectionChanged="ViewCombo_SelectionChanged">
+                    <ComboBoxItem Content="Secondary A" />
+                    <ComboBoxItem Content="Primary A" />
                 </ComboBox>
-                <TextBlock Grid.Column="6" Text="VIEW" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" Margin="0,0,7,0" />
-                <ComboBox Grid.Column="7" SelectedIndex="0">
-                    <ComboBoxItem Content="Primary current" />
-                    <ComboBoxItem Content="Secondary current" />
-                </ComboBox>
-                <StackPanel Grid.Column="9" Orientation="Horizontal">
-                    <Button Style="{StaticResource LeanButton}" Content="Import SCL" Margin="0,0,6,0" Click="ImportScl_Click" />
-                    <Button Style="{StaticResource LeanButton}" Content="Algorithm Editor" Margin="0,0,6,0" Click="OpenAlgorithmEditor_Click" />
-                    <Button x:Name="RunButton" Style="{StaticResource PrimaryButton}" Content="Run lab" Click="RunButton_Click" />
+
+                <StackPanel Grid.Column="12" Orientation="Horizontal">
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="Import IEC 61850 SCL" Margin="0,0,5,0" Click="ImportScl_Click">
+                        <controls:LucideIcon Kind="FileInput" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    </Button>
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="CT and measurement context" Margin="0,0,5,0" Click="MeasurementContext_Click">
+                        <controls:LucideIcon Kind="SlidersHorizontal" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    </Button>
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="Protection Algorithm Editor" Margin="0,0,5,0" Click="OpenAlgorithmEditor_Click">
+                        <controls:LucideIcon Kind="Code2" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    </Button>
+                    <Button Style="{StaticResource IconOnlyButton}" ToolTip="Export evidence JSON" Margin="0,0,6,0" Click="ExportEvidence_Click">
+                        <controls:LucideIcon Kind="Download" Width="17" Height="17" Foreground="{StaticResource AccentBrush}" />
+                    </Button>
+                    <Button x:Name="RunButton" Style="{StaticResource PrimaryButton}" Click="RunButton_Click" Padding="9,4">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon x:Name="RunButtonIcon" Kind="Play" Filled="True" Width="15" Height="15" Foreground="White" Margin="0,0,6,0" />
+                            <TextBlock x:Name="RunButtonText" Text="Run lab" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -119,56 +129,53 @@
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="9" />
-                    <RowDefinition Height="188" />
-                </Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="9" /><RowDefinition Height="190" /></Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Style="{StaticResource PanelBorder}">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="52" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="37" />
-                        </Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="52" /><RowDefinition Height="*" /><RowDefinition Height="39" /></Grid.RowDefinitions>
                         <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="13,0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="SMV waveform" FontSize="13.5" FontWeight="SemiBold" />
                                         <Border Margin="8,0,0,0" Padding="6,2" CornerRadius="4" Background="{StaticResource AccentSoftBrush}">
                                             <TextBlock Text="2 CYCLES" Foreground="{StaticResource AccentBrush}" FontSize="9.3" FontWeight="SemiBold" />
                                         </Border>
+                                        <TextBlock x:Name="StreamHealthText" Text="  ·  INTERNAL" Foreground="{StaticResource MutedBrush}" FontSize="10.2" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Stationary evidence window · pickup and trip markers remain visible" Foreground="{StaticResource MutedBrush}" FontSize="10.2" Margin="0,2,0,0" />
+                                    <TextBlock x:Name="WaveformSubtitleText" Text="Stationary evidence window · pickup and trip markers remain visible" Foreground="{StaticResource MutedBrush}" FontSize="10.2" Margin="0,2,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <StackPanel Margin="0,0,19,0"><TextBlock Text="IA" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="IaValueText" Text="1.00 A" Style="{StaticResource EngineeringValue}" /></StackPanel>
                                     <StackPanel Margin="0,0,19,0"><TextBlock Text="IB" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="IbValueText" Text="1.02 A" Style="{StaticResource EngineeringValue}" /></StackPanel>
                                     <StackPanel Margin="0,0,19,0"><TextBlock Text="IC" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="IcValueText" Text="0.98 A" Style="{StaticResource EngineeringValue}" /></StackPanel>
-                                    <StackPanel><TextBlock Text="3I0" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="ResidualValueText" Text="0.02 A" Style="{StaticResource EngineeringValue}" /></StackPanel>
+                                    <StackPanel><TextBlock Text="3I0 / IN" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="ResidualValueText" Text="0.02 A" Style="{StaticResource EngineeringValue}" /></StackPanel>
                                 </StackPanel>
                             </Grid>
                         </Border>
+
                         <controls:WaveformScope Grid.Row="1" x:Name="SmvScope" Margin="11" />
+
                         <Border Grid.Row="2" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="11,0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="50.000 Hz" Style="{StaticResource EngineeringValue}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="  ·  80 samples/cycle" Foreground="{StaticResource MutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock x:Name="FrequencyText" Text="50.000 Hz" Style="{StaticResource EngineeringValue}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" x:Name="SamplesPerCycleText" Text="  ·  80 samples/cycle" Foreground="{StaticResource MutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2" x:Name="SampleCounterText" Text="  ·  smpCnt 0000" Style="{StaticResource EngineeringValue}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="  ·  smpSynch 2" Foreground="{StaticResource HealthyBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource LeanButton}" Content="Inject A-G fault" Padding="9,4" Margin="0,0,5,0" Click="InjectFault_Click" />
-                                    <Button Style="{StaticResource LeanButton}" Content="Degrade SMV" Padding="9,4" Margin="0,0,5,0" Click="DegradeSmv_Click" />
-                                    <Button Style="{StaticResource LeanButton}" Content="Reset" Padding="9,4" Click="Reset_Click" />
+                                <TextBlock Grid.Column="3" x:Name="SyncText" Text="  ·  smpSynch 2" Foreground="{StaticResource HealthyBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" x:Name="FpsText" Text="  ·  internal" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="InjectFaultButton" Style="{StaticResource CompactButton}" Margin="0,0,5,0" Click="InjectFault_Click">
+                                        <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="Zap" Filled="True" Width="14" Height="14" Foreground="{StaticResource WarningBrush}" Margin="0,0,5,0" /><TextBlock Text="Inject A-G fault" /></StackPanel>
+                                    </Button>
+                                    <Button x:Name="DegradeSmvButton" Style="{StaticResource CompactButton}" Margin="0,0,5,0" Click="DegradeSmv_Click">
+                                        <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="ShieldAlert" Width="14" Height="14" Foreground="{StaticResource WarningBrush}" Margin="0,0,5,0" /><TextBlock Text="Degrade SMV" /></StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource CompactButton}" Click="Reset_Click">
+                                        <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="RotateCcw" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,5,0" /><TextBlock Text="Reset" /></StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -177,13 +184,13 @@
 
                 <Border Grid.Row="2" Style="{StaticResource PanelBorder}">
                     <Grid>
-                        <Grid.RowDefinitions><RowDefinition Height="41" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="42" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="12,0">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Protection operation" FontSize="12.5" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="ProtectionReasonText" Text="  ·  Measurements stable · no pickup" Foreground="{StaticResource MutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ProtectionReasonText" Text="  ·  Measurements stable · no pickup" Foreground="{StaticResource MutedBrush}" FontSize="10.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <Border Grid.Column="1" x:Name="PermissionBadge" Padding="8,3" CornerRadius="4" Background="#EAF5EC" BorderBrush="#B9D8BF" BorderThickness="1" VerticalAlignment="Center">
                                     <TextBlock x:Name="PermissionText" Text="TRIP PERMITTED" Foreground="{StaticResource HealthyBrush}" FontSize="9.2" FontWeight="SemiBold" />
@@ -191,15 +198,13 @@
                             </Grid>
                         </Border>
                         <Grid Grid.Row="1" Margin="11,9">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.28*" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.02*" /><ColumnDefinition Width="1.32*" /></Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="50P-1 · 4.00 A / 60 ms" FontSize="10.2" /></Border><TextBlock x:Name="Phase50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase50Progress" Height="5" Maximum="100" /></StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="51P · IEC SI / TMS 0.12" FontSize="10.2" /></Border><TextBlock x:Name="Phase51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Phase51Progress" Height="5" Maximum="100" /></StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="50N · 0.80 A / 100 ms" FontSize="10.2" /></Border><TextBlock x:Name="Earth50StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth50Progress" Height="5" Maximum="100" /></StackPanel>
                             <StackPanel Grid.Column="3" Margin="0,0,9,0"><Border Style="{StaticResource ElementTag}"><TextBlock Text="51N · IEC SI / TMS 0.15" FontSize="10.2" /></Border><TextBlock x:Name="Earth51StateText" Text="READY" Foreground="{StaticResource MutedBrush}" FontSize="10.5" Margin="2,8,0,5" /><ProgressBar x:Name="Earth51Progress" Height="5" Maximum="100" /></StackPanel>
                             <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10">
-                                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="EVENT TRACE" Style="{StaticResource SectionLabel}" /><TextBlock Grid.Row="1" x:Name="EventTraceText" Text="READY       Protection engine initialized&#x0a;HEALTH      SMV trust guard permits trip" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap" /></Grid>
+                                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="EVENT TRACE" Style="{StaticResource SectionLabel}" /><TextBlock Grid.Row="1" x:Name="EventTraceText" Text="READY       Protection engine initialized&#x0a;HEALTH      SMV trust guard permits trip" FontFamily="Cascadia Mono, Consolas" FontSize="9.7" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap" /></Grid>
                             </Border>
                         </Grid>
                     </Grid>
@@ -212,34 +217,43 @@
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="ARVREL" Foreground="#F7FAFC" FontSize="20" FontWeight="SemiBold" /><TextBlock Text="VIRTUAL PROTECTION RELAY" Foreground="#526572" FontSize="9.5" FontWeight="SemiBold" /></StackPanel>
-                            <Border Grid.Column="1" Padding="7,4" CornerRadius="3" Background="#E8EDF0" BorderBrush="#8A99A4" BorderThickness="1"><StackPanel><TextBlock Text="ARV-5051" FontFamily="Cascadia Mono, Consolas" FontWeight="SemiBold" FontSize="11" /><TextBlock Text="SV PROCESS BUS" FontSize="8.5" Foreground="#5A6974" /></StackPanel></Border>
+                            <StackPanel><TextBlock Text="ARVREL" Foreground="#F0F4F6" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="VIRTUAL PROTECTION RELAY" Foreground="#526572" FontSize="9.5" /></StackPanel>
+                            <Border Grid.Column="1" Background="#EEF2F4" BorderBrush="#8E9BA4" BorderThickness="1" CornerRadius="3" Padding="8,5"><StackPanel><TextBlock Text="ARV-5051" FontFamily="Cascadia Mono, Consolas" FontWeight="SemiBold" FontSize="10.5" /><TextBlock Text="SV PROCESS BUS" FontSize="8.5" /></StackPanel></Border>
                         </Grid>
 
-                        <Grid Grid.Row="1" Margin="0,14,0,13">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.5*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
+                        <Grid Grid.Row="1" Margin="0,14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.75*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="215" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                                 <Border Background="{StaticResource LcdBrush}" BorderBrush="#7F8E98" BorderThickness="4" CornerRadius="7" Padding="14">
                                     <StackPanel>
-                                        <TextBlock Text="PRIMARY CURRENT" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="0,0,0,12" />
-                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="27" /><RowDefinition Height="27" /><RowDefinition Height="27" /><RowDefinition Height="27" /></Grid.RowDefinitions>
+                                        <TextBlock x:Name="LcdHeaderText" Text="SECONDARY CURRENT" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="0,0,0,12" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions><RowDefinition Height="27" /><RowDefinition Height="27" /><RowDefinition Height="27" /><RowDefinition Height="27" /></Grid.RowDefinitions>
                                             <TextBlock Text="IA" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" /><TextBlock Grid.Column="1" x:Name="LcdIaText" Text="1.00 A" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" />
                                             <TextBlock Grid.Row="1" Text="IB" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" /><TextBlock Grid.Row="1" Grid.Column="1" x:Name="LcdIbText" Text="1.02 A" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" />
                                             <TextBlock Grid.Row="2" Text="IC" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" /><TextBlock Grid.Row="2" Grid.Column="1" x:Name="LcdIcText" Text="0.98 A" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" />
                                             <TextBlock Grid.Row="3" Text="3I0" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" /><TextBlock Grid.Row="3" Grid.Column="1" x:Name="LcdResidualText" Text="0.02 A" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" />
                                         </Grid>
                                         <Border Height="1" Background="#A6B2AD" Margin="0,11,0,8" />
-                                        <TextBlock x:Name="LcdStatusText" Text="READY · TRIP PERMITTED" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="LcdStatusText" Text="READY · TRIP PERMITTED" Foreground="{StaticResource LcdTextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
                                 <UniformGrid Grid.Row="1" Rows="2" Columns="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource RelayKey}" Content="▲" /><Button Style="{StaticResource RelayKey}" Content="↵" /><Button Style="{StaticResource RelayKey}" Content="▶" /><Button Style="{StaticResource RelayKey}" Content="▼" /><Button Style="{StaticResource RelayKey}" Content="×" /><Button Style="{StaticResource RelayKey}" Content="■" Click="Reset_Click" />
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Up"><controls:LucideIcon Kind="ChevronUp" Width="17" Height="17" Foreground="#EDF2F5" /></Button>
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Enter"><controls:LucideIcon Kind="CornerDownLeft" Width="17" Height="17" Foreground="#EDF2F5" /></Button>
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Next"><controls:LucideIcon Kind="ChevronRight" Width="17" Height="17" Foreground="#EDF2F5" /></Button>
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Down"><controls:LucideIcon Kind="ChevronDown" Width="17" Height="17" Foreground="#EDF2F5" /></Button>
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Cancel"><controls:LucideIcon Kind="X" Width="17" Height="17" Foreground="#EDF2F5" /></Button>
+                                    <Button Style="{StaticResource RelayKey}" ToolTip="Reset trip" Click="Reset_Click"><controls:LucideIcon Kind="Square" Filled="True" Width="14" Height="14" Foreground="#EDF2F5" /></Button>
                                 </UniformGrid>
                             </Grid>
 
                             <Border Grid.Column="2" Background="#E8EDF0" BorderBrush="#8796A1" BorderThickness="1" CornerRadius="4" Padding="9">
-                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /></Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /><RowDefinition Height="34" /></Grid.RowDefinitions>
                                     <TextBlock Text="HEALTHY" FontWeight="SemiBold" FontSize="10.5" VerticalAlignment="Center" /><Ellipse Grid.Column="1" x:Name="HealthyLed" Style="{StaticResource Led}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="1" Text="PICKUP" FontWeight="SemiBold" FontSize="10.5" VerticalAlignment="Center" /><Ellipse Grid.Row="1" Grid.Column="1" x:Name="PickupLed" Style="{StaticResource Led}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="2" Text="TRIP" FontWeight="SemiBold" FontSize="10.5" VerticalAlignment="Center" /><Ellipse Grid.Row="2" Grid.Column="1" x:Name="TripLed" Style="{StaticResource Led}" VerticalAlignment="Center" />
@@ -252,14 +266,27 @@
                             </Border>
                         </Grid>
 
-                        <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Virtual trip output only" Foreground="#526572" FontSize="9.5" /><TextBlock x:Name="RelayFooterText" Text="SMV health gate active" Foreground="#526572" FontSize="9.5" /></StackPanel><Button Grid.Column="1" Style="{StaticResource LeanButton}" Content="RESET TRIP" Padding="10,5" Click="Reset_Click" /></Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="Virtual trip output only" Foreground="#526572" FontSize="9.5" /><TextBlock x:Name="RelayFooterText" Text="SMV health gate active" Foreground="#526572" FontSize="9.5" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource CompactButton}" Click="Reset_Click">
+                                <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="RotateCcw" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,5,0" /><TextBlock Text="RESET TRIP" /></StackPanel>
+                            </Button>
+                        </Grid>
                     </Grid>
                 </Border>
             </Border>
         </Grid>
 
         <Border Grid.Row="3" Background="#E7ECF0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,0">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="StatusText" Text="Ready. Run the laboratory, inject a fault, then degrade SMV to observe guarded blocking." Foreground="{StaticResource MutedBrush}" FontSize="10.3" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="VIRTUAL OUTPUT · NO GOOSE · NO PHYSICAL TRIP" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" VerticalAlignment="Center" /></Grid>
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Text="Ready. Internal deterministic laboratory is selected." Foreground="{StaticResource MutedBrush}" FontSize="10.3" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="SclStatusText" Text="NO SCL" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" Margin="0,0,14,0" />
+                    <TextBlock Text="VIRTUAL OUTPUT · NO GOOSE · NO PHYSICAL TRIP" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" />
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>

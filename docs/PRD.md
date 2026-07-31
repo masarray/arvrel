@@ -29,7 +29,7 @@ SMV reception
 - green is reserved for healthy, amber for warning/block, red for trip/error;
 - the right-side virtual relay remains fully visible while the user observes waveform causality.
 
-## P0 functional scope
+## P0 foundation
 
 - deterministic internal measurement source;
 - 50P, 51P, 50N and 51N;
@@ -53,7 +53,7 @@ The application references the sibling core projects when present. Protection lo
 
 ## P1 process-bus integration
 
-The adapter must translate ARIEC61850 observations into the canonical input:
+P1 implements live Npcap capture, classic PCAP and PCAPNG replay, dynamic stream discovery, SCL-assisted binding, fixed-layout fallback, circular samples, RMS measurement, CT context, trust evidence, and JSON export. The adapter translates ARIEC61850 observations into the canonical input:
 
 ```text
 MeasurementFrame
@@ -88,7 +88,7 @@ Activation workflow:
 Edit → validate → static policy analysis → deterministic tests → stage → shadow compare → activate
 ```
 
-P0 supports validation and immutable shadow staging only. Arbitrary C# compilation is intentionally not supported.
+P1 keeps validation and immutable shadow staging only; compilation, A/B evaluation, and activation remain P2. Arbitrary C# compilation is intentionally not supported.
 
 ## Acceptance criteria
 
@@ -101,7 +101,9 @@ P0 supports validation and immutable shadow staging only. Arbitrary C# compilati
 - degraded SMV can expose pickup but blocks a new trip request;
 - UI refresh never drives the protection timer;
 - main workspace needs no page scrolling at the supported minimum size;
-- no active GOOSE, MMS control or physical output exists in P0;
+- live Npcap and PCAP/PCAPNG sources feed the same protection engine as the deterministic source;
+- SCL-unbound, unscaled, stale, discontinuous, or invalid-quality streams expose explicit trust reasons;
+- no active GOOSE, MMS control or physical output exists in P1;
 - every algorithm staging action records element, time and content hash.
 
 ## Safety and public claims
