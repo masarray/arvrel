@@ -12,6 +12,11 @@ public static class PcapPacketReader
     private const uint EnhancedPacketBlock = 0x00000006;
     private const ushort EthernetLinkType = 1;
 
+    private static readonly byte[] PcapMicrosecondsLittle = [0xD4, 0xC3, 0xB2, 0xA1];
+    private static readonly byte[] PcapMicrosecondsBig = [0xA1, 0xB2, 0xC3, 0xD4];
+    private static readonly byte[] PcapNanosecondsLittle = [0x4D, 0x3C, 0xB2, 0xA1];
+    private static readonly byte[] PcapNanosecondsBig = [0xA1, 0xB2, 0x3C, 0x4D];
+
     public static IEnumerable<PcapPacket> Read(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -32,16 +37,16 @@ public static class PcapPacketReader
         var header = new byte[24];
         ReadExactly(stream, header);
 
-        var magicLittle = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(0, 4));
-        var littleEndian = magicLittle switch
-        {
-            0xA1B2C3D4 => true,
-            0xD4C3B2A1 => false,
-            0xA1B23C4D => true,
-            0x4D3CB2A1 => false,
-            _ => throw new InvalidDataException("The file is neither classic PCAP nor PCAPNG.")
-        };
-        var nanosecondResolution = magicLittle is 0xA1B23C4D or 0x4D3CB2A1;
+        var magic = header.AsSpan(0, 4);
+        var littleEndian = magic.SequenceEqual(PcapMicrosecondsLittle) ||
+                           magic.SequenceEqual(PcapNanosecondsLittle);
+        var bigEndian = magic.SequenceEqual(PcapMicrosecondsBig) ||
+                        magic.SequenceEqual(PcapNanosecondsBig);
+        if (!littleEndian && !bigEndian)
+            throw new InvalidDataException("The file is neither classic PCAP nor PCAPNG.");
+
+        var nanosecondResolution = magic.SequenceEqual(PcapNanosecondsLittle) ||
+                                   magic.SequenceEqual(PcapNanosecondsBig);
         var linkType = ReadUInt32(header.AsSpan(20, 4), littleEndian);
         if (linkType != EthernetLinkType)
             throw new InvalidDataException($"Unsupported PCAP link type {linkType}; Ethernet link type 1 is required.");
@@ -54,7 +59,13 @@ public static class PcapPacketReader
             var capturedLength = ReadUInt32(packetHeader.AsSpan(8, 4), littleEndian);
             ValidatePacketLength(capturedLength);
 
-            var frame = new byte[capturedLength];
+            if (capturedLength > stream.Length - stream.Position)
+            {
+                throw new InvalidDataException(
+                    $"Capture packet declares {capturedLength} byte(s), but only {stream.Length - stream.Position} remain.");
+            }
+
+            var frame = new byte[checked((int)capturedLength)];
             ReadExactly(stream, frame);
             var ticks = nanosecondResolution ? fraction / 100 : fraction * 10;
             yield return new PcapPacket(DateTimeOffset.FromUnixTimeSeconds(seconds).AddTicks(ticks), frame);
@@ -97,7 +108,7 @@ public static class PcapPacketReader
             var blockType = ReadUInt32(prefix.AsSpan(0, 4), littleEndian);
             var blockLength = ReadUInt32(prefix.AsSpan(4, 4), littleEndian);
             ValidateBlockLength(blockLength, 12);
-            var block = new byte[blockLength];
+            var block = new byte[checked((int)blockLength)];
             prefix.CopyTo(block, 0);
             ReadExactly(stream, block.AsSpan(prefix.Length));
             ValidateTrailingLength(block, littleEndian);
