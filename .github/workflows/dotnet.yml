@@ -1,0 +1,50 @@
+name: .NET CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@v4
+        with:
+          path: arvrel
+
+      - name: Checkout sibling ARIEC61850
+        uses: actions/checkout@v4
+        with:
+          repository: masarray/ARIEC61850
+          path: ARIEC61850
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        working-directory: arvrel
+        run: dotnet restore .\ARVREL.sln
+
+      - name: Build
+        working-directory: arvrel
+        run: dotnet build .\ARVREL.sln -c Release --no-restore
+
+      - name: Test
+        working-directory: arvrel
+        run: dotnet test .\ARVREL.sln -c Release --no-build --logger "trx;LogFileName=arvrel-tests.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arvrel-test-results
+          path: arvrel/**/TestResults/*.trx
+          if-no-files-found: ignore

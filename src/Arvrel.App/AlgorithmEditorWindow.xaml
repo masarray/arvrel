@@ -1,0 +1,21 @@
+<Window x:Class="Arvrel.App.AlgorithmEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ARVREL Algorithm Editor"
+        Width="1080"
+        Height="720"
+        MinWidth="900"
+        MinHeight="600"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="12">
+        <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /><RowDefinition Height="42" /></Grid.RowDefinitions>
+        <Border Style="{StaticResource PanelBorder}" Padding="12,0">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock Text="Protection Algorithm Editor" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Typed laboratory DSL · validation and staging only · no arbitrary C# execution" Foreground="{StaticResource MutedBrush}" FontSize="10.5" /></StackPanel><ComboBox Grid.Column="1" x:Name="ElementCombo" Width="180" SelectedIndex="0" SelectionChanged="ElementCombo_SelectionChanged"><ComboBoxItem Content="50P-1" /><ComboBoxItem Content="51P" /><ComboBoxItem Content="50N" /><ComboBoxItem Content="51N" /></ComboBox></Grid>
+        </Border>
+        <Grid Grid.Row="1" Margin="0,9"><Grid.ColumnDefinitions><ColumnDefinition Width="2.2*" /><ColumnDefinition Width="9" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource PanelBorder}" Padding="10"><TextBox x:Name="EditorText" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="12" TextWrapping="NoWrap" /></Border>
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Padding="12"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="SAFE LABORATORY POLICY" Style="{StaticResource SectionLabel}" /><TextBlock Grid.Row="1" Margin="0,8,0,0" Text="• smv.allowsTrip is mandatory&#x0a;• file, network and process access forbidden&#x0a;• no unmanaged calls or unbounded loops&#x0a;• staged algorithms remain shadow-only in P0" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" /><TextBlock Grid.Row="2" Text="VALIDATION" Style="{StaticResource SectionLabel}" Margin="0,18,0,0" /><TextBox Grid.Row="3" x:Name="ValidationText" Margin="0,7,0,0" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" /></Grid></Border>
+        </Grid>
+        <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="StatusText" Text="Edit a template, validate it, then stage an immutable versioned copy." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="10.5" /><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Style="{StaticResource LeanButton}" Content="Reset template" Margin="0,0,6,0" Click="ResetTemplate_Click" /><Button Style="{StaticResource LeanButton}" Content="Validate" Margin="0,0,6,0" Click="Validate_Click" /><Button Style="{StaticResource PrimaryButton}" Content="Stage algorithm" Click="Stage_Click" /></StackPanel></Grid>
+    </Grid>
+</Window>

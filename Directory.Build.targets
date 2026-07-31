@@ -1,0 +1,10 @@
+<Project>
+  <Target Name="ReportSiblingEngine" BeforeTargets="BeforeBuild">
+    <Message Importance="high"
+             Condition="'$(HasARIEC61850Sibling)' == 'true'"
+             Text="ARVREL: using sibling ARIEC61850 engine at $(ARIEC61850Root)" />
+    <Message Importance="high"
+             Condition="'$(HasARIEC61850Sibling)' != 'true'"
+             Text="ARVREL: sibling ARIEC61850 was not found. P0 simulation still builds; live SV integration remains disabled." />
+  </Target>
+</Project>

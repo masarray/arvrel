@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ARVREL</AssemblyName>
+    <RootNamespace>Arvrel.App</RootNamespace>
+    <Product>ARVREL — Virtual Protection Relay Lab</Product>
+    <Description>Premium IEC 61850 Sampled Values virtual protection relay laboratory.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
+    <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850\AR.Iec61850.csproj" />
+    <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850.Transports.Npcap\AR.Iec61850.Transports.Npcap.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
+    <DefineConstants>$(DefineConstants);ARIEC61850_SIBLING</DefineConstants>
+  </PropertyGroup>
+</Project>

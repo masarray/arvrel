@@ -1,0 +1,44 @@
+# Build outputs
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local captures / station data / generated evidence
+*.pcap
+*.pcapng
+*.scd
+*.cid
+*.icd
+*.iid
+*.cfg
+*.dat
+*.cff
+*.hdr
+*.inf
+*.arvrelay
+.local/
+evidence/
+
+# Packaging
+publish/
+release/
+*.zip
+*.exe
+*.msi
+
+# OS
+Thumbs.db
+.DS_Store

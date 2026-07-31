@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Arvrel.Protection</AssemblyName>
+    <RootNamespace>Arvrel.Protection</RootNamespace>
+    <Description>Deterministic 50/51 phase and earth-fault protection engine for ARVREL.</Description>
+  </PropertyGroup>
+</Project>

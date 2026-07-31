@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <Authors>Ari Sulistiono</Authors>
+    <Company>masarray</Company>
+    <Copyright>Copyright (C) 2026 Ari Sulistiono</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/masarray/arvrel</RepositoryUrl>
+
+    <!-- Expected local layout:
+         Git/ARIEC61850
+         Git/arvrel
+    -->
+    <ARIEC61850Root Condition="'$(ARIEC61850Root)' == ''">$(MSBuildThisFileDirectory)..\ARIEC61850</ARIEC61850Root>
+    <HasARIEC61850Sibling Condition="Exists('$(ARIEC61850Root)\src\AR.Iec61850\AR.Iec61850.csproj')">true</HasARIEC61850Sibling>
+    <HasARIEC61850Sibling Condition="'$(HasARIEC61850Sibling)' == ''">false</HasARIEC61850Sibling>
+  </PropertyGroup>
+</Project>
