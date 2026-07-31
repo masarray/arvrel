@@ -3,117 +3,433 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Arvrel.App.Controls"
         Title="ARVREL Relay Settings"
-        Width="1040"
-        Height="720"
-        MinWidth="920"
-        MinHeight="640"
+        Width="1060"
+        Height="740"
+        MinWidth="940"
+        MinHeight="660"
         WindowStartupLocation="CenterOwner"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True">
     <Window.Resources>
         <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource SectionLabel}">
+            <Setter Property="FontSize" Value="10.6" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="#506273" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style x:Key="SettingTextBox" TargetType="TextBox">
-            <Setter Property="Width" Value="116" />
+
+        <Style x:Key="SettingTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="108" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="8,2" />
             <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+            <Setter Property="FontSize" Value="11.2" />
         </Style>
-        <Style x:Key="SettingCombo" TargetType="ComboBox">
-            <Setter Property="Width" Value="220" />
+
+        <Style x:Key="WideSettingTextBox" TargetType="TextBox" BasedOn="{StaticResource SettingTextBox}">
+            <Setter Property="Width" Value="230" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
+        </Style>
+
+        <Style x:Key="RevisionTextBox" TargetType="TextBox" BasedOn="{StaticResource SettingTextBox}">
+            <Setter Property="Width" Value="82" />
+        </Style>
+
+        <Style x:Key="CurveParameterTextBox" TargetType="TextBox" BasedOn="{StaticResource SettingTextBox}">
+            <Setter Property="Width" Value="62" />
+        </Style>
+
+        <Style x:Key="SettingCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Width" Value="210" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="8,0" />
             <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="11.1" />
+        </Style>
+
+        <Style x:Key="SettingRow" TargetType="Grid">
+            <Setter Property="Height" Value="34" />
+        </Style>
+
+        <Style x:Key="SettingsCard" TargetType="Border" BasedOn="{StaticResource PanelBorder}">
+            <Setter Property="Padding" Value="16,14" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+
+        <Style x:Key="InfoStrip" TargetType="Border">
+            <Setter Property="Background" Value="#F5F8FA" />
+            <Setter Property="BorderBrush" Value="#D7E1E8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="11,8" />
+        </Style>
+
+        <Style x:Key="ElementHeader" TargetType="CheckBox">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SettingsTabItem" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Background" Value="#F5F8FA" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="FontSize" Value="11.4" />
+            <Setter Property="Padding" Value="15,8" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Grid>
+                            <Border x:Name="Chrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4,4,0,0">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}" />
+                            </Border>
+                            <Border x:Name="AccentLine"
+                                    Height="2"
+                                    Margin="1,0,1,0"
+                                    VerticalAlignment="Top"
+                                    Background="Transparent"
+                                    CornerRadius="3" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#EEF4F8" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="White" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#C8D7E1" />
+                                <Setter TargetName="AccentLine" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Panel.ZIndex" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource SettingsTabItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TabPanel IsItemsHost="True"
+                                      Margin="0,0,0,-1"
+                                      Background="Transparent"
+                                      KeyboardNavigation.TabIndex="1" />
+                            <Border Grid.Row="1"
+                                    Background="White"
+                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="0,5,5,5"
+                                    KeyboardNavigation.TabNavigation="Local"
+                                    KeyboardNavigation.DirectionalNavigation="Contained">
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  ContentSource="SelectedContent"
+                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="14">
+    <Grid Margin="16,14,16,12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="66" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="52" />
+            <RowDefinition Height="50" />
         </Grid.RowDefinitions>
 
-        <Border Style="{StaticResource PanelBorder}" Padding="14,0">
+        <Border Style="{StaticResource PanelBorder}" Padding="15,0">
             <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="SlidersHorizontal" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" Margin="0,0,8,0" />
-                        <TextBlock Text="Native relay protection settings" FontSize="16" FontWeight="SemiBold" />
+                        <controls:LucideIcon Kind="SlidersHorizontal"
+                                             Width="18" Height="18"
+                                             Foreground="{StaticResource AccentBrush}"
+                                             Margin="0,0,9,0" />
+                        <TextBlock Text="Native relay protection settings"
+                                   FontSize="15.5"
+                                   FontWeight="SemiBold" />
                     </StackPanel>
-                    <TextBlock Text="Settings are entered in secondary amperes. Primary equivalents use the active CT context." Foreground="{StaticResource MutedBrush}" FontSize="10.8" Margin="26,3,0,0" />
+                    <TextBlock Text="Secondary values drive protection. Primary equivalents follow the active CT context."
+                               Foreground="{StaticResource MutedBrush}"
+                               FontSize="10.5"
+                               Margin="27,3,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-                    <TextBlock x:Name="HeaderGroupText" Text="GROUP A · REV 1" FontFamily="Cascadia Mono, Consolas" FontSize="11" HorizontalAlignment="Right" />
-                    <TextBlock x:Name="HeaderFingerprintText" Text="SETTINGS 000000000000" Foreground="{StaticResource MutedBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="9.4" Margin="0,3,0,0" />
+                    <TextBlock x:Name="HeaderGroupText"
+                               Text="GROUP A · REV 1"
+                               FontFamily="Cascadia Mono, Consolas"
+                               FontSize="10.8"
+                               HorizontalAlignment="Right" />
+                    <TextBlock x:Name="HeaderFingerprintText"
+                               Text="SETTINGS 000000000000"
+                               Foreground="{StaticResource MutedBrush}"
+                               FontFamily="Cascadia Mono, Consolas"
+                               FontSize="9.2"
+                               Margin="0,3,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="0,10,0,10" x:Name="SettingsTabs">
+        <TabControl Grid.Row="1"
+                    Margin="0,11,0,9"
+                    x:Name="SettingsTabs"
+                    Style="{StaticResource SettingsTabControl}">
             <TabItem Header="General">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="16">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="210" /><ColumnDefinition Width="260" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="20,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="165" />
+                            <ColumnDefinition Width="250" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="48" /><RowDefinition Height="48" /><RowDefinition Height="48" />
-                            <RowDefinition Height="20" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="38" />
+                            <RowDefinition Height="38" />
+                            <RowDefinition Height="38" />
+                            <RowDefinition Height="14" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
+
                         <TextBlock Text="Setting group name" Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Column="1" x:Name="GroupNameText" Width="220" HorizontalAlignment="Left" TextChanged="GeneralField_Changed" />
+                        <TextBox Grid.Column="1"
+                                 x:Name="GroupNameText"
+                                 Style="{StaticResource WideSettingTextBox}"
+                                 TextChanged="GeneralField_Changed" />
+
                         <TextBlock Grid.Row="1" Text="Revision" Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Row="1" Grid.Column="1" x:Name="RevisionText" Style="{StaticResource SettingTextBox}" TextChanged="GeneralField_Changed" />
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 x:Name="RevisionText"
+                                 Style="{StaticResource RevisionTextBox}"
+                                 TextChanged="GeneralField_Changed" />
+
                         <TextBlock Grid.Row="2" Text="Active CT context" Style="{StaticResource FieldLabel}" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="CtContextText" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" />
-                        <Border Grid.Row="4" Grid.ColumnSpan="3" Background="#F7F9FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="14">
-                            <StackPanel>
-                                <TextBlock Text="APPLICATION BOUNDARY" Style="{StaticResource SectionLabel}" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap"
-                                           Text="Changing native settings never edits algorithm source. Applying a setting group resets element timers and the virtual trip latch, records an audit event, and reinitializes active live/replay protection state. ARVREL remains virtual-output only." />
-                            </StackPanel>
+                        <Border Grid.Row="2" Grid.Column="1"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                Background="#F3F7FA"
+                                BorderBrush="#D5E1E9"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="9,5">
+                            <TextBlock x:Name="CtContextText"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontSize="10.8" />
+                        </Border>
+
+                        <Border Grid.Row="4" Grid.ColumnSpan="3"
+                                Style="{StaticResource InfoStrip}"
+                                MaxWidth="820"
+                                HorizontalAlignment="Stretch">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="22" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <controls:LucideIcon Kind="Info"
+                                                     Width="16" Height="16"
+                                                     Foreground="{StaticResource AccentBrush}"
+                                                     Margin="0,1,0,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="APPLICATION BOUNDARY"
+                                               Foreground="#315D7C"
+                                               FontSize="10.2"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,5,0,0"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="10.6"
+                                               LineHeight="16"
+                                               TextWrapping="Wrap"
+                                               Text="Changing native settings never edits algorithm source. Applying a setting group resets element timers and the virtual trip latch, records an audit event, and reinitializes active live/replay protection state. ARVREL remains virtual-output only." />
+                                </StackPanel>
+                            </Grid>
                         </Border>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Phase overcurrent">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid Margin="14">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="1*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1.22*" /></Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource PanelBorder}" Padding="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.88*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="1.12*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Style="{StaticResource SettingsCard}">
                             <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                                <CheckBox x:Name="Phase50Enabled" Content="50P-1 instantaneous phase overcurrent" FontWeight="SemiBold" IsChecked="True" Checked="AnySetting_Changed" Unchecked="AnySetting_Changed" />
-                                <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Pickup I&gt;&gt;" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase50PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase50DelayText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase50DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Border Grid.Row="4" Background="#F7F9FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10,6">
-                                    <TextBlock x:Name="Phase50EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" Foreground="{StaticResource MutedBrush}" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="28" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="38" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Phase50Enabled"
+                                              Content="50P-1 instantaneous phase overcurrent"
+                                              Style="{StaticResource ElementHeader}"
+                                              IsChecked="True"
+                                              Checked="AnySetting_Changed"
+                                              Unchecked="AnySetting_Changed" />
+                                    <Border Grid.Column="1" Background="#EEF4F8" CornerRadius="3" Padding="6,2">
+                                        <TextBlock Text="DEFINITE TIME" Foreground="{StaticResource AccentBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="1" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pickup I&gt;&gt;" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase50PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="2" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase50DelayText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="3" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase50DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Border Grid.Row="4" Style="{StaticResource InfoStrip}" Padding="9,6">
+                                    <TextBlock x:Name="Phase50EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.1" Foreground="{StaticResource MutedBrush}" />
                                 </Border>
-                                <TextBlock Grid.Row="5" Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}" FontSize="10.5" TextWrapping="Wrap" Text="Pickup is phase segregated. The timer is definite-time and operates only while the selected SMV trust policy allows pickup." />
+                                <TextBlock Grid.Row="5"
+                                           Margin="0,10,0,0"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           FontSize="10.3"
+                                           LineHeight="15"
+                                           TextWrapping="Wrap"
+                                           Text="Phase-segregated pickup with definite-time operation. SMV trust permission remains mandatory." />
                             </Grid>
                         </Border>
 
-                        <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Padding="14">
+                        <Border Grid.Column="2" Style="{StaticResource SettingsCard}">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" />
-                                    <RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" />
-                                    <RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="*" />
+                                    <RowDefinition Height="28" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="38" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <CheckBox x:Name="Phase51Enabled" Content="51P time phase overcurrent" FontWeight="SemiBold" IsChecked="True" Checked="AnySetting_Changed" Unchecked="AnySetting_Changed" />
-                                <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Pickup Is" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Characteristic" Style="{StaticResource FieldLabel}" /><ComboBox Grid.Column="1" x:Name="Phase51CurveCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="TMS / time dial" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51TmsText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51DefiniteText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="5"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Minimum operate time" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51MinimumText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="6"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="7"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Reset characteristic" Style="{StaticResource FieldLabel}" /><ComboBox Grid.Column="1" x:Name="Phase51ResetCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="8"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Reset time" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Phase51ResetTimeText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="9"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="User curve K / α / C" Style="{StaticResource FieldLabel}" /><StackPanel Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="Phase51KText" Width="68" Margin="0,0,5,0" TextChanged="AnySetting_Changed" /><TextBox x:Name="Phase51AlphaText" Width="68" Margin="0,0,5,0" TextChanged="AnySetting_Changed" /><TextBox x:Name="Phase51CText" Width="68" TextChanged="AnySetting_Changed" /></StackPanel></Grid>
-                                <Border Grid.Row="10" Background="#F7F9FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10,6">
-                                    <TextBlock x:Name="Phase51EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" Foreground="{StaticResource MutedBrush}" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Phase51Enabled"
+                                              Content="51P time phase overcurrent"
+                                              Style="{StaticResource ElementHeader}"
+                                              IsChecked="True"
+                                              Checked="AnySetting_Changed"
+                                              Unchecked="AnySetting_Changed" />
+                                    <Border Grid.Column="1" Background="#F3F0E8" CornerRadius="3" Padding="6,2">
+                                        <TextBlock Text="IEC CURVE" Foreground="{StaticResource WarningBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="1" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pickup Is" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="2" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Characteristic" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox Grid.Column="1" x:Name="Phase51CurveCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="3" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="TMS / time dial" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51TmsText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="4" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51DefiniteText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="5" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Minimum operate time" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51MinimumText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="6" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="7" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Reset characteristic" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox Grid.Column="1" x:Name="Phase51ResetCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="8" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Reset time" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Phase51ResetTimeText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="9" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="User curve K / α / C" Style="{StaticResource FieldLabel}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox x:Name="Phase51KText" Style="{StaticResource CurveParameterTextBox}" Margin="0,0,5,0" TextChanged="AnySetting_Changed" />
+                                        <TextBox x:Name="Phase51AlphaText" Style="{StaticResource CurveParameterTextBox}" Margin="0,0,5,0" TextChanged="AnySetting_Changed" />
+                                        <TextBox x:Name="Phase51CText" Style="{StaticResource CurveParameterTextBox}" TextChanged="AnySetting_Changed" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="10" Style="{StaticResource InfoStrip}" Padding="9,6">
+                                    <TextBlock x:Name="Phase51EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.1" Foreground="{StaticResource MutedBrush}" />
                                 </Border>
-                                <TextBlock Grid.Row="11" x:Name="Phase51PreviewText" Margin="0,10,0,0" FontFamily="Cascadia Mono, Consolas" FontSize="10.2" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                <Border Grid.Row="11" Margin="0,8,0,0" Background="#FBFCFD" BorderBrush="#E2E8ED" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <TextBlock x:Name="Phase51PreviewText" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" LineHeight="15" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
@@ -121,44 +437,151 @@
             </TabItem>
 
             <TabItem Header="Earth fault">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid Margin="14">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="1*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1.22*" /></Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource PanelBorder}" Padding="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.88*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="1.12*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Style="{StaticResource SettingsCard}">
                             <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="46" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                                <CheckBox x:Name="Earth50Enabled" Content="50N instantaneous earth fault" FontWeight="SemiBold" IsChecked="True" Checked="AnySetting_Changed" Unchecked="AnySetting_Changed" />
-                                <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Pickup I0&gt;&gt;" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth50PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth50DelayText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth50DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Border Grid.Row="4" Background="#F7F9FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10,6">
-                                    <TextBlock x:Name="Earth50EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" Foreground="{StaticResource MutedBrush}" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="28" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="38" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Earth50Enabled"
+                                              Content="50N instantaneous earth fault"
+                                              Style="{StaticResource ElementHeader}"
+                                              IsChecked="True"
+                                              Checked="AnySetting_Changed"
+                                              Unchecked="AnySetting_Changed" />
+                                    <Border Grid.Column="1" Background="#EEF4F8" CornerRadius="3" Padding="6,2">
+                                        <TextBlock Text="DEFINITE TIME" Foreground="{StaticResource AccentBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="1" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pickup I0&gt;&gt;" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth50PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="2" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth50DelayText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="3" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth50DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Border Grid.Row="4" Style="{StaticResource InfoStrip}" Padding="9,6">
+                                    <TextBlock x:Name="Earth50EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.1" Foreground="{StaticResource MutedBrush}" />
                                 </Border>
-                                <TextBlock Grid.Row="5" Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}" FontSize="10.5" TextWrapping="Wrap" Text="The operating quantity is measured neutral current when mapped, otherwise the calculated residual IA + IB + IC." />
+                                <TextBlock Grid.Row="5"
+                                           Margin="0,10,0,0"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           FontSize="10.3"
+                                           LineHeight="15"
+                                           TextWrapping="Wrap"
+                                           Text="Uses mapped neutral current when available; otherwise ARVREL calculates residual IA + IB + IC." />
                             </Grid>
                         </Border>
 
-                        <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Padding="14">
+                        <Border Grid.Column="2" Style="{StaticResource SettingsCard}">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" />
-                                    <RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" />
-                                    <RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="42" /><RowDefinition Height="*" />
+                                    <RowDefinition Height="28" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="38" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <CheckBox x:Name="Earth51Enabled" Content="51N time earth fault" FontWeight="SemiBold" IsChecked="True" Checked="AnySetting_Changed" Unchecked="AnySetting_Changed" />
-                                <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Pickup I0s" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Characteristic" Style="{StaticResource FieldLabel}" /><ComboBox Grid.Column="1" x:Name="Earth51CurveCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="TMS / time dial" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51TmsText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51DefiniteText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="5"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Minimum operate time" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51MinimumText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="6"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="7"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Reset characteristic" Style="{StaticResource FieldLabel}" /><ComboBox Grid.Column="1" x:Name="Earth51ResetCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="8"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Reset time" Style="{StaticResource FieldLabel}" /><TextBox Grid.Column="1" x:Name="Earth51ResetTimeText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" /></Grid>
-                                <Grid Grid.Row="9"><Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="User curve K / α / C" Style="{StaticResource FieldLabel}" /><StackPanel Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="Earth51KText" Width="68" Margin="0,0,5,0" TextChanged="AnySetting_Changed" /><TextBox x:Name="Earth51AlphaText" Width="68" Margin="0,0,5,0" TextChanged="AnySetting_Changed" /><TextBox x:Name="Earth51CText" Width="68" TextChanged="AnySetting_Changed" /></StackPanel></Grid>
-                                <Border Grid.Row="10" Background="#F7F9FB" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="10,6">
-                                    <TextBlock x:Name="Earth51EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" Foreground="{StaticResource MutedBrush}" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Earth51Enabled"
+                                              Content="51N time earth fault"
+                                              Style="{StaticResource ElementHeader}"
+                                              IsChecked="True"
+                                              Checked="AnySetting_Changed"
+                                              Unchecked="AnySetting_Changed" />
+                                    <Border Grid.Column="1" Background="#F3F0E8" CornerRadius="3" Padding="6,2">
+                                        <TextBlock Text="IEC CURVE" Foreground="{StaticResource WarningBrush}" FontSize="8.8" FontWeight="SemiBold" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="1" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pickup I0s" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51PickupText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="2" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Characteristic" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox Grid.Column="1" x:Name="Earth51CurveCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="3" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="TMS / time dial" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51TmsText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="4" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Definite delay" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51DefiniteText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="5" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Minimum operate time" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51MinimumText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="6" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Dropout ratio" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51DropoutText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="7" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Reset characteristic" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox Grid.Column="1" x:Name="Earth51ResetCombo" Style="{StaticResource SettingCombo}" SelectionChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="8" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Reset time" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" x:Name="Earth51ResetTimeText" Style="{StaticResource SettingTextBox}" TextChanged="AnySetting_Changed" />
+                                </Grid>
+                                <Grid Grid.Row="9" Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="User curve K / α / C" Style="{StaticResource FieldLabel}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox x:Name="Earth51KText" Style="{StaticResource CurveParameterTextBox}" Margin="0,0,5,0" TextChanged="AnySetting_Changed" />
+                                        <TextBox x:Name="Earth51AlphaText" Style="{StaticResource CurveParameterTextBox}" Margin="0,0,5,0" TextChanged="AnySetting_Changed" />
+                                        <TextBox x:Name="Earth51CText" Style="{StaticResource CurveParameterTextBox}" TextChanged="AnySetting_Changed" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="10" Style="{StaticResource InfoStrip}" Padding="9,6">
+                                    <TextBlock x:Name="Earth51EquivalentText" FontFamily="Cascadia Mono, Consolas" FontSize="10.1" Foreground="{StaticResource MutedBrush}" />
                                 </Border>
-                                <TextBlock Grid.Row="11" x:Name="Earth51PreviewText" Margin="0,10,0,0" FontFamily="Cascadia Mono, Consolas" FontSize="10.2" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                <Border Grid.Row="11" Margin="0,8,0,0" Background="#FBFCFD" BorderBrush="#E2E8ED" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                                    <TextBlock x:Name="Earth51PreviewText" FontFamily="Cascadia Mono, Consolas" FontSize="9.8" LineHeight="15" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
@@ -167,22 +590,31 @@
         </TabControl>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <TextBlock x:Name="ValidationText" Text="Active settings loaded." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="10.5" TextTrimming="CharacterEllipsis" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="LoadPreset_Click">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="ValidationText"
+                       Text="Active settings loaded."
+                       Foreground="{StaticResource MutedBrush}"
+                       VerticalAlignment="Center"
+                       FontSize="10.4"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="1,0,14,0" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource LeanButton}" Height="34" Margin="0,0,6,0" Click="LoadPreset_Click">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="FolderOpen" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Load preset" /></StackPanel>
                 </Button>
-                <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="SavePreset_Click">
+                <Button Style="{StaticResource LeanButton}" Height="34" Margin="0,0,6,0" Click="SavePreset_Click">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="Save" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Save preset" /></StackPanel>
                 </Button>
-                <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" Click="RestoreDefaults_Click">
+                <Button Style="{StaticResource LeanButton}" Height="34" Margin="0,0,6,0" Click="RestoreDefaults_Click">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="RotateCcw" Width="14" Height="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" /><TextBlock Text="Defaults" /></StackPanel>
                 </Button>
-                <Button Style="{StaticResource LeanButton}" Margin="0,0,6,0" IsCancel="True">
+                <Button Style="{StaticResource LeanButton}" Height="34" Margin="0,0,6,0" IsCancel="True">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="X" Width="14" Height="14" Foreground="{StaticResource MutedBrush}" Margin="0,0,6,0" /><TextBlock Text="Cancel" /></StackPanel>
                 </Button>
-                <Button Style="{StaticResource PrimaryButton}" Click="Apply_Click">
+                <Button Style="{StaticResource PrimaryButton}" Height="34" Click="Apply_Click">
                     <StackPanel Orientation="Horizontal"><controls:LucideIcon Kind="Save" Filled="True" Width="14" Height="14" Foreground="White" Margin="0,0,6,0" /><TextBlock Text="Apply settings" /></StackPanel>
                 </Button>
             </StackPanel>
