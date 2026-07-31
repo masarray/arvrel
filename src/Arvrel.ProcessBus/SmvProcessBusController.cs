@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Arvrel.Protection;
-
 #if ARIEC61850_SIBLING
 using AR.Iec61850.SampledValues;
 using AR.Iec61850.Scl;
@@ -10,73 +10,41 @@ using AR.Iec61850.Transports.Npcap;
 
 namespace Arvrel.ProcessBus;
 
-public sealed class SmvProcessBusController : IAsyncDisposable
+public sealed class SmvProcessBusController : IDisposable
 {
-    private readonly ProtectionSettings _settings;
     private readonly ConcurrentDictionary<string, SmvStreamRuntime> _streams = new(StringComparer.Ordinal);
     private readonly object _profileGate = new();
-    private SmvMeasurementContext _measurementContext = new();
-    private CancellationTokenSource? _captureCancellation;
-    private Task? _captureTask;
-    private bool _replayMode;
-
-#if ARIEC61850_SIBLING
+    private readonly ProtectionSettings _settings;
     private IReadOnlyList<SampledValuesPublisherProfile> _profiles = Array.Empty<SampledValuesPublisherProfile>();
-#endif
+    private SmvMeasurementContext _measurementContext = SmvMeasurementContext.Default;
+    private CancellationTokenSource? _captureCts;
+    private Task? _captureTask;
+    private bool _disposed;
 
     public SmvProcessBusController(ProtectionSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-#if ARIEC61850_SIBLING
-    public static readonly bool IsAvailable = true;
-#else
-    public static readonly bool IsAvailable = false;
-#endif
-
     public event EventHandler<ProcessBusEventArgs>? EventRaised;
 
-    public bool IsRunning => _captureTask is { IsCompleted: false };
-    public bool IsReplayMode => _replayMode;
-    public string SclSummary { get; private set; } = "No SCL loaded";
+    public bool IsCapturing => _captureTask is { IsCompleted: false };
+
     public SmvMeasurementContext MeasurementContext => _measurementContext;
 
-    public IReadOnlyList<ProcessBusAdapter> ListAdapters()
+    public IReadOnlyList<ProcessBusAdapterInfo> GetAdapters()
     {
 #if ARIEC61850_SIBLING
-        try
-        {
-            return NpcapAdapterCatalog.ListAdapters()
-                .Select(adapter => new ProcessBusAdapter(
-                    adapter.Index.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    string.IsNullOrWhiteSpace(adapter.Description)
-                        ? $"{adapter.Index}. {adapter.Name}"
-                        : $"{adapter.Index}. {adapter.Description}",
-                    adapter.MacAddress?.ToString() ?? "No MAC"))
-                .ToArray();
-        }
-        catch (Exception ex)
-        {
-            Raise("ADAPTER", $"Npcap adapter discovery failed: {ex.Message}");
-            return Array.Empty<ProcessBusAdapter>();
-        }
+        return NpcapAdapterCatalog.ListAdapters()
+            .Select(adapter => new ProcessBusAdapterInfo(
+                adapter.Index,
+                adapter.Name,
+                string.IsNullOrWhiteSpace(adapter.Description) ? adapter.Name : adapter.Description,
+                adapter.MacAddress?.ToString() ?? string.Empty,
+                adapter.Name))
+            .ToArray();
 #else
-        return Array.Empty<ProcessBusAdapter>();
-#endif
-    }
-
-    public void LoadScl(string path)
-    {
-#if ARIEC61850_SIBLING
-        var document = new SclParser().Load(path);
-        var profiles = SampledValuesPublisherProfile.CreateMany(document);
-        lock (_profileGate)
-            _profiles = profiles;
-        SclSummary = $"{Path.GetFileName(path)} · {profiles.Count} SV stream(s)";
-        Raise("SCL", $"Loaded {profiles.Count} SampledValueControl profile(s) from {Path.GetFileName(path)}.");
-#else
-        throw new NotSupportedException("The sibling ARIEC61850 engine was not available at build time.");
+        return Array.Empty<ProcessBusAdapterInfo>();
 #endif
     }
 
@@ -87,168 +55,180 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         _measurementContext = context;
         foreach (var runtime in _streams.Values)
             runtime.SetMeasurementContext(context);
-        Raise("CT", $"Measurement context set to {context.CtPrimaryA:0.###}/{context.CtSecondaryA:0.###} A at {context.NominalFrequencyHz:0.###} Hz.");
+        Raise("MEASUREMENT_CONTEXT", $"CT context updated: {context.CtPrimaryA:0.###}/{context.CtSecondaryA:0.###} A, {context.NominalFrequencyHz:0} Hz.");
     }
 
-    public async Task StartLiveAsync(string adapterSelector, CancellationToken cancellationToken = default)
+    public IReadOnlyList<SmvStreamInfo> GetStreams(bool primaryDisplay, bool replay)
+        => _streams.Values
+            .Select(runtime => runtime.Snapshot(DateTimeOffset.UtcNow, primaryDisplay, replay).Stream)
+            .OrderBy(stream => stream.SvId, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(stream => stream.AppId)
+            .ToArray();
+
+    public SmvRuntimeSnapshot? GetSnapshot(string? key, bool primaryDisplay, bool replay)
+    {
+        if (string.IsNullOrWhiteSpace(key) || !_streams.TryGetValue(key, out var runtime))
+            return null;
+        return runtime.Snapshot(DateTimeOffset.UtcNow, primaryDisplay, replay);
+    }
+
+    public void ResetProtection()
+    {
+        foreach (var runtime in _streams.Values)
+            runtime.ResetProtection();
+        Raise("TRIP_RESET", "Virtual trip latch and protection timers reset.");
+    }
+
+    public void Clear()
+    {
+        _streams.Clear();
+        Raise("CLEAR", "Process-bus runtime state cleared.");
+    }
+
+    public async Task ImportSclAsync(string path, CancellationToken cancellationToken = default)
     {
 #if ARIEC61850_SIBLING
-        ArgumentException.ThrowIfNullOrWhiteSpace(adapterSelector);
-        await StopAsync().ConfigureAwait(false);
-        _streams.Clear();
-        _replayMode = false;
-        _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var token = _captureCancellation.Token;
-        _captureTask = Task.Run(() => CaptureLoopAsync(adapterSelector, token), CancellationToken.None);
-        Raise("LIVE", $"Listening on Npcap adapter {adapterSelector}.");
-        await Task.Yield();
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("SCL path is empty.", nameof(path));
+
+        var profiles = await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var document = new SclParser().Load(path);
+            return SampledValuesPublisherProfile.CreateMany(document);
+        }, cancellationToken).ConfigureAwait(false);
+
+        lock (_profileGate)
+            _profiles = profiles;
+        Raise("SCL_LOADED", $"Loaded {profiles.Count} Sampled Values stream profile(s) from {Path.GetFileName(path)}.");
 #else
-        await Task.CompletedTask.ConfigureAwait(false);
-        throw new NotSupportedException("Live Npcap capture requires the sibling ARIEC61850 engine.");
+        await Task.CompletedTask;
+        throw new InvalidOperationException("SCL import requires the sibling ARIEC61850 repository.");
 #endif
     }
 
-    public async Task<int> ReplayAsync(string path, CancellationToken cancellationToken = default)
+    public async Task ReplayAsync(string path, CancellationToken cancellationToken = default)
     {
-#if ARIEC61850_SIBLING
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        await StopAsync().ConfigureAwait(false);
-        _streams.Clear();
-        _replayMode = true;
-        var processed = await Task.Run(() =>
+        StopCapture();
+        Clear();
+        var count = 0;
+        await Task.Run(() =>
         {
-            var count = 0;
             foreach (var packet in PcapPacketReader.Read(path))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ObserveFrame(packet.Timestamp, packet.Frame, replay: true);
                 count++;
-                if (count % 10_000 == 0)
-                    Raise("REPLAY", $"Processed {count:N0} capture frames.");
             }
-            return count;
         }, cancellationToken).ConfigureAwait(false);
-        Raise("REPLAY", $"Processed {processed:N0} frame(s) from {Path.GetFileName(path)}.");
-        return processed;
-#else
-        await Task.CompletedTask.ConfigureAwait(false);
-        throw new NotSupportedException("PCAP replay requires the sibling ARIEC61850 engine.");
-#endif
+        Raise("PCAP_REPLAY", $"Processed {count:N0} Ethernet frame(s) from {Path.GetFileName(path)}.");
     }
 
-    public IReadOnlyList<SmvStreamInfo> GetStreams()
+    public Task StartCaptureAsync(string adapterSelector, CancellationToken cancellationToken = default)
     {
 #if ARIEC61850_SIBLING
-        var now = DateTimeOffset.UtcNow;
-        return _streams.Values
-            .Select(runtime => runtime.Snapshot(now, false, _replayMode).Stream)
-            .OrderBy(stream => stream.SvId, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(stream => stream.AppId)
-            .ToArray();
-#else
-        return Array.Empty<SmvStreamInfo>();
-#endif
-    }
+        if (string.IsNullOrWhiteSpace(adapterSelector))
+            throw new ArgumentException("Adapter selector is empty.", nameof(adapterSelector));
+        if (IsCapturing)
+            throw new InvalidOperationException("Live capture is already active.");
 
-    public SmvRuntimeSnapshot GetSnapshot(string? streamKey, bool primaryDisplay)
-    {
-#if ARIEC61850_SIBLING
-        if (string.IsNullOrWhiteSpace(streamKey) || !_streams.TryGetValue(streamKey, out var runtime))
-            return SmvRuntimeSnapshot.Empty;
-        return runtime.Snapshot(DateTimeOffset.UtcNow, primaryDisplay, _replayMode);
-#else
-        return SmvRuntimeSnapshot.Empty;
-#endif
-    }
-
-    public void ResetProtection(string? streamKey)
-    {
-#if ARIEC61850_SIBLING
-        if (!string.IsNullOrWhiteSpace(streamKey) && _streams.TryGetValue(streamKey, out var selected))
-            selected.ResetProtection();
-        else
-            foreach (var runtime in _streams.Values)
-                runtime.ResetProtection();
-        Raise("RESET", "Live protection state and trip latch reset.");
-#endif
-    }
-
-    public async Task StopAsync()
-    {
-        var cancellation = _captureCancellation;
-        var task = _captureTask;
-        _captureCancellation = null;
-        _captureTask = null;
-        if (cancellation is null)
-            return;
-
-        cancellation.Cancel();
-        try
+        Clear();
+        _captureCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = _captureCts.Token;
+        _captureTask = Task.Run(async () =>
         {
-            if (task is not null)
-                await task.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected when the operator stops live capture.
-        }
-        finally
-        {
-            cancellation.Dispose();
-        }
-        Raise("STOP", "Process-bus source stopped.");
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await StopAsync().ConfigureAwait(false);
-    }
-
-#if ARIEC61850_SIBLING
-    private async Task CaptureLoopAsync(string adapterSelector, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var source = new NpcapProcessBusFrameSource(adapterSelector);
-            var options = new ProcessBusCaptureOptions
+            try
             {
-                Filter = "(ether proto 0x88ba) or (vlan and ether proto 0x88ba)",
-                BufferCapacity = 16_384,
-                ReadTimeoutMilliseconds = 250
-            };
+                using var source = new NpcapProcessBusFrameSource(adapterSelector);
+                var options = new ProcessBusCaptureOptions
+                {
+                    Filter = "(ether proto 0x88ba) or (vlan and ether proto 0x88ba)",
+                    BufferCapacity = 8192,
+                    ReadTimeoutMilliseconds = 250
+                };
+                Raise("CAPTURE_STARTED", "Listening for IEC 61850 Sampled Values frames.");
+                await foreach (var captured in source.CaptureAsync(options, token).ConfigureAwait(false))
+                    ObserveFrame(captured.Timestamp, captured.Frame, replay: false);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                // Normal stop.
+            }
+            catch (Exception ex)
+            {
+                Raise("CAPTURE_ERROR", ex.Message);
+                throw;
+            }
+            finally
+            {
+                Raise("CAPTURE_STOPPED", "Live capture stopped.");
+            }
+        }, token);
+        return Task.CompletedTask;
+#else
+        throw new InvalidOperationException("Live Npcap capture requires the sibling ARIEC61850 repository.");
+#endif
+    }
 
-            await foreach (var captured in source.CaptureAsync(options, cancellationToken).ConfigureAwait(false))
-                ObserveFrame(captured.Timestamp, captured.Frame, replay: false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Normal stop path.
-        }
-        catch (Exception ex)
-        {
-            Raise("ERROR", $"Live capture failed: {ex.Message}");
-        }
+    public void StopCapture()
+    {
+        _captureCts?.Cancel();
+        _captureCts?.Dispose();
+        _captureCts = null;
+        _captureTask = null;
+    }
+
+    public async Task ExportEvidenceAsync(
+        string path,
+        string? selectedKey,
+        bool primaryDisplay,
+        bool replay,
+        CancellationToken cancellationToken = default)
+    {
+        var snapshots = string.IsNullOrWhiteSpace(selectedKey)
+            ? _streams.Values.Select(runtime => runtime.Snapshot(DateTimeOffset.UtcNow, primaryDisplay, replay)).ToArray()
+            : _streams.TryGetValue(selectedKey, out var selected)
+                ? new[] { selected.Snapshot(DateTimeOffset.UtcNow, primaryDisplay, replay) }
+                : Array.Empty<SmvRuntimeSnapshot>();
+
+        var document = new SmvEvidenceDocument(
+            "arvrel-smv-evidence/v1",
+            DateTimeOffset.UtcNow,
+            _measurementContext,
+            snapshots);
+        var json = JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
+        Raise("EVIDENCE_EXPORTED", $"Exported {snapshots.Length} stream snapshot(s) to {Path.GetFileName(path)}.");
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        StopCapture();
+        _disposed = true;
     }
 
     private void ObserveFrame(DateTimeOffset timestamp, ReadOnlyMemory<byte> ethernetFrame, bool replay)
     {
+#if ARIEC61850_SIBLING
         if (!SampledValuesFrameParser.TryParseEthernetFrame(ethernetFrame, out var frame))
             return;
-
-        var first = frame.Pdu.Asdus.FirstOrDefault();
-        if (first is null)
+        var asdu = frame.Pdu.Asdus.FirstOrDefault();
+        if (asdu is null)
             return;
-
-        var profile = FindProfile(frame, first);
-        var key = BuildKey(frame, first);
-        var runtime = _streams.GetOrAdd(key, _ =>
-        {
-            Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
-            return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
-        });
+        var key = BuildKey(frame, asdu);
+        var runtime = _streams.GetOrAdd(key, _ => new SmvStreamRuntime(key, frame, _settings, _measurementContext));
+        var profile = FindProfile(frame, asdu);
         runtime.Observe(timestamp, frame, profile, replay);
+#else
+        _ = timestamp;
+        _ = ethernetFrame;
+        _ = replay;
+#endif
     }
 
+#if ARIEC61850_SIBLING
     private SampledValuesPublisherProfile? FindProfile(SampledValuesFrame frame, SampledValueAsdu asdu)
     {
         IReadOnlyList<SampledValuesPublisherProfile> profiles;
@@ -273,7 +253,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     }
 
     private static string BuildKey(SampledValuesFrame frame, SampledValueAsdu asdu)
-        => $"{frame.Source}|{frame.Destination}|{frame.Vlan?.VlanId?.ToString() ?? "-"}|{frame.AppId:X4}|{asdu.SvId}";
+        => $"{frame.Source}|{frame.Destination}|{frame.Vlan?.VlanId.ToString() ?? "-"}|{frame.AppId:X4}|{asdu.SvId}";
 #endif
 
     private void Raise(string code, string message)
