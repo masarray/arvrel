@@ -103,7 +103,6 @@
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
         </Style>
 
-
         <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource LeanButton}">
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="FontSize" Value="10.8" />
@@ -131,11 +130,28 @@
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="9,0" />
             <Setter Property="FontSize" Value="11.5" />
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="MinHeight" Value="29" />
+                        <Setter Property="Padding" Value="9,5" />
+                        <Setter Property="VerticalContentAlignment" Value="Center" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="SnapsToDevicePixels" Value="True" />
+                    </Style>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="TextBox">
