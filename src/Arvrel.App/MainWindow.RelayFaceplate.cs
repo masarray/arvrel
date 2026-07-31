@@ -35,7 +35,7 @@ public partial class MainWindow
     private string? _relaySettingsFingerprint;
     private RelayFaceplateFrame? _relayLastFrame;
 
-    private void InitializeRelayFaceplate()
+    internal void InitializeRelayFaceplate()
     {
         if (_relayFaceplateInitialized || LcdHeaderText.Parent is not Panel lcdPanel)
             return;
@@ -93,7 +93,7 @@ public partial class MainWindow
             FontWeight = weight
         };
 
-    private void StopRelayFaceplate()
+    internal void StopRelayFaceplate()
     {
         _relayFaceplateTimer?.Stop();
         if (_relayFaceplateTimer is not null)
