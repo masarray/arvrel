@@ -25,6 +25,13 @@ public sealed record WaveformFrame(
 
 public sealed class WaveformScope : FrameworkElement
 {
+    // R-S-T-N phase identification used by the protection waveform view.
+    private static readonly Color PhaseRColor = Color.FromRgb(239, 74, 74);
+    private static readonly Color PhaseSColor = Color.FromRgb(255, 211, 61);
+    private static readonly Color PhaseTColor = Color.FromRgb(63, 145, 255);
+    private static readonly Color NeutralColor = Color.FromRgb(17, 22, 27);
+    private static readonly Color NeutralHaloColor = Color.FromRgb(207, 216, 222);
+
     public static readonly DependencyProperty FrameProperty = DependencyProperty.Register(
         nameof(Frame),
         typeof(WaveformFrame),
@@ -57,10 +64,18 @@ public sealed class WaveformScope : FrameworkElement
         DrawMarker(drawingContext, plot, Frame.TripPosition, Color.FromRgb(214, 77, 72), "TRIP");
 
         var maximum = ResolveMaximum(Frame);
-        DrawTrace(drawingContext, plot, Frame.PhaseA, maximum, Color.FromRgb(86, 192, 229));
-        DrawTrace(drawingContext, plot, Frame.PhaseB, maximum, Color.FromRgb(245, 188, 81));
-        DrawTrace(drawingContext, plot, Frame.PhaseC, maximum, Color.FromRgb(194, 124, 222));
-        DrawTrace(drawingContext, plot, Frame.Residual, maximum, Color.FromRgb(108, 202, 137), 1.15);
+        DrawTrace(drawingContext, plot, Frame.PhaseA, maximum, PhaseRColor);
+        DrawTrace(drawingContext, plot, Frame.PhaseB, maximum, PhaseSColor);
+        DrawTrace(drawingContext, plot, Frame.PhaseC, maximum, PhaseTColor);
+        DrawTrace(
+            drawingContext,
+            plot,
+            Frame.Residual,
+            maximum,
+            NeutralColor,
+            1.55,
+            NeutralHaloColor,
+            3.55);
         DrawScale(drawingContext, plot, maximum, Frame.Frequency);
         DrawLegend(drawingContext, plot);
     }
@@ -100,7 +115,9 @@ public sealed class WaveformScope : FrameworkElement
         IReadOnlyList<double> values,
         double maximum,
         Color color,
-        double thickness = 1.55)
+        double thickness = 1.75,
+        Color? haloColor = null,
+        double haloThickness = 0)
     {
         if (values.Count < 2)
             return;
@@ -123,6 +140,8 @@ public sealed class WaveformScope : FrameworkElement
         }
 
         geometry.Freeze();
+        if (haloColor.HasValue && haloThickness > thickness)
+            dc.DrawGeometry(null, new Pen(new SolidColorBrush(haloColor.Value), haloThickness), geometry);
         dc.DrawGeometry(null, new Pen(new SolidColorBrush(color), thickness), geometry);
     }
 
@@ -152,19 +171,28 @@ public sealed class WaveformScope : FrameworkElement
     {
         var entries = new[]
         {
-            ("IA", Color.FromRgb(86, 192, 229)),
-            ("IB", Color.FromRgb(245, 188, 81)),
-            ("IC", Color.FromRgb(194, 124, 222)),
-            ("3I0", Color.FromRgb(108, 202, 137))
+            (Name: "R / IA", Color: PhaseRColor, Neutral: false),
+            (Name: "S / IB", Color: PhaseSColor, Neutral: false),
+            (Name: "T / IC", Color: PhaseTColor, Neutral: false),
+            (Name: "N / 3I0", Color: NeutralColor, Neutral: true)
         };
 
-        var x = plot.Right - 176;
-        foreach (var (name, color) in entries)
+        var x = plot.Right - 286;
+        foreach (var entry in entries)
         {
-            var brush = new SolidColorBrush(color);
+            var brush = new SolidColorBrush(entry.Color);
+            if (entry.Neutral)
+            {
+                dc.DrawLine(
+                    new Pen(new SolidColorBrush(NeutralHaloColor), 4),
+                    new Point(x, plot.Top + 10),
+                    new Point(x + 15, plot.Top + 10));
+            }
+
             dc.DrawLine(new Pen(brush, 2), new Point(x, plot.Top + 10), new Point(x + 15, plot.Top + 10));
-            dc.DrawText(CreateText(name, 9.5, brush), new Point(x + 20, plot.Top + 3));
-            x += 44;
+            var textBrush = entry.Neutral ? new SolidColorBrush(NeutralHaloColor) : brush;
+            dc.DrawText(CreateText(entry.Name, 9.2, textBrush), new Point(x + 20, plot.Top + 3));
+            x += entry.Neutral ? 76 : 70;
         }
     }
 
