@@ -56,8 +56,6 @@ public sealed class RelayOperationRecorder
 
         if (!pickup && !snapshot.TripLatched && Current?.TripTimestamp is null)
             Current = null;
-        if (resetObserved)
-            Current = null;
 
         _lastPickup = pickup;
         _lastTrip = snapshot.TripLatched;
