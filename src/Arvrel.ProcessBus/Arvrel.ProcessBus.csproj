@@ -10,6 +10,10 @@
     <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="SmvStreamRuntime.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
     <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850\AR.Iec61850.csproj" />
     <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850.Transports.Npcap\AR.Iec61850.Transports.Npcap.csproj" />
