@@ -27,11 +27,22 @@ internal sealed class SampleRing
     }
 
     /// <summary>
+    /// Returns the newest samples. Measurement and phasor algorithms use this path.
+    /// </summary>
+    public double[] Last(int count) => Latest(count);
+
+    public double[] Latest(int count)
+    {
+        count = Math.Clamp(count, 0, _count);
+        if (count == 0)
+            return Array.Empty<double>();
+        return Copy(Wrap(_writeIndex - count), count);
+    }
+
+    /// <summary>
     /// Returns the newest complete display window. Partial samples from the next
     /// window do not move the oscilloscope horizontally.
     /// </summary>
-    public double[] Last(int count) => DisplayWindow(count);
-
     public double[] DisplayWindow(int count)
     {
         count = Math.Clamp(count, 0, _count);
@@ -43,18 +54,6 @@ internal sealed class SampleRing
             : 0;
         var start = Wrap(_writeIndex - lagToCompletedWindow - count);
         return Copy(start, count);
-    }
-
-    /// <summary>
-    /// Returns the newest samples without display locking. Protection phasors and
-    /// RMS calculations use this path so they are not delayed by scope refresh.
-    /// </summary>
-    public double[] Latest(int count)
-    {
-        count = Math.Clamp(count, 0, _count);
-        if (count == 0)
-            return Array.Empty<double>();
-        return Copy(Wrap(_writeIndex - count), count);
     }
 
     public double RmsLast(int count)
