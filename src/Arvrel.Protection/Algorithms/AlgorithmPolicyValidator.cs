@@ -42,8 +42,8 @@ public static class AlgorithmPolicyValidator
             errors.Add("Safe Laboratory Mode requires the final trip expression to include smv.allowsTrip.");
         if (!source.Contains("element", StringComparison.OrdinalIgnoreCase))
             errors.Add("An element declaration is required.");
-        if (!source.Contains("input", StringComparison.OrdinalIgnoreCase))
-            errors.Add("At least one typed input is required.");
+        if (!ContainsTypedMeasurement(source))
+            errors.Add("At least one input, measurement, or phasor declaration is required.");
         if (!source.Contains("trip", StringComparison.OrdinalIgnoreCase))
             errors.Add("A trip expression is required.");
 
@@ -59,10 +59,18 @@ public static class AlgorithmPolicyValidator
             warnings.Add("No explicit dropout expression was found; template runtime defaults will be used.");
         if (!source.Contains("setting(", StringComparison.OrdinalIgnoreCase))
             warnings.Add("No external setting reference was found; review whether constants should be configurable.");
+        if (source.Contains("direction(", StringComparison.OrdinalIgnoreCase) &&
+            !source.Contains("polarizingAvailable", StringComparison.OrdinalIgnoreCase))
+            warnings.Add("Directional source has no explicit polarizing-quantity supervision.");
 
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant();
         return new AlgorithmValidationResult(errors.Count == 0, hash, errors, warnings);
     }
+
+    private static bool ContainsTypedMeasurement(string source)
+        => source.Contains("input", StringComparison.OrdinalIgnoreCase) ||
+           source.Contains("measurement", StringComparison.OrdinalIgnoreCase) ||
+           source.Contains("phasor", StringComparison.OrdinalIgnoreCase);
 
     private static bool HasBalancedBraces(string value)
     {
