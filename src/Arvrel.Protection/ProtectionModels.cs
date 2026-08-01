@@ -8,7 +8,12 @@ public enum ProtectionElementId
     PhaseInstantaneous50P,
     PhaseTime51P,
     EarthInstantaneous50N,
-    EarthTime51N
+    EarthTime51N,
+    DirectionalPhase67,
+    DirectionalEarth67N,
+    Undervoltage27,
+    Overvoltage59,
+    ResidualOvervoltage59N
 }
 
 public enum ProtectionStageState
@@ -101,6 +106,8 @@ public sealed record ProtectionSettings
     public double EarthTimeUserAlpha { get; init; } = 0.02;
     public double EarthTimeUserC { get; init; }
 
+    public FeederProtectionSettings Feeder { get; init; } = new();
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(GroupName))
@@ -135,6 +142,7 @@ public sealed record ProtectionSettings
             EarthTimeUserAlpha,
             EarthTimeUserC,
             nameof(EarthTimePickupA));
+        Feeder.Validate();
     }
 
     public string Fingerprint()
@@ -148,7 +156,8 @@ public sealed record ProtectionSettings
             EarthInstantaneousEnabled, EarthInstantaneousPickupA, EarthInstantaneousDelay.Ticks, EarthInstantaneousDropoutRatio,
             EarthTimeEnabled, EarthTimePickupA, EarthTimeCurve, EarthTimeMultiplier, EarthTimeDefiniteDelay.Ticks,
             EarthTimeMinimumOperateTime.Ticks, EarthTimeDropoutRatio, EarthTimeResetMode, EarthTimeResetDelay.Ticks,
-            EarthTimeUserK, EarthTimeUserAlpha, EarthTimeUserC);
+            EarthTimeUserK, EarthTimeUserAlpha, EarthTimeUserC,
+            Feeder.CanonicalIdentity());
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
@@ -212,7 +221,8 @@ public sealed record MeasurementFrame(
     double PhaseB,
     double PhaseC,
     double Residual,
-    SmvTrustState SmvTrust)
+    SmvTrustState SmvTrust,
+    PhasorMeasurementSet? Phasors = null)
 {
     public double MaximumPhase => Math.Max(PhaseA, Math.Max(PhaseB, PhaseC));
 }
@@ -244,6 +254,8 @@ public sealed record ProtectionSnapshot(
     string DecisionReason,
     SmvTrustState SmvTrust)
 {
+    public FeederProtectionSnapshot Feeder { get; init; } = FeederProtectionSnapshot.Ready(Timestamp);
+
     public static ProtectionSnapshot Ready(DateTimeOffset timestamp) => new(
         timestamp,
         ReadyElement(ProtectionElementId.PhaseInstantaneous50P),
@@ -259,7 +271,10 @@ public sealed record ProtectionSnapshot(
         false,
         "READY",
         "Measurements stable · no pickup",
-        SmvTrustState.Healthy);
+        SmvTrustState.Healthy)
+    {
+        Feeder = FeederProtectionSnapshot.Ready(timestamp)
+    };
 
     private static ElementSnapshot ReadyElement(ProtectionElementId element) => new(
         element,
