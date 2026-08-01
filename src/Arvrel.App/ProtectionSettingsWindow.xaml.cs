@@ -56,7 +56,10 @@ public partial class ProtectionSettingsWindow : Window
         {
             GroupNameText.Text = settings.GroupName;
             RevisionText.Text = settings.Revision.ToString(CultureInfo.InvariantCulture);
-            CtContextText.Text = $"{_measurementContext.CtPrimaryA:0.###}/{_measurementContext.CtSecondaryA:0.###} A · {_measurementContext.NominalFrequencyHz:0.###} Hz";
+            CtContextText.Text =
+                $"CT {_measurementContext.CtPrimaryA:0.###}/{_measurementContext.CtSecondaryA:0.###} A · " +
+                $"VT {_measurementContext.VtPrimaryV:0.###}/{_measurementContext.VtSecondaryV:0.###} V · " +
+                $"{_measurementContext.NominalFrequencyHz:0.###} Hz";
 
             Phase50Enabled.IsChecked = settings.PhaseInstantaneousEnabled;
             Phase50PickupText.Text = Format(settings.PhaseInstantaneousPickupA);
@@ -93,6 +96,9 @@ public partial class ProtectionSettingsWindow : Window
             Earth51KText.Text = Format(settings.EarthTimeUserK);
             Earth51AlphaText.Text = Format(settings.EarthTimeUserAlpha);
             Earth51CText.Text = Format(settings.EarthTimeUserC);
+
+            if (_feederTabInstalled)
+                LoadFeederSettings(settings.Feeder);
         }
         finally
         {
@@ -247,7 +253,9 @@ public partial class ProtectionSettingsWindow : Window
                 EarthTimeResetDelay = ParseTime(Earth51ResetTimeText.Text, "51N reset time"),
                 EarthTimeUserK = ParseDouble(Earth51KText.Text, "51N user K"),
                 EarthTimeUserAlpha = ParseDouble(Earth51AlphaText.Text, "51N user alpha"),
-                EarthTimeUserC = ParseDouble(Earth51CText.Text, "51N user C", allowZero: true)
+                EarthTimeUserC = ParseDouble(Earth51CText.Text, "51N user C", allowZero: true),
+
+                Feeder = _feederTabInstalled ? BuildFeederSettings() : new FeederProtectionSettings()
             };
             settings.Validate();
             error = string.Empty;

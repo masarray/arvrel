@@ -27,11 +27,16 @@
                     <TextBlock Text="ACTIVE SETTINGS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Right" />
                     <TextBlock x:Name="SettingsStatusText" FontFamily="Cascadia Mono, Consolas" FontSize="10" HorizontalAlignment="Right" Margin="0,3,0,0" />
                 </StackPanel>
-                <ComboBox Grid.Column="2" x:Name="ElementCombo" Width="180" SelectedIndex="0" SelectionChanged="ElementCombo_SelectionChanged" VerticalAlignment="Center">
+                <ComboBox Grid.Column="2" x:Name="ElementCombo" Width="205" SelectedIndex="0" SelectionChanged="ElementCombo_SelectionChanged" VerticalAlignment="Center">
                     <ComboBoxItem Content="50P-1" />
                     <ComboBoxItem Content="51P" />
                     <ComboBoxItem Content="50N" />
                     <ComboBoxItem Content="51N" />
+                    <ComboBoxItem Content="67P" />
+                    <ComboBoxItem Content="67N" />
+                    <ComboBoxItem Content="27" />
+                    <ComboBoxItem Content="59" />
+                    <ComboBoxItem Content="59N" />
                 </ComboBox>
             </Grid>
         </Border>
@@ -70,7 +75,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock Text="DETERMINISTIC POLICY" Style="{StaticResource SectionLabel}" />
                     <TextBlock Grid.Row="1" Margin="0,8,0,0" Text="• smv.allowsTrip is mandatory&#x0a;• no file, network or process access&#x0a;• no unmanaged calls or unbounded loops&#x0a;• staged source remains virtual-output only" Foreground="{StaticResource MutedBrush}" FontSize="10.5" TextWrapping="Wrap" />
-                    <TextBlock Grid.Row="2" Text="CURVE REFERENCE" Style="{StaticResource SectionLabel}" Margin="0,17,0,0" />
+                    <TextBlock Grid.Row="2" Text="ELEMENT REFERENCE" Style="{StaticResource SectionLabel}" Margin="0,17,0,0" />
                     <TextBlock Grid.Row="3" x:Name="CurveReferenceText" Margin="0,7,0,0" FontFamily="Cascadia Mono, Consolas" FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
                     <TextBox Grid.Row="4" x:Name="ValidationText" Margin="0,14,0,0" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="10.2" />
                 </Grid>

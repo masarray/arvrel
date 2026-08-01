@@ -46,6 +46,11 @@ public static class AlgorithmSourceCatalog
                 "EarthTimeMinimumOperateTime",
                 "EarthTimeDropoutRatio",
                 "EarthTimeResetMode"),
+            "67P" => BuildDirectionalPhase(settings.Feeder),
+            "67N" => BuildDirectionalEarth(settings.Feeder),
+            "27" => BuildUndervoltage(settings.Feeder),
+            "59" => BuildOvervoltage(settings.Feeder),
+            "59N" => BuildResidualOvervoltage(settings.Feeder),
             _ => throw new ArgumentOutOfRangeException(nameof(element), element, "Unknown protection element.")
         };
     }
@@ -100,4 +105,84 @@ public static class AlgorithmSourceCatalog
             }
             """;
     }
+
+    private static string BuildDirectionalPhase(FeederProtectionSettings settings)
+        => $$"""
+            element "67P" {
+              measurement operatingCurrent = max(IA.rms1c, IB.rms1c, IC.rms1c)
+              phasor I1 = sequence.positive(current.fundamental)
+              phasor V1 = sequence.positive(voltage.fundamental)
+              polarizingAvailable = abs(V1) >= setting("Feeder.DirectionalPhase67MinimumPolarizingVoltageV")
+              operatingAngle = angle(I1) - angle(V1)
+              torque = cos(operatingAngle - setting("Feeder.DirectionalPhase67CharacteristicAngleDeg"))
+              selectedDirection = direction(torque, "{{settings.DirectionalPhase67Sense}}")
+              pickup = operatingCurrent >= setting("Feeder.DirectionalPhase67PickupA")
+                && polarizingAvailable
+                && selectedDirection
+              dropout = operatingCurrent < setting("Feeder.DirectionalPhase67PickupA")
+                * setting("Feeder.DirectionalPhase67DropoutRatio")
+                || !selectedDirection
+              operate = pickup.persist(setting("Feeder.DirectionalPhase67Delay"))
+              trip = operate && smv.allowsTrip
+            }
+            """;
+
+    private static string BuildDirectionalEarth(FeederProtectionSettings settings)
+        => $$"""
+            element "67N" {
+              phasor operatingCurrent = 3I0.fundamental
+              phasor polarizingVoltage = 3V0.fundamental
+              polarizingAvailable = abs(polarizingVoltage)
+                >= setting("Feeder.DirectionalEarth67NMinimumPolarizingVoltageV")
+              operatingAngle = angle(operatingCurrent) - angle(polarizingVoltage)
+              torque = cos(operatingAngle - setting("Feeder.DirectionalEarth67NCharacteristicAngleDeg"))
+              selectedDirection = direction(torque, "{{settings.DirectionalEarth67NSense}}")
+              pickup = abs(operatingCurrent) >= setting("Feeder.DirectionalEarth67NPickupA")
+                && polarizingAvailable
+                && selectedDirection
+              dropout = abs(operatingCurrent) < setting("Feeder.DirectionalEarth67NPickupA")
+                * setting("Feeder.DirectionalEarth67NDropoutRatio")
+                || !selectedDirection
+              operate = pickup.persist(setting("Feeder.DirectionalEarth67NDelay"))
+              trip = operate && smv.allowsTrip
+            }
+            """;
+
+    private static string BuildUndervoltage(FeederProtectionSettings settings)
+        => $$"""
+            element "27" {
+              measurement voltages = voltage.select("{{settings.Undervoltage27Mode}}")
+              pickup = count(voltages <= setting("Feeder.Undervoltage27PickupV"))
+                >= phaseCount("{{settings.Undervoltage27Logic}}")
+              dropout = selectedVoltage >= setting("Feeder.Undervoltage27PickupV")
+                * setting("Feeder.Undervoltage27ResetRatio")
+              operate = pickup.persist(setting("Feeder.Undervoltage27Delay"))
+              trip = operate && smv.allowsTrip
+            }
+            """;
+
+    private static string BuildOvervoltage(FeederProtectionSettings settings)
+        => $$"""
+            element "59" {
+              measurement voltages = voltage.select("{{settings.Overvoltage59Mode}}")
+              pickup = count(voltages >= setting("Feeder.Overvoltage59PickupV"))
+                >= phaseCount("{{settings.Overvoltage59Logic}}")
+              dropout = selectedVoltage < setting("Feeder.Overvoltage59PickupV")
+                * setting("Feeder.Overvoltage59DropoutRatio")
+              operate = pickup.persist(setting("Feeder.Overvoltage59Delay"))
+              trip = operate && smv.allowsTrip
+            }
+            """;
+
+    private static string BuildResidualOvervoltage(FeederProtectionSettings settings)
+        => """
+            element "59N" {
+              phasor operatingVoltage = 3V0.fundamental
+              pickup = abs(operatingVoltage) >= setting("Feeder.ResidualOvervoltage59NPickupV")
+              dropout = abs(operatingVoltage) < setting("Feeder.ResidualOvervoltage59NPickupV")
+                * setting("Feeder.ResidualOvervoltage59NDropoutRatio")
+              operate = pickup.persist(setting("Feeder.ResidualOvervoltage59NDelay"))
+              trip = operate && smv.allowsTrip
+            }
+            """;
 }

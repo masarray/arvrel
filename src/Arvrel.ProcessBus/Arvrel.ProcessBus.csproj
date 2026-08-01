@@ -4,10 +4,17 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>Arvrel.ProcessBus</RootNamespace>
     <Description>IEC 61850 Sampled Values source, measurement, trust, and evidence pipeline for ARVREL.</Description>
+    <!-- The decoder proves Va/Vb/Vc presence through hasVoltage before accessing
+         nullable local values. The compiler cannot retain that relational proof. -->
+    <NoWarn>$(NoWarn);CS8629</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="SmvStreamRuntime.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">

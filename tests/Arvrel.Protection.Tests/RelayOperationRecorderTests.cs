@@ -1,3 +1,4 @@
+using System.Numerics;
 using Arvrel.Protection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -32,7 +33,9 @@ public sealed class RelayOperationRecorderTests
         Assert.IsNotNull(transition.Operation.OperateTime);
         Assert.AreEqual("50P-1", transition.Operation.TripElement);
         Assert.AreEqual(20, transition.Operation.OperateTime.Value.TotalMilliseconds, 0.001);
-        Assert.AreEqual(4, transition.Operation.TripCurrentA, 0.001);
+        Assert.AreEqual(4, transition.Operation.TripQuantity, 0.001);
+        Assert.AreEqual("I OP", transition.Operation.QuantitySymbol);
+        Assert.AreEqual("A", transition.Operation.QuantityUnit);
 
         engine.Reset();
         var resetFrame = new MeasurementFrame(start.AddMilliseconds(25), 1, 1, 1, 0, SmvTrustState.Healthy);
@@ -65,6 +68,51 @@ public sealed class RelayOperationRecorderTests
         Assert.IsNull(recorder.Current.TripTimestamp);
     }
 
+    [TestMethod]
+    public void Recorder_UsesVoltageQuantityAndUnitForUndervoltageTrip()
+    {
+        var settings = new ProtectionSettings
+        {
+            PhaseInstantaneousEnabled = false,
+            PhaseTimeEnabled = false,
+            EarthInstantaneousEnabled = false,
+            EarthTimeEnabled = false,
+            Feeder = new FeederProtectionSettings
+            {
+                Undervoltage27Enabled = true,
+                Undervoltage27PickupV = 90,
+                Undervoltage27Delay = TimeSpan.FromMilliseconds(20),
+                Undervoltage27Logic = VoltageSelectionLogic.TwoOfThree
+            }
+        };
+        var engine = new ProtectionEngine(settings);
+        var recorder = new RelayOperationRecorder();
+        var start = DateTimeOffset.UtcNow;
+        var tripSeen = false;
+
+        for (var elapsed = 0; elapsed <= 25; elapsed += 5)
+        {
+            var phasors = BalancedPhasors(0.5, 70);
+            var frame = new MeasurementFrame(
+                start.AddMilliseconds(elapsed),
+                0.5,
+                0.5,
+                0.5,
+                0,
+                SmvTrustState.Healthy,
+                phasors);
+            var transition = recorder.Observe(engine.Evaluate(frame), frame);
+            tripSeen |= transition.TripOccurred;
+        }
+
+        Assert.IsTrue(tripSeen);
+        Assert.IsNotNull(recorder.Current);
+        Assert.AreEqual("27", recorder.Current.TripElement);
+        Assert.AreEqual("V OP", recorder.Current.QuantitySymbol);
+        Assert.AreEqual("V", recorder.Current.QuantityUnit);
+        Assert.AreEqual(70, recorder.Current.TripQuantity, 0.001);
+    }
+
     private static ProtectionSettings InstantaneousOnlySettings(TimeSpan delay)
         => new()
         {
@@ -77,4 +125,21 @@ public sealed class RelayOperationRecorderTests
 
     private static MeasurementFrame Frame(DateTimeOffset timestamp, SmvTrustState trust)
         => new(timestamp, 4, 1, 1, 0, trust);
+
+    private static PhasorMeasurementSet BalancedPhasors(double current, double voltage)
+    {
+        return new PhasorMeasurementSet(
+            Polar(current, 0),
+            Polar(current, -120),
+            Polar(current, 120),
+            Complex.Zero,
+            Polar(voltage, 0),
+            Polar(voltage, -120),
+            Polar(voltage, 120),
+            Complex.Zero,
+            50);
+    }
+
+    private static Complex Polar(double magnitude, double angleDegrees)
+        => Complex.FromPolarCoordinates(magnitude, angleDegrees * Math.PI / 180);
 }
