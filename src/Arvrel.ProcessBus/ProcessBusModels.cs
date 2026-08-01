@@ -31,9 +31,12 @@ public sealed record SmvMeasurementContext
 {
     public double CtPrimaryA { get; init; } = 1;
     public double CtSecondaryA { get; init; } = 1;
+    public double VtPrimaryV { get; init; } = 1;
+    public double VtSecondaryV { get; init; } = 1;
     public double NominalFrequencyHz { get; init; } = 50;
 
     public double PrimaryRatio => CtSecondaryA <= 0 ? 1 : CtPrimaryA / CtSecondaryA;
+    public double VoltagePrimaryRatio => VtSecondaryV <= 0 ? 1 : VtPrimaryV / VtSecondaryV;
 
     public void Validate()
     {
@@ -41,6 +44,10 @@ public sealed record SmvMeasurementContext
             throw new ArgumentOutOfRangeException(nameof(CtPrimaryA));
         if (!double.IsFinite(CtSecondaryA) || CtSecondaryA <= 0)
             throw new ArgumentOutOfRangeException(nameof(CtSecondaryA));
+        if (!double.IsFinite(VtPrimaryV) || VtPrimaryV <= 0)
+            throw new ArgumentOutOfRangeException(nameof(VtPrimaryV));
+        if (!double.IsFinite(VtSecondaryV) || VtSecondaryV <= 0)
+            throw new ArgumentOutOfRangeException(nameof(VtSecondaryV));
         if (!double.IsFinite(NominalFrequencyHz) || NominalFrequencyHz is < 45 or > 65)
             throw new ArgumentOutOfRangeException(nameof(NominalFrequencyHz));
     }
@@ -52,8 +59,17 @@ public sealed record SmvWaveformWindow(
     IReadOnlyList<double> PhaseC,
     IReadOnlyList<double> Residual,
     double FrequencyHz,
-    int SamplesPerCycle)
+    int SamplesPerCycle,
+    IReadOnlyList<double>? PhaseAVoltage = null,
+    IReadOnlyList<double>? PhaseBVoltage = null,
+    IReadOnlyList<double>? PhaseCVoltage = null,
+    IReadOnlyList<double>? NeutralVoltage = null)
 {
+    public IReadOnlyList<double> VoltageA => PhaseAVoltage ?? Array.Empty<double>();
+    public IReadOnlyList<double> VoltageB => PhaseBVoltage ?? Array.Empty<double>();
+    public IReadOnlyList<double> VoltageC => PhaseCVoltage ?? Array.Empty<double>();
+    public IReadOnlyList<double> VoltageN => NeutralVoltage ?? Array.Empty<double>();
+
     public static SmvWaveformWindow Empty { get; } = new(
         Array.Empty<double>(),
         Array.Empty<double>(),
