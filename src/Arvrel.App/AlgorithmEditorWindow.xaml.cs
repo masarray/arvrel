@@ -64,7 +64,7 @@ public partial class AlgorithmEditorWindow : Window
         Directory.CreateDirectory(directory);
         var document = new
         {
-            schemaVersion = 2,
+            schemaVersion = 3,
             element = SelectedElement,
             stagedUtc = DateTimeOffset.UtcNow,
             sourceHash = result.ContentHash,
@@ -74,7 +74,7 @@ public partial class AlgorithmEditorWindow : Window
                 _activeSettings.Revision,
                 fingerprint = _activeSettings.Fingerprint()
             },
-            mode = "deterministic-shadow-p1.1",
+            mode = "deterministic-shadow-p2",
             activation = "not-active",
             outputBoundary = "virtual-only",
             source = EditorText.Text
@@ -92,10 +92,10 @@ public partial class AlgorithmEditorWindow : Window
             EditorText.Text = source;
         ValidationText.Text = "Not validated. The active standard source remains read-only and executing.";
         StatusText.Text = $"Loaded exact active {SelectedElement} source from {_activeSettings.GroupName} revision {_activeSettings.Revision}.";
-        CurveReferenceText.Text = BuildCurveReference();
+        CurveReferenceText.Text = BuildElementReference();
     }
 
-    private string BuildCurveReference()
+    private string BuildElementReference()
     {
         if (SelectedElement == "51P")
             return CurveReference(
@@ -115,9 +115,36 @@ public partial class AlgorithmEditorWindow : Window
                 _activeSettings.EarthTimeUserK,
                 _activeSettings.EarthTimeUserAlpha,
                 _activeSettings.EarthTimeUserC);
-        return SelectedElement == "50P-1"
-            ? $"Definite time · {_activeSettings.PhaseInstantaneousDelay.TotalMilliseconds:0.###} ms"
-            : $"Definite time · {_activeSettings.EarthInstantaneousDelay.TotalMilliseconds:0.###} ms";
+
+        var feeder = _activeSettings.Feeder;
+        return SelectedElement switch
+        {
+            "50P-1" => $"Definite time · {_activeSettings.PhaseInstantaneousDelay.TotalMilliseconds:0.###} ms",
+            "50N" => $"Definite time · {_activeSettings.EarthInstantaneousDelay.TotalMilliseconds:0.###} ms",
+            "67P" =>
+                $"{(feeder.DirectionalPhase67Enabled ? "ENABLED" : "DISABLED")} · V1/I1 polarization\n" +
+                $"{feeder.DirectionalPhase67Sense} · MTA {feeder.DirectionalPhase67CharacteristicAngleDeg:0.###}°\n" +
+                $"I> {feeder.DirectionalPhase67PickupA:0.###} A · V1 min {feeder.DirectionalPhase67MinimumPolarizingVoltageV:0.###} V\n" +
+                $"Delay {feeder.DirectionalPhase67Delay.TotalMilliseconds:0.###} ms",
+            "67N" =>
+                $"{(feeder.DirectionalEarth67NEnabled ? "ENABLED" : "DISABLED")} · 3V0/3I0 polarization\n" +
+                $"{feeder.DirectionalEarth67NSense} · MTA {feeder.DirectionalEarth67NCharacteristicAngleDeg:0.###}°\n" +
+                $"3I0> {feeder.DirectionalEarth67NPickupA:0.###} A · 3V0 min {feeder.DirectionalEarth67NMinimumPolarizingVoltageV:0.###} V\n" +
+                $"Delay {feeder.DirectionalEarth67NDelay.TotalMilliseconds:0.###} ms",
+            "27" =>
+                $"{(feeder.Undervoltage27Enabled ? "ENABLED" : "DISABLED")} · {feeder.Undervoltage27Mode}\n" +
+                $"{feeder.Undervoltage27Logic} · V< {feeder.Undervoltage27PickupV:0.###} V\n" +
+                $"Delay {feeder.Undervoltage27Delay.TotalMilliseconds:0.###} ms · reset ×{feeder.Undervoltage27ResetRatio:0.###}",
+            "59" =>
+                $"{(feeder.Overvoltage59Enabled ? "ENABLED" : "DISABLED")} · {feeder.Overvoltage59Mode}\n" +
+                $"{feeder.Overvoltage59Logic} · V> {feeder.Overvoltage59PickupV:0.###} V\n" +
+                $"Delay {feeder.Overvoltage59Delay.TotalMilliseconds:0.###} ms · dropout ×{feeder.Overvoltage59DropoutRatio:0.###}",
+            "59N" =>
+                $"{(feeder.ResidualOvervoltage59NEnabled ? "ENABLED" : "DISABLED")} · residual 3V0\n" +
+                $"3V0> {feeder.ResidualOvervoltage59NPickupV:0.###} V\n" +
+                $"Delay {feeder.ResidualOvervoltage59NDelay.TotalMilliseconds:0.###} ms · dropout ×{feeder.ResidualOvervoltage59NDropoutRatio:0.###}",
+            _ => "No element reference available."
+        };
     }
 
     private static string CurveReference(
