@@ -27,11 +27,12 @@ internal sealed class SampleRing
     }
 
     /// <summary>
-    /// Returns the newest complete display window. Once a requested two-cycle scope
-    /// window is full, partial samples from the following window do not slide the
-    /// waveform horizontally. This mirrors the locked-window behavior used by ArSubsv.
+    /// Returns the newest complete display window. Partial samples from the next
+    /// window do not move the oscilloscope horizontally.
     /// </summary>
-    public double[] Last(int count)
+    public double[] Last(int count) => DisplayWindow(count);
+
+    public double[] DisplayWindow(int count)
     {
         count = Math.Clamp(count, 0, _count);
         if (count == 0)
@@ -41,10 +42,19 @@ internal sealed class SampleRing
             ? (int)(_totalSamples % count)
             : 0;
         var start = Wrap(_writeIndex - lagToCompletedWindow - count);
-        var result = new double[count];
-        for (var index = 0; index < count; index++)
-            result[index] = _buffer[(start + index) % _buffer.Length];
-        return result;
+        return Copy(start, count);
+    }
+
+    /// <summary>
+    /// Returns the newest samples without display locking. Protection phasors and
+    /// RMS calculations use this path so they are not delayed by scope refresh.
+    /// </summary>
+    public double[] Latest(int count)
+    {
+        count = Math.Clamp(count, 0, _count);
+        if (count == 0)
+            return Array.Empty<double>();
+        return Copy(Wrap(_writeIndex - count), count);
     }
 
     public double RmsLast(int count)
@@ -69,6 +79,14 @@ internal sealed class SampleRing
         _writeIndex = 0;
         _count = 0;
         _totalSamples = 0;
+    }
+
+    private double[] Copy(int start, int count)
+    {
+        var result = new double[count];
+        for (var index = 0; index < count; index++)
+            result[index] = _buffer[(start + index) % _buffer.Length];
+        return result;
     }
 
     private int Wrap(int index)
