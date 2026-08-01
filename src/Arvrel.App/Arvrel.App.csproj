@@ -15,6 +15,9 @@
     <ProjectReference Include="..\Arvrel.ProcessBus\Arvrel.ProcessBus.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="MainWindow.RelayFaceplate.cs" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
     <DefineConstants>$(DefineConstants);ARIEC61850_SIBLING</DefineConstants>
