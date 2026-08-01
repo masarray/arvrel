@@ -88,7 +88,7 @@ public sealed class RelayOperationRecorderTests
         var engine = new ProtectionEngine(settings);
         var recorder = new RelayOperationRecorder();
         var start = DateTimeOffset.UtcNow;
-        RelayOperationTransition transition = new(false, false, false, false, null);
+        var tripSeen = false;
 
         for (var elapsed = 0; elapsed <= 25; elapsed += 5)
         {
@@ -101,15 +101,16 @@ public sealed class RelayOperationRecorderTests
                 0,
                 SmvTrustState.Healthy,
                 phasors);
-            transition = recorder.Observe(engine.Evaluate(frame), frame);
+            var transition = recorder.Observe(engine.Evaluate(frame), frame);
+            tripSeen |= transition.TripOccurred;
         }
 
-        Assert.IsTrue(transition.TripOccurred);
-        Assert.IsNotNull(transition.Operation);
-        Assert.AreEqual("27", transition.Operation.TripElement);
-        Assert.AreEqual("V OP", transition.Operation.QuantitySymbol);
-        Assert.AreEqual("V", transition.Operation.QuantityUnit);
-        Assert.AreEqual(70, transition.Operation.TripQuantity, 0.001);
+        Assert.IsTrue(tripSeen);
+        Assert.IsNotNull(recorder.Current);
+        Assert.AreEqual("27", recorder.Current.TripElement);
+        Assert.AreEqual("V OP", recorder.Current.QuantitySymbol);
+        Assert.AreEqual("V", recorder.Current.QuantityUnit);
+        Assert.AreEqual(70, recorder.Current.TripQuantity, 0.001);
     }
 
     private static ProtectionSettings InstantaneousOnlySettings(TimeSpan delay)
