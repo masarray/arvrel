@@ -3,6 +3,7 @@ namespace Arvrel.Protection;
 public sealed class ProtectionEngine
 {
     private ProtectionSettings _settings;
+    private readonly FeederProtectionEngine _feederEngine = new();
     private TimeSpan _phase50Elapsed;
     private TimeSpan _earth50Elapsed;
     private double _phase51Progress;
@@ -105,9 +106,10 @@ public sealed class ProtectionEngine
         var phase51Operate = _settings.PhaseTimeEnabled && _phase51Progress >= 1;
         var earth51Operate = _settings.EarthTimeEnabled && _earth51Progress >= 1;
 
-        var operationRequested = phase50Operate || phase51Operate || earth50Operate || earth51Operate;
-        var blocked = operationRequested && !frame.SmvTrust.AllowsTrip;
-        var tripRequested = operationRequested && frame.SmvTrust.AllowsTrip;
+        var feeder = _feederEngine.Evaluate(frame, _settings.Feeder, delta);
+        var legacyOperationRequested = phase50Operate || phase51Operate || earth50Operate || earth51Operate;
+        var blocked = feeder.Blocked || legacyOperationRequested && !frame.SmvTrust.AllowsTrip;
+        var tripRequested = feeder.TripRequested || legacyOperationRequested && frame.SmvTrust.AllowsTrip;
         if (tripRequested)
             _tripLatched = true;
 
@@ -117,9 +119,9 @@ public sealed class ProtectionEngine
         var phaseA = double.IsFinite(minimumPhasePickup) && frame.PhaseA >= minimumPhasePickup;
         var phaseB = double.IsFinite(minimumPhasePickup) && frame.PhaseB >= minimumPhasePickup;
         var phaseC = double.IsFinite(minimumPhasePickup) && frame.PhaseC >= minimumPhasePickup;
-        var earth = earth50Pickup || earth51Pickup;
+        var earth = earth50Pickup || earth51Pickup || feeder.DirectionalEarth67N.Pickup || feeder.ResidualOvervoltage59N.Pickup;
 
-        var activeElement = ResolveActiveElement(
+        var legacyActiveElement = ResolveActiveElement(
             phase50Operate,
             earth50Operate,
             phase51Operate,
@@ -128,6 +130,7 @@ public sealed class ProtectionEngine
             earth50Pickup,
             phase51Pickup,
             earth51Pickup);
+        var activeElement = legacyActiveElement == "READY" ? feeder.ActiveElement : legacyActiveElement;
 
         var decisionReason = blocked
             ? $"TRIP BLOCKED · {frame.SmvTrust.Code} · {frame.SmvTrust.Detail}"
@@ -200,7 +203,10 @@ public sealed class ProtectionEngine
             blocked,
             activeElement,
             decisionReason,
-            frame.SmvTrust);
+            frame.SmvTrust)
+        {
+            Feeder = feeder
+        };
     }
 
     public void Reset()
@@ -222,6 +228,7 @@ public sealed class ProtectionEngine
         _earth50Elapsed = TimeSpan.Zero;
         _phase51Progress = 0;
         _earth51Progress = 0;
+        _feederEngine.Reset();
         if (!keepTripLatch)
             _tripLatched = false;
     }
