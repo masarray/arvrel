@@ -133,7 +133,8 @@ internal static class RelayIndicatorLampBehavior
             "PickupLed" => LampState.Orange,
             "TripLed" or "BlockLed" => LampState.Red,
             "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? LampState.Green : LampState.Red,
-            "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" => LampState.Red,
+            "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" =>
+                IsTripColor(source) ? LampState.Red : LampState.Orange,
             _ => LampState.Green
         };
     }
@@ -156,6 +157,12 @@ internal static class RelayIndicatorLampBehavior
 
     private static bool IsHealthyColor(Brush? brush)
         => brush is SolidColorBrush solid && solid.Color.G > solid.Color.R && solid.Color.G > solid.Color.B;
+
+    private static bool IsTripColor(Brush? brush)
+        => brush is SolidColorBrush solid &&
+           solid.Color.R >= 170 &&
+           solid.Color.G < 100 &&
+           solid.Color.B < 115;
 
     private static Brush CreateLampBrush(Color highlight, Color core, Color edge, Color outerRim)
     {
