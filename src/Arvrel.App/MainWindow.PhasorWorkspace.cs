@@ -142,6 +142,7 @@ public partial class MainWindow
     {
         var button = new Button
         {
+            Style = (Style)FindResource("CompactButton"),
             Content = label,
             MinWidth = mode == AnalysisWorkspaceMode.Phasor ? 55 : 43,
             Height = 22,
