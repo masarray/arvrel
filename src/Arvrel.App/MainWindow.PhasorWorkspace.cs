@@ -83,31 +83,101 @@ public partial class MainWindow
 
     private void InstallAnalysisHeaderControls()
     {
-        if (StreamHealthText.Parent is not StackPanel titleLine)
+        if (StreamHealthText.Parent is not StackPanel titleLine ||
+            titleLine.Parent is not StackPanel titleBlock ||
+            titleBlock.Parent is not Grid headerGrid)
             return;
 
-        var separator = new Border
+        var measurementSummary = headerGrid.Children
+            .OfType<StackPanel>()
+            .FirstOrDefault(child => !ReferenceEquals(child, titleBlock));
+        if (measurementSummary is null)
+            return;
+
+        // Rebuild the header into three deliberate zones. The earlier implementation
+        // appended controls to the title line, which made the title, stream state,
+        // segmented buttons, combo box and measurements compete for one baseline.
+        headerGrid.ColumnDefinitions.Clear();
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(232) });
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition
         {
-            Width = 1,
-            Height = 18,
-            Background = new SolidColorBrush(Color.FromRgb(214, 223, 231)),
-            Margin = new Thickness(11, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center
+            Width = new GridLength(1, GridUnitType.Star),
+            MinWidth = 238
+        });
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        Grid.SetColumn(titleBlock, 0);
+        titleBlock.Width = 232;
+        titleBlock.VerticalAlignment = VerticalAlignment.Center;
+        titleBlock.HorizontalAlignment = HorizontalAlignment.Left;
+
+        titleLine.VerticalAlignment = VerticalAlignment.Center;
+        foreach (var child in titleLine.Children.OfType<FrameworkElement>())
+            child.VerticalAlignment = VerticalAlignment.Center;
+
+        StreamHealthText.MaxWidth = 92;
+        StreamHealthText.TextTrimming = TextTrimming.CharacterEllipsis;
+        StreamHealthText.VerticalAlignment = VerticalAlignment.Center;
+
+        var subtitle = titleBlock.Children.OfType<TextBlock>().FirstOrDefault();
+        if (subtitle is not null)
+        {
+            subtitle.Width = 232;
+            subtitle.Margin = new Thickness(0, 3, 0, 0);
+            subtitle.VerticalAlignment = VerticalAlignment.Center;
+            subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
+            subtitle.TextWrapping = TextWrapping.NoWrap;
+        }
+
+        Grid.SetColumn(measurementSummary, 2);
+        measurementSummary.VerticalAlignment = VerticalAlignment.Center;
+        measurementSummary.HorizontalAlignment = HorizontalAlignment.Right;
+        measurementSummary.Margin = new Thickness(14, 0, 0, 0);
+
+        var measurementGroups = measurementSummary.Children.OfType<StackPanel>().ToArray();
+        for (var index = 0; index < measurementGroups.Length; index++)
+        {
+            var group = measurementGroups[index];
+            group.VerticalAlignment = VerticalAlignment.Center;
+            group.HorizontalAlignment = HorizontalAlignment.Left;
+            group.MinWidth = index == measurementGroups.Length - 1 ? 62 : 47;
+            group.Margin = new Thickness(0, 0, index == measurementGroups.Length - 1 ? 0 : 11, 0);
+
+            foreach (var text in group.Children.OfType<TextBlock>())
+            {
+                text.VerticalAlignment = VerticalAlignment.Center;
+                text.HorizontalAlignment = HorizontalAlignment.Left;
+                text.TextTrimming = TextTrimming.CharacterEllipsis;
+            }
+        }
+
+        var controlsLine = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 8, 0)
         };
-        titleLine.Children.Add(separator);
+        Grid.SetColumn(controlsLine, 1);
+        headerGrid.Children.Add(controlsLine);
 
         var viewGroup = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(244, 247, 249)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(211, 221, 229)),
+            Height = 32,
+            Background = FindResource("PanelBrush") as Brush,
+            BorderBrush = FindResource("LineBrush") as Brush,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(5),
             Padding = new Thickness(2),
             VerticalAlignment = VerticalAlignment.Center
         };
-        var viewPanel = new StackPanel { Orientation = Orientation.Horizontal };
+        var viewPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
         viewGroup.Child = viewPanel;
-        titleLine.Children.Add(viewGroup);
+        controlsLine.Children.Add(viewGroup);
 
         AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Waveform, "WAVE");
         AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Dual, "DUAL");
@@ -115,14 +185,20 @@ public partial class MainWindow
 
         _phasorQuantityCombo = new ComboBox
         {
-            Width = 92,
-            Height = 26,
-            Margin = new Thickness(7, 0, 0, 0),
+            Width = 108,
+            Height = 32,
+            MinHeight = 32,
+            MaxHeight = 32,
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(8, 0, 8, 0),
+            FontSize = 10.5,
             VerticalAlignment = VerticalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
             ToolTip = "Select current, voltage, or symmetrical-component phasors"
         };
         _phasorQuantityCombo.Items.Add("Current I");
-        _phasorQuantityCombo.Items.Add("Voltage V");
+        _phasorQuantityCombo.Items.Add("Voltage U");
         _phasorQuantityCombo.Items.Add("Sequence");
         _phasorQuantityCombo.SelectedIndex = 0;
         _phasorQuantityCombo.SelectionChanged += (_, _) =>
@@ -135,7 +211,7 @@ public partial class MainWindow
             };
             RefreshPhasorFrame();
         };
-        titleLine.Children.Add(_phasorQuantityCombo);
+        controlsLine.Children.Add(_phasorQuantityCombo);
     }
 
     private void AddAnalysisModeButton(Panel parent, AnalysisWorkspaceMode mode, string label)
@@ -144,13 +220,18 @@ public partial class MainWindow
         {
             Style = (Style)FindResource("CompactButton"),
             Content = label,
-            MinWidth = mode == AnalysisWorkspaceMode.Phasor ? 55 : 43,
-            Height = 22,
-            Padding = new Thickness(6, 0, 6, 1),
+            MinWidth = mode == AnalysisWorkspaceMode.Phasor ? 54 : 42,
+            Height = 26,
+            MinHeight = 26,
+            MaxHeight = 26,
+            Padding = new Thickness(7, 0, 7, 0),
             Margin = new Thickness(0),
             BorderThickness = new Thickness(0),
-            FontSize = 8.8,
+            FontSize = 9.1,
             FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
             Cursor = System.Windows.Input.Cursors.Hand,
             ToolTip = mode switch
             {
@@ -200,12 +281,11 @@ public partial class MainWindow
 
         var accent = new SolidColorBrush(Color.FromRgb(46, 111, 158));
         var accentSoft = new SolidColorBrush(Color.FromRgb(232, 241, 247));
-        var inactive = new SolidColorBrush(Color.FromRgb(244, 247, 249));
         var inactiveText = new SolidColorBrush(Color.FromRgb(101, 117, 134));
         foreach (var pair in _analysisModeButtons)
         {
             var selected = pair.Key == mode;
-            pair.Value.Background = selected ? accentSoft : inactive;
+            pair.Value.Background = selected ? accentSoft : Brushes.Transparent;
             pair.Value.Foreground = selected ? accent : inactiveText;
         }
 
