@@ -12,6 +12,7 @@ public partial class MainWindow
 {
     private bool _sessionPersistenceInitialized;
     private bool _restoringSessionPreferences;
+    private object? _observedAdapterItemsSource;
     private UserPreferencesStore? _userPreferencesStore;
     private UserPreferences _userPreferences = new();
 
@@ -25,6 +26,7 @@ public partial class MainWindow
         _userPreferences = _userPreferencesStore.Load();
 
         AdapterCombo.DropDownClosed += (_, _) => PersistCurrentAdapter();
+        AdapterCombo.LayoutUpdated += (_, _) => RestoreAdapterAfterItemsRefresh();
         RunButton.Click += (_, _) => Dispatcher.BeginInvoke(
             DispatcherPriority.Background,
             new Action(PersistCurrentAdapter));
@@ -56,6 +58,29 @@ public partial class MainWindow
         }
     }
 
+    private void RestoreAdapterAfterItemsRefresh()
+    {
+        var currentSource = AdapterCombo.ItemsSource;
+        if (ReferenceEquals(currentSource, _observedAdapterItemsSource))
+            return;
+
+        _observedAdapterItemsSource = currentSource;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ContextIdle,
+            new Action(() =>
+            {
+                _restoringSessionPreferences = true;
+                try
+                {
+                    RestoreLastAdapter();
+                }
+                finally
+                {
+                    _restoringSessionPreferences = false;
+                }
+            }));
+    }
+
     private void RestoreLastAdapter()
     {
         var adapters = AdapterCombo.ItemsSource?.Cast<ProcessBusAdapter>().ToArray()
@@ -64,11 +89,14 @@ public partial class MainWindow
             return;
 
         var selected = adapters.FirstOrDefault(adapter =>
-                !string.IsNullOrWhiteSpace(_userPreferences.LastAdapterSelector) &&
-                string.Equals(adapter.Selector, _userPreferences.LastAdapterSelector, StringComparison.Ordinal))
+                IsUsableMac(_userPreferences.LastAdapterMacAddress) &&
+                string.Equals(adapter.MacAddress, _userPreferences.LastAdapterMacAddress, StringComparison.OrdinalIgnoreCase))
             ?? adapters.FirstOrDefault(adapter =>
                 !string.IsNullOrWhiteSpace(_userPreferences.LastAdapterDisplayName) &&
-                string.Equals(adapter.DisplayName, _userPreferences.LastAdapterDisplayName, StringComparison.OrdinalIgnoreCase));
+                string.Equals(adapter.DisplayName, _userPreferences.LastAdapterDisplayName, StringComparison.OrdinalIgnoreCase))
+            ?? adapters.FirstOrDefault(adapter =>
+                !string.IsNullOrWhiteSpace(_userPreferences.LastAdapterSelector) &&
+                string.Equals(adapter.Selector, _userPreferences.LastAdapterSelector, StringComparison.Ordinal));
 
         if (selected is not null)
             AdapterCombo.SelectedItem = selected;
@@ -138,7 +166,8 @@ public partial class MainWindow
         _userPreferences = _userPreferences with
         {
             LastAdapterSelector = adapter.Selector,
-            LastAdapterDisplayName = adapter.DisplayName
+            LastAdapterDisplayName = adapter.DisplayName,
+            LastAdapterMacAddress = IsUsableMac(adapter.MacAddress) ? adapter.MacAddress : null
         };
         _userPreferencesStore?.TrySave(_userPreferences);
     }
@@ -148,6 +177,10 @@ public partial class MainWindow
         PersistCurrentAdapter();
         PersistLoadedScl();
     }
+
+    private static bool IsUsableMac(string? value)
+        => !string.IsNullOrWhiteSpace(value) &&
+           !string.Equals(value, "No MAC", StringComparison.OrdinalIgnoreCase);
 
     private static IEnumerable<T> SessionVisualDescendants<T>(DependencyObject root) where T : DependencyObject
     {
