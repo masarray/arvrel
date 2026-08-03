@@ -34,7 +34,7 @@ VersionInfoVersion=0.1.0.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription=IEC 61850 Sampled Values virtual protection relay laboratory
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductVersion=0.1.0.0
 VersionInfoCopyright=Copyright (C) 2026 Ari Sulistiono
 
 [Languages]
