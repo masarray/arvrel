@@ -80,7 +80,7 @@ public partial class MainWindow
             BindP4Tooltip(subtitle);
         }
 
-        EngineModeText.MaxWidth = 225;
+        EngineModeText.MaxWidth = 240;
         PolishP4DynamicText(EngineModeText);
     }
 
@@ -158,7 +158,7 @@ public partial class MainWindow
         ProtectionReasonText.LineHeight = 14;
         ProtectionReasonText.Foreground = P4Brush(86, 104, 117);
         ProtectionReasonText.Margin = new Thickness(6, 0, 0, 0);
-        ProtectionReasonText.MaxWidth = 520;
+        ProtectionReasonText.MaxWidth = 620;
         PolishP4DynamicText(ProtectionReasonText);
 
         if (ProtectionReasonText.Parent is StackPanel titleLine)
@@ -202,7 +202,7 @@ public partial class MainWindow
         RelayFooterText.FontSize = 9.4;
         RelayFooterText.LineHeight = 12;
         RelayFooterText.Foreground = P4Brush(77, 98, 112);
-        RelayFooterText.MaxWidth = 300;
+        RelayFooterText.MaxWidth = 380;
         PolishP4DynamicText(RelayFooterText);
 
         if (RelayFooterText.Parent is StackPanel footer)
@@ -234,8 +234,8 @@ public partial class MainWindow
             PolishP4DynamicText(text);
         }
 
-        ActiveSettingsStatusText.MaxWidth = 210;
-        SclStatusText.MaxWidth = 86;
+        ActiveSettingsStatusText.MaxWidth = 245;
+        SclStatusText.MaxWidth = 175;
     }
 
     private void ApplyP4ResponsiveLayout()
@@ -243,11 +243,11 @@ public partial class MainWindow
         if (!_p4UiPolishInitialized || ActualWidth <= 0)
             return;
 
-        var compact = ActualWidth < 1375;
-        var medium = ActualWidth < 1460;
+        var compact = ActualWidth < 1380;
+        var medium = ActualWidth < 1510;
         ApplyP4ToolbarWidths(compact, medium);
         ApplyP4HeaderDensity(compact, medium);
-        ApplyP4WaveformDensity(compact);
+        ApplyP4WaveformDensity(compact, medium);
         ApplyP4FooterDensity(compact, medium);
     }
 
@@ -267,12 +267,12 @@ public partial class MainWindow
 
     private void ApplyP4HeaderDensity(bool compact, bool medium)
     {
-        OperatingModeCombo.Width = compact ? 132 : 142;
+        OperatingModeCombo.Width = compact ? 160 : medium ? 164 : 168;
         EngineModeText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        EngineModeText.MaxWidth = medium ? 175 : 225;
+        EngineModeText.MaxWidth = medium ? 190 : 240;
     }
 
-    private void ApplyP4WaveformDensity(bool compact)
+    private void ApplyP4WaveformDensity(bool compact, bool medium)
     {
         if (StreamHealthText.Parent is not StackPanel titleLine ||
             titleLine.Parent is not StackPanel titleBlock ||
@@ -280,31 +280,34 @@ public partial class MainWindow
             header.ColumnDefinitions.Count < 3)
             return;
 
-        var titleWidth = compact ? 210 : 232;
+        var titleWidth = compact ? 245 : medium ? 290 : 340;
         header.ColumnDefinitions[0].Width = new GridLength(titleWidth);
         titleBlock.Width = titleWidth;
         WaveformSubtitleText.Width = titleWidth;
-        StreamHealthText.MaxWidth = compact ? 72 : 92;
+        StreamHealthText.MaxWidth = compact ? 105 : medium ? 130 : 150;
 
         if (_phasorQuantityCombo is not null)
-            _phasorQuantityCombo.Width = compact ? 100 : 108;
+            _phasorQuantityCombo.Width = compact ? 100 : medium ? 104 : 108;
 
         if (IaValueText.Parent is StackPanel iaGroup && iaGroup.Parent is StackPanel summary)
         {
-            summary.Margin = new Thickness(compact ? 8 : 14, 0, 0, 0);
+            summary.Margin = new Thickness(compact ? 7 : medium ? 10 : 14, 0, 0, 0);
             var groups = summary.Children.OfType<StackPanel>().ToArray();
             for (var index = 0; index < groups.Length; index++)
             {
                 groups[index].MinWidth = index == groups.Length - 1
-                    ? compact ? 55 : 62
-                    : compact ? 42 : 47;
+                    ? compact ? 55 : medium ? 59 : 62
+                    : compact ? 42 : medium ? 45 : 47;
                 groups[index].Margin = new Thickness(
                     0,
                     0,
-                    index == groups.Length - 1 ? 0 : compact ? 7 : 12,
+                    index == groups.Length - 1 ? 0 : compact ? 7 : medium ? 9 : 12,
                     0);
             }
         }
+
+        RelayFooterText.MaxWidth = compact ? 285 : medium ? 330 : 380;
+        ProtectionReasonText.MaxWidth = compact ? 430 : medium ? 520 : 620;
     }
 
     private void ApplyP4FooterDensity(bool compact, bool medium)
@@ -315,6 +318,8 @@ public partial class MainWindow
         SclStatusText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         ActiveSettingsStatusText.Margin = new Thickness(0, 0, compact ? 9 : 14, 0);
         SclStatusText.Margin = new Thickness(0, 0, medium ? 9 : 14, 0);
+        ActiveSettingsStatusText.MaxWidth = compact ? 190 : medium ? 220 : 245;
+        SclStatusText.MaxWidth = compact ? 0 : medium ? 125 : 175;
 
         var safety = summary.Children.OfType<TextBlock>().LastOrDefault();
         if (safety is null)

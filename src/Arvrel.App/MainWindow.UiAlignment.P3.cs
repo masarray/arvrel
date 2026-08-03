@@ -31,11 +31,13 @@ public partial class MainWindow
     private void AlignApplicationHeader()
     {
         NormalizeComboBox(OperatingModeCombo, minimumHeight: 32);
-        OperatingModeCombo.Width = 142;
+        OperatingModeCombo.Width = 168;
+        OperatingModeCombo.MinWidth = 156;
         OperatingModeCombo.Height = 32;
         OperatingModeCombo.MinHeight = 32;
         OperatingModeCombo.MaxHeight = 32;
         OperatingModeCombo.Margin = new Thickness(0, 0, 9, 0);
+        OperatingModeCombo.ToolTip = "Practitioner mode exposes the native relay workflow; Research mode exposes deterministic algorithm analysis.";
 
         if (OperatingModeCombo.Parent is StackPanel headerActions)
         {
