@@ -13,6 +13,7 @@ public partial class MainWindow
     private PhasorDisplayFrame? _lastCoherentPhasor;
     private string? _displayGuardStreamKey;
     private int _displayGuardPhasorCycle = -1;
+    private bool _livePhasorTimerSuspended;
 
     internal void InitializeLiveDisplayGuard()
     {
@@ -25,9 +26,9 @@ public partial class MainWindow
         if (_liveDisplayGuardTimer is not null)
             return;
 
-        _liveDisplayGuardTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
+        _liveDisplayGuardTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
-            Interval = TimeSpan.FromMilliseconds(40)
+            Interval = TimeSpan.FromMilliseconds(32)
         };
         _liveDisplayGuardTimer.Tick += (_, _) => ApplyLiveDisplayGuard();
         _liveDisplayGuardTimer.Start();
@@ -35,8 +36,23 @@ public partial class MainWindow
 
     private void ApplyLiveDisplayGuard()
     {
-        if (SourceCombo.SelectedIndex == 0 || string.IsNullOrWhiteSpace(_selectedStreamKey))
+        if (SourceCombo.SelectedIndex == 0)
+        {
+            ResumeStandardPhasorTimer();
             return;
+        }
+
+        SuspendStandardPhasorTimer();
+
+        if (string.IsNullOrWhiteSpace(_selectedStreamKey))
+        {
+            SmvScope.Frame = WaveformFrame.Empty;
+            if (_phasorScope is not null)
+                _phasorScope.Frame = PhasorDisplayFrame.Unavailable(
+                    _phasorDisplayMode,
+                    "Waiting for a coherent SMV measurement window.");
+            return;
+        }
 
         var snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
         if (string.IsNullOrWhiteSpace(snapshot.Stream.Key))
@@ -50,7 +66,8 @@ public partial class MainWindow
             _displayGuardPhasorCycle = -1;
         }
 
-        var waveformComplete = snapshot.Waveform.PhaseA.Count >= snapshot.SamplesPerCycle * 2 &&
+        var expectedWindow = Math.Max(2, snapshot.SamplesPerCycle * 2);
+        var waveformComplete = snapshot.Waveform.PhaseA.Count >= expectedWindow &&
                                snapshot.Waveform.PhaseB.Count == snapshot.Waveform.PhaseA.Count &&
                                snapshot.Waveform.PhaseC.Count == snapshot.Waveform.PhaseA.Count &&
                                snapshot.Waveform.Residual.Count == snapshot.Waveform.PhaseA.Count;
@@ -83,15 +100,45 @@ public partial class MainWindow
             }
         }
 
-        if (_lastCoherentWaveform is not null)
-            SmvScope.Frame = _lastCoherentWaveform with
+        SmvScope.Frame = _lastCoherentWaveform is null
+            ? WaveformFrame.Empty
+            : _lastCoherentWaveform with
             {
                 PickupPosition = _pickupPosition,
                 TripPosition = _tripPosition
             };
 
-        if (_phasorScope is not null && _lastCoherentPhasor is not null)
-            _phasorScope.Frame = _lastCoherentPhasor;
+        if (_phasorScope is null)
+            return;
+
+        _phasorScope.Frame = _lastCoherentPhasor
+            ?? PhasorDisplayFrame.Unavailable(
+                _phasorDisplayMode,
+                coherent
+                    ? "Waiting for a complete 4I+4V phasor window."
+                    : "Holding display until the SMV stream is coherent.");
+    }
+
+    private void SuspendStandardPhasorTimer()
+    {
+        if (_livePhasorTimerSuspended)
+            return;
+
+        _phasorRefreshTimer?.Stop();
+        _livePhasorTimerSuspended = true;
+    }
+
+    private void ResumeStandardPhasorTimer()
+    {
+        if (!_livePhasorTimerSuspended)
+            return;
+
+        _phasorRefreshTimer?.Start();
+        _livePhasorTimerSuspended = false;
+        _displayGuardStreamKey = null;
+        _lastCoherentWaveform = null;
+        _lastCoherentPhasor = null;
+        _displayGuardPhasorCycle = -1;
     }
 }
 
