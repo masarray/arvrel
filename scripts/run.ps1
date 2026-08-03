@@ -6,9 +6,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+. (Join-Path $PSScriptRoot 'ScriptSupport.ps1')
+
 Push-Location $root
 try {
-    dotnet run --project .\src\Arvrel.App\Arvrel.App.csproj -c $Configuration
+    Stop-ArvrelDevelopmentInstances -RepositoryRoot $root
+    Invoke-DotNetChecked -Arguments @('run', '--project', '.\src\Arvrel.App\Arvrel.App.csproj', '-c', $Configuration) -FailureMessage 'ARVREL run failed'
 }
 finally {
     Pop-Location
