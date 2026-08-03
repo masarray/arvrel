@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <Compile Remove="SmvStreamRuntime.cs" />
-    <Compile Remove="SmvProcessBusController.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
