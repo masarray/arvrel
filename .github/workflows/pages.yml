@@ -27,6 +27,40 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Stage ARVREL brand icons
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/assets/icon
+          cp Asset/icon/favicon.ico docs/assets/icon/
+          cp Asset/icon/favicon.svg docs/assets/icon/
+          cp Asset/icon/favicon-96x96.png docs/assets/icon/
+          cp Asset/icon/apple-touch-icon.png docs/assets/icon/
+          cp Asset/icon/web-app-manifest-192x192.png docs/assets/icon/
+          cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
+          cp Asset/icon/site.webmanifest docs/assets/icon/
+
+          python - <<'PY'
+          from pathlib import Path
+
+          page = Path("docs/index.html")
+          html = page.read_text(encoding="utf-8")
+          marker = '<meta name="theme-color" content="#10232f">'
+          favicon_head = '''
+  <link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon/favicon.ico" sizes="any">
+  <link rel="icon" href="assets/icon/favicon-96x96.png" type="image/png" sizes="96x96">
+  <link rel="apple-touch-icon" href="assets/icon/apple-touch-icon.png">
+  <link rel="manifest" href="assets/icon/site.webmanifest">
+'''.rstrip()
+
+          if 'href="assets/icon/favicon.svg"' not in html:
+              if marker not in html:
+                  raise SystemExit("Landing-page theme-color marker was not found.")
+              html = html.replace(marker, marker + "\n" + favicon_head, 1)
+              page.write_text(html, encoding="utf-8")
+          PY
+
       - name: Upload landing-page artifact
         uses: actions/upload-pages-artifact@v4
         with:
