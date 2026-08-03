@@ -133,6 +133,12 @@ public sealed class WaveformScope : FrameworkElement
             _lockedTriggerCount == reference.Count &&
             double.IsFinite(_lockedTriggerSample);
 
+        // Pickup/trip cursors are evidence markers, not a live tracking cursor. Once one
+        // exists, freeze the phase anchor so communications recovery cannot move both the
+        // waveform and the vertical cursor to another equivalent zero crossing.
+        if (previousAvailable && HasEvidenceMarker(Frame))
+            return _lockedTriggerSample;
+
         var selected = double.NaN;
         var selectedDistance = double.PositiveInfinity;
         var selectedSlope = double.NegativeInfinity;
@@ -178,12 +184,15 @@ public sealed class WaveformScope : FrameworkElement
         }
 
         var delta = CircularDelta(selected, _lockedTriggerSample, cycleLength);
-        var oneSampleDeadband = 1.15;
+        const double oneSampleDeadband = 1.15;
         if (Math.Abs(delta) > oneSampleDeadband)
             _lockedTriggerSample = PositiveModulo(_lockedTriggerSample + delta, cycleLength);
 
         return _lockedTriggerSample;
     }
+
+    private static bool HasEvidenceMarker(WaveformFrame frame)
+        => double.IsFinite(frame.PickupPosition) || double.IsFinite(frame.TripPosition);
 
     private static double PositiveModulo(double value, double modulus)
     {

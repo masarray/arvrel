@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
+using Arvrel.App.Controls;
 using Arvrel.Protection;
 
 namespace Arvrel.App;
@@ -32,7 +32,16 @@ public partial class MainWindow
         if (_relayAnnunciationTimer is not null)
             return;
 
-        _relayAnnunciationTimer = new DispatcherTimer(DispatcherPriority.ContextIdle)
+        // Trip and trip-cause lamps are intentionally larger than the passive status lenses.
+        // The pinned visual state below makes this annunciation path authoritative, so the
+        // general measurement renderer cannot flash an amber/blue/off state between updates.
+        TripLed.Width = TripLed.Height = 13;
+        PhaseALed.Width = PhaseALed.Height = 12.5;
+        PhaseBLed.Width = PhaseBLed.Height = 12.5;
+        PhaseCLed.Width = PhaseCLed.Height = 12.5;
+        EarthLed.Width = EarthLed.Height = 12.5;
+
+        _relayAnnunciationTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(30)
         };
@@ -70,7 +79,10 @@ public partial class MainWindow
             {
                 var runtime = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
                 if (string.IsNullOrWhiteSpace(runtime.Stream.Key))
+                {
+                    ClearRelayAnnunciation();
                     return;
+                }
 
                 snapshot = runtime.Protection;
                 sourceIdentity = runtime.Stream.Key;
@@ -78,6 +90,7 @@ public partial class MainWindow
         }
         catch (InvalidOperationException)
         {
+            ClearRelayAnnunciation();
             return;
         }
 
@@ -90,20 +103,35 @@ public partial class MainWindow
         var indication = _relayAnnunciationLatch.Observe(snapshot);
 
         // The common PICKUP lamp is momentary. Once trip is latched the red TRIP
-        // lamp and the red latched phase/earth causes take visual priority.
-        PickupLed.Fill = indication.PickupActive ? WarningBrush : LedOffBrush;
-        TripLed.Fill = indication.TripLatched ? TripBrush : LedOffBrush;
-        PhaseALed.Fill = ResolveAnnunciationBrush(indication.PhaseA);
-        PhaseBLed.Fill = ResolveAnnunciationBrush(indication.PhaseB);
-        PhaseCLed.Fill = ResolveAnnunciationBrush(indication.PhaseC);
-        EarthLed.Fill = ResolveAnnunciationBrush(indication.Earth);
+        // lamp and red phase/earth trip causes remain authoritative until reset.
+        SetAnnunciationState(PickupLed, indication.PickupActive ? RelayIndicatorState.Orange : RelayIndicatorState.Off);
+        SetAnnunciationState(TripLed, indication.TripLatched ? RelayIndicatorState.Red : RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseALed, ResolveAnnunciationState(indication.PhaseA));
+        SetAnnunciationState(PhaseBLed, ResolveAnnunciationState(indication.PhaseB));
+        SetAnnunciationState(PhaseCLed, ResolveAnnunciationState(indication.PhaseC));
+        SetAnnunciationState(EarthLed, ResolveAnnunciationState(indication.Earth));
     }
 
-    private static Brush ResolveAnnunciationBrush(RelayLampState state)
+    private void ClearRelayAnnunciation()
+    {
+        _relayAnnunciationSourceIdentity = null;
+        _relayAnnunciationLatch.Reset();
+        SetAnnunciationState(PickupLed, RelayIndicatorState.Off);
+        SetAnnunciationState(TripLed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseALed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseBLed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseCLed, RelayIndicatorState.Off);
+        SetAnnunciationState(EarthLed, RelayIndicatorState.Off);
+    }
+
+    private static void SetAnnunciationState(System.Windows.Shapes.Ellipse lamp, RelayIndicatorState state)
+        => RelayIndicatorLampBehavior.SetPinnedState(lamp, state);
+
+    private static RelayIndicatorState ResolveAnnunciationState(RelayLampState state)
         => state switch
         {
-            RelayLampState.Pickup => WarningBrush,
-            RelayLampState.Trip => TripBrush,
-            _ => LedOffBrush
+            RelayLampState.Pickup => RelayIndicatorState.Orange,
+            RelayLampState.Trip => RelayIndicatorState.Red,
+            _ => RelayIndicatorState.Off
         };
 }
