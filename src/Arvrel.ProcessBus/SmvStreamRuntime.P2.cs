@@ -43,6 +43,8 @@ internal sealed class SmvStreamRuntime
     private int _invalidQuality;
     private bool _mappingResolved;
     private bool _voltageMappingResolved;
+    private bool _neutralCurrentMappingResolved;
+    private bool _neutralVoltageMappingResolved;
     private bool _scalingResolved;
     private bool _sclBound;
     private string _mappingSummary = "Awaiting payload";
@@ -87,6 +89,55 @@ internal sealed class SmvStreamRuntime
         {
             _protection.Reset();
             _protectionSnapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
+        }
+    }
+
+    /// <summary>
+    /// Records a frame rejected by the transactional ingress gate. No payload value is
+    /// added to RMS, waveform or phasor buffers, but continuity telemetry and the SMV
+    /// trust block are updated atomically so evidence exports cannot under-report the
+    /// communication condition and protection cannot trip through the rejected edge.
+    /// </summary>
+    public void ObserveIngressRejection(
+        DateTimeOffset timestamp,
+        SmvIngressDecision decision,
+        ushort sampleCount,
+        int asduCount,
+        bool replay)
+    {
+        if (decision is not (SmvIngressDecision.DropDuplicate or SmvIngressDecision.DropOutOfOrder))
+            throw new ArgumentOutOfRangeException(nameof(decision), decision, "Only rejected ingress decisions are accepted.");
+
+        lock (_gate)
+        {
+            _firstSeen ??= timestamp;
+            _lastSeen = timestamp;
+            _frameCount++;
+            _asduCount += Math.Max(1, asduCount);
+            _sampleCounter = sampleCount;
+            _lastSequenceIssue = timestamp;
+            _sourceSummary = replay ? "PCAP/PCAPNG replay" : "Live Npcap capture";
+
+            if (decision == SmvIngressDecision.DropDuplicate)
+            {
+                _duplicates++;
+                AddDiagnostic($"Duplicate smpCnt {sampleCount} rejected before measurement ingestion.");
+            }
+            else
+            {
+                _outOfOrder++;
+                AddDiagnostic($"Out-of-order smpCnt {sampleCount} rejected before measurement ingestion.");
+            }
+
+            var trust = SmvTrustState.TripBlocked(
+                "SMPCNT_DISCONTINUITY",
+                "Recent duplicate or out-of-order SV frame was rejected before measurement ingestion.");
+            _measurement = _measurement with
+            {
+                Timestamp = timestamp,
+                SmvTrust = trust
+            };
+            _protectionSnapshot = _protection.Evaluate(_measurement);
         }
     }
 
@@ -136,6 +187,8 @@ internal sealed class SmvStreamRuntime
 
                 _mappingResolved = true;
                 _voltageMappingResolved = sample.HasVoltage;
+                _neutralCurrentMappingResolved = sample.HasNeutralCurrent;
+                _neutralVoltageMappingResolved = sample.HasNeutralVoltage;
                 _mappingSummary = decodeSummary;
                 _scalingResolved = sample.ScalingResolved;
                 _scalingSummary = scalingSummary;
@@ -254,7 +307,7 @@ internal sealed class SmvStreamRuntime
             _neutralVoltage.Count < _samplesPerCycle)
             return null;
 
-        return FundamentalPhasorEstimator.Build(
+        var phasors = FundamentalPhasorEstimator.Build(
             _phaseA.Last(_samplesPerCycle),
             _phaseB.Last(_samplesPerCycle),
             _phaseC.Last(_samplesPerCycle),
@@ -265,6 +318,11 @@ internal sealed class SmvStreamRuntime
             _neutralVoltage.Last(_samplesPerCycle),
             _samplesPerCycle,
             _context.NominalFrequencyHz);
+        return phasors with
+        {
+            NeutralCurrentAvailable = _neutralCurrentMappingResolved,
+            NeutralVoltageAvailable = _neutralVoltageMappingResolved
+        };
     }
 
     private SmvTrustState ResolveTrust(DateTimeOffset now, bool replay)
@@ -452,6 +510,8 @@ internal sealed class SmvStreamRuntime
             hasVoltage ? vc!.Value : 0,
             hasVoltage ? vn ?? va.Value + vb.Value + vc.Value : 0,
             hasVoltage,
+            neutral.HasValue,
+            hasVoltage && vn.HasValue,
             fixedLegacy);
         return true;
     }
@@ -482,6 +542,8 @@ internal sealed class SmvStreamRuntime
             hasVoltage ? values[5] : 0,
             hasVoltage ? values[6] : 0,
             hasVoltage ? values[7] : 0,
+            hasVoltage,
+            channelCount >= 4,
             hasVoltage,
             true);
         return true;
@@ -603,6 +665,8 @@ internal sealed class SmvStreamRuntime
         double VoltageC,
         double NeutralVoltage,
         bool HasVoltage,
+        bool HasNeutralCurrent,
+        bool HasNeutralVoltage,
         bool ScalingResolved);
 }
 #endif
