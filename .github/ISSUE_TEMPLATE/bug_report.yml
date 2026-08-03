@@ -1,0 +1,68 @@
+name: Engineering defect
+about: Report a reproducible ARVREL defect using synthetic or contributor-owned evidence
+title: "[Bug]: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach customer captures, proprietary SCL files, credentials, station names, or employer-confidential data. Use the private security-advisory workflow for vulnerabilities.
+  - type: input
+    id: version
+    attributes:
+      label: ARVREL version or commit
+      placeholder: v0.1.0-beta.1 / commit SHA
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows and display environment
+      placeholder: Windows 11 24H2 x64, 125% scaling, 1600x900
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source mode
+      options:
+        - Internal demo
+        - Live Npcap
+        - PCAP/PCAPNG replay
+        - Settings or SCL import
+        - Release/install/update
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include synthetic APPID/VLAN/svID/sample-rate details when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Synthetic evidence and logs
+      description: Paste sanitized event trace, trust state, crash-log excerpt, test fixture, or screenshot.
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Data and safety confirmation
+      options:
+        - label: I removed customer, employer, station, credential, and other restricted information.
+          required: true
+        - label: This report does not request operational trip or switching authority from ARVREL.
+          required: true
