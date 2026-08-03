@@ -15,6 +15,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     private readonly ProtectionSettings _settings;
     private readonly ConcurrentDictionary<string, SmvStreamRuntime> _streams = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, SmvIngressContinuityGate> _continuity = new(StringComparer.Ordinal);
+    private readonly SmvContinuityNoticeLimiter _continuityNotices = new();
     private readonly object _profileGate = new();
     private SmvMeasurementContext _measurementContext = new();
     private CancellationTokenSource? _captureCancellation;
@@ -209,6 +210,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     {
         _streams.Clear();
         _continuity.Clear();
+        _continuityNotices.Clear();
     }
 
 #if ARIEC61850_SIBLING
@@ -242,44 +244,49 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         if (!SampledValuesFrameParser.TryParseEthernetFrame(ethernetFrame, out var frame))
             return;
 
-        var first = frame.Pdu.Asdus.FirstOrDefault();
+        var asdus = frame.Pdu.Asdus;
+        var first = asdus.FirstOrDefault();
         if (first is null)
             return;
 
         var profile = FindProfile(frame, first);
         var key = BuildKey(frame, first);
         var gate = _continuity.GetOrAdd(key, _ => new SmvIngressContinuityGate());
+        var counters = asdus.Select(asdu => asdu.SampleCount).ToArray();
         var wrap = ResolveCounterWrap(first, _measurementContext.NominalFrequencyHz);
-        var decision = gate.Observe(first.SampleCount, wrap);
+        var ingress = gate.ObserveFrame(counters, wrap);
 
-        if (decision == SmvIngressDecision.DropDuplicate)
+        if (ingress.Decision == SmvIngressDecision.DropDuplicate)
         {
-            Raise("SMV DROP", $"{first.SvId} duplicate smpCnt {first.SampleCount} discarded.");
+            if (_continuityNotices.ShouldRaise(key, "DUPLICATE", timestamp))
+                Raise("SMV DROP", $"{first.SvId} duplicate smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
         }
 
-        if (decision == SmvIngressDecision.DropOutOfOrder)
+        if (ingress.Decision == SmvIngressDecision.DropOutOfOrder)
         {
-            Raise("SMV DROP", $"{first.SvId} out-of-order smpCnt {first.SampleCount} discarded.");
+            if (_continuityNotices.ShouldRaise(key, "OUT_OF_ORDER", timestamp))
+                Raise("SMV DROP", $"{first.SvId} out-of-order smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
         }
 
-        SmvStreamRuntime runtime;
-        if (decision == SmvIngressDecision.RestartWindow)
+        var runtime = _streams.GetOrAdd(key, _ =>
         {
-            runtime = new SmvStreamRuntime(key, frame, _settings, _measurementContext);
-            _streams[key] = runtime;
-            Raise("SMV RESYNC", $"{first.SvId} counter gap detected at {first.SampleCount}; measurement window rebuilt.");
-        }
-        else
+            Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
+            return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
+        });
+
+        if (ingress.Decision == SmvIngressDecision.RestartWindow &&
+            _continuityNotices.ShouldRaise(key, "GAP", timestamp))
         {
-            runtime = _streams.GetOrAdd(key, _ =>
-            {
-                Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
-                return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
-            });
+            Raise("SMV RESYNC", $"{first.SvId} smpCnt gap detected near {ingress.SampleCount}; holding coherent display during trust recovery.");
         }
 
+        // The original runtime is deliberately preserved. Its protection latch and
+        // timers must never be cleared by a communications discontinuity. The runtime
+        // records the forward gap, blocks trip permission through its trust policy,
+        // and naturally replaces the last one/two-cycle measurement windows with
+        // contiguous post-gap samples while the UI holds the last coherent evidence.
         runtime.Observe(timestamp, frame, profile, replay);
     }
 
