@@ -181,9 +181,6 @@ public sealed class ProtectionEngine
             var directionalB = phasors.PhaseBCurrent.Magnitude >= pickup;
             var directionalC = phasors.PhaseCCurrent.Magnitude >= pickup;
 
-            // A sequence-polarized directional element still needs a deterministic
-            // phase annunciation. In the unlikely event that rounding leaves every
-            // phase just below the threshold, attribute the largest operating phase.
             if (!directionalA && !directionalB && !directionalC)
             {
                 var maximum = phasors.MaximumPhaseCurrent;
@@ -199,11 +196,14 @@ public sealed class ProtectionEngine
 
         var earth = earth50Pickup || earth51Pickup || feeder.DirectionalEarth67N.Pickup || feeder.ResidualOvervoltage59N.Pickup;
 
+        // Preserve established numerical-relay precedence: instantaneous phase,
+        // instantaneous earth, time phase, time earth, then feeder functions.
+        // Operated elements are still resolved before any pickup-only state.
         var elements = new[]
         {
             phase50,
-            phase51,
             earth50,
+            phase51,
             earth51,
             feeder.DirectionalPhase67,
             feeder.DirectionalEarth67N,
@@ -270,6 +270,17 @@ public sealed class ProtectionEngine
     {
         ResetDynamicState(keepTripLatch: false);
         _previousTimestamp = null;
+    }
+
+    /// <summary>
+    /// Advances only the engine's time anchor for an Ethernet frame rejected before
+    /// measurement ingestion. No protection accumulator, pickup state, or trip state
+    /// is evaluated from the stale previous measurement.
+    /// </summary>
+    public void ObserveRejectedFrameTimestamp(DateTimeOffset timestamp)
+    {
+        if (!_previousTimestamp.HasValue || timestamp > _previousTimestamp.Value)
+            _previousTimestamp = timestamp;
     }
 
     private TimeSpan ResolveDelta(DateTimeOffset timestamp)
