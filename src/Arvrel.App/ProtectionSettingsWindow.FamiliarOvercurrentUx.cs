@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using Arvrel.Protection;
 
@@ -56,7 +57,14 @@ public partial class ProtectionSettingsWindow
         Phase51PreviewText.ToolTip = "Calculated operate times at 2, 5 and 10 multiples of pickup. This is the quickest way to verify the selected curve and TMS.";
         Earth51PreviewText.ToolTip = Phase51PreviewText.ToolTip;
         ValidationText.TextTrimming = TextTrimming.CharacterEllipsis;
-        ValidationText.ToolTip = ValidationText.Text;
+        BindingOperations.SetBinding(
+            ValidationText,
+            FrameworkElement.ToolTipProperty,
+            new Binding(nameof(TextBlock.Text))
+            {
+                Source = ValidationText,
+                Mode = BindingMode.OneWay
+            });
     }
 
     private void ConfigureTimeOvercurrentRows(
