@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 
@@ -30,6 +31,12 @@ internal static class RelayIndicatorLampBehavior
         typeof(RelayIndicatorLampBehavior),
         new PropertyMetadata(RelayIndicatorState.Auto, OnPinnedStateChanged));
 
+    private static readonly DependencyProperty AppliedPinnedStateProperty = DependencyProperty.RegisterAttached(
+        "AppliedPinnedState",
+        typeof(RelayIndicatorState),
+        typeof(RelayIndicatorLampBehavior),
+        new PropertyMetadata(RelayIndicatorState.Auto));
+
     private static readonly DependencyPropertyDescriptor FillDescriptor =
         DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Ellipse));
 
@@ -53,20 +60,23 @@ internal static class RelayIndicatorLampBehavior
         Color.FromRgb(210, 96, 0),
         Color.FromRgb(73, 25, 0));
 
+    // Keep every visible part of the operated lens inside the red family. A white
+    // specular centre can be perceived as cyan next to the historical phase-blue
+    // local Fill, especially when the latter is rewritten by the measurement timer.
     private static readonly Brush RedLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 255, 255),
-        Color.FromRgb(255, 42, 48),
-        Color.FromRgb(230, 0, 24),
-        Color.FromRgb(82, 0, 7));
+        Color.FromRgb(255, 218, 218),
+        Color.FromRgb(255, 46, 52),
+        Color.FromRgb(226, 0, 24),
+        Color.FromRgb(76, 0, 8));
 
     private static readonly Brush OffStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(42, 51, 57)));
     private static readonly Brush GreenStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(151, 255, 181)));
     private static readonly Brush OrangeStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 224, 141)));
-    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 196, 190)));
+    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 176, 176)));
 
     private static readonly Effect GreenGlow = CreateGlow(Color.FromRgb(31, 255, 99), 15);
     private static readonly Effect OrangeGlow = CreateGlow(Color.FromRgb(255, 157, 20), 15);
-    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 18, 34), 19);
+    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 16, 30), 19);
 
     [ModuleInitializer]
     internal static void Initialize()
@@ -110,6 +120,8 @@ internal static class RelayIndicatorLampBehavior
             return;
 
         FillDescriptor.RemoveValueChanged(ellipse, OnFillChanged);
+        ellipse.BeginAnimation(Shape.FillProperty, null);
+        ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
         ellipse.SetValue(IsAttachedProperty, false);
     }
 
@@ -124,45 +136,99 @@ internal static class RelayIndicatorLampBehavior
         var pinned = GetPinnedState(ellipse);
         if (pinned != RelayIndicatorState.Auto)
         {
-            ApplyResolvedState(ellipse, pinned);
+            ApplyResolvedState(ellipse, pinned, enforcePinnedFill: true);
             return;
         }
 
+        ClearPinnedFillOverride(ellipse);
         if (ellipse.Fill is RadialGradientBrush)
             return;
 
         var active = IsActive(ellipse.Fill);
         var state = active ? ResolveActiveState(ellipse.Name, ellipse.Fill) : RelayIndicatorState.Off;
-        ApplyResolvedState(ellipse, state);
+        ApplyResolvedState(ellipse, state, enforcePinnedFill: false);
     }
 
-    private static void ApplyResolvedState(Ellipse ellipse, RelayIndicatorState state)
+    private static void ApplyResolvedState(
+        Ellipse ellipse,
+        RelayIndicatorState state,
+        bool enforcePinnedFill)
     {
         switch (state)
         {
             case RelayIndicatorState.Green:
-                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, active: true);
+                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, active: true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Orange:
-                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, active: true);
+                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, active: true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Red:
-                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, active: true);
+                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, active: true, state, enforcePinnedFill);
                 break;
             default:
-                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null, active: false);
+                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null, active: false, RelayIndicatorState.Off, enforcePinnedFill);
                 break;
         }
     }
 
-    private static void SetLamp(Ellipse ellipse, Brush fill, Brush stroke, Effect? effect, bool active)
+    private static void SetLamp(
+        Ellipse ellipse,
+        Brush fill,
+        Brush stroke,
+        Effect? effect,
+        bool active,
+        RelayIndicatorState state,
+        bool enforcePinnedFill)
     {
-        if (!ReferenceEquals(ellipse.Fill, fill))
+        if (enforcePinnedFill)
+            ApplyPinnedFillOverride(ellipse, fill, state);
+        else if (!ReferenceEquals(ellipse.Fill, fill))
             ellipse.Fill = fill;
+
         ellipse.Stroke = stroke;
         ellipse.StrokeThickness = active ? 1.25 : 1;
         ellipse.Opacity = active ? 1 : 0.88;
         ellipse.Effect = effect;
+    }
+
+    private static void ApplyPinnedFillOverride(
+        Ellipse ellipse,
+        Brush fill,
+        RelayIndicatorState state)
+    {
+        var applied = (RelayIndicatorState)ellipse.GetValue(AppliedPinnedStateProperty);
+        if (applied == state)
+            return;
+
+        // An animation has higher WPF value precedence than the legacy local Fill writes
+        // still emitted by the measurement renderer. Holding a zero-duration object key
+        // frame makes the annunciation latch the authoritative visible colour: phase-blue
+        // can remain as an underlying compatibility value but cannot leak through the red
+        // operated lens between timer ticks.
+        var animation = new ObjectAnimationUsingKeyFrames
+        {
+            Duration = new Duration(TimeSpan.Zero),
+            FillBehavior = FillBehavior.HoldEnd
+        };
+        animation.KeyFrames.Add(new DiscreteObjectKeyFrame(
+            fill,
+            KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        animation.Freeze();
+
+        ellipse.BeginAnimation(
+            Shape.FillProperty,
+            animation,
+            HandoffBehavior.SnapshotAndReplace);
+        ellipse.SetValue(AppliedPinnedStateProperty, state);
+    }
+
+    private static void ClearPinnedFillOverride(Ellipse ellipse)
+    {
+        if ((RelayIndicatorState)ellipse.GetValue(AppliedPinnedStateProperty) == RelayIndicatorState.Auto)
+            return;
+
+        ellipse.BeginAnimation(Shape.FillProperty, null);
+        ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
     }
 
     private static RelayIndicatorState ResolveActiveState(string name, Brush source)
