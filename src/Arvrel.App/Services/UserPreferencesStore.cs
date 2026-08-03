@@ -8,6 +8,7 @@ internal sealed record UserPreferences
     public string? LastSclPath { get; init; }
     public string? LastAdapterSelector { get; init; }
     public string? LastAdapterDisplayName { get; init; }
+    public string? LastAdapterMacAddress { get; init; }
 }
 
 internal sealed class UserPreferencesStore
