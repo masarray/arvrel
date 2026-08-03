@@ -14,6 +14,8 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 {
     private readonly ProtectionSettings _settings;
     private readonly ConcurrentDictionary<string, SmvStreamRuntime> _streams = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, SmvIngressContinuityGate> _continuity = new(StringComparer.Ordinal);
+    private readonly SmvContinuityNoticeLimiter _continuityNotices = new();
     private readonly object _profileGate = new();
     private SmvMeasurementContext _measurementContext = new();
     private CancellationTokenSource? _captureCancellation;
@@ -95,7 +97,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 #if ARIEC61850_SIBLING
         ArgumentException.ThrowIfNullOrWhiteSpace(adapterSelector);
         await StopAsync().ConfigureAwait(false);
-        _streams.Clear();
+        ClearStreams();
         _replayMode = false;
         _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = _captureCancellation.Token;
@@ -113,7 +115,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 #if ARIEC61850_SIBLING
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         await StopAsync().ConfigureAwait(false);
-        _streams.Clear();
+        ClearStreams();
         _replayMode = true;
         var processed = await Task.Run(() =>
         {
@@ -204,6 +206,13 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         await StopAsync().ConfigureAwait(false);
     }
 
+    private void ClearStreams()
+    {
+        _streams.Clear();
+        _continuity.Clear();
+        _continuityNotices.Clear();
+    }
+
 #if ARIEC61850_SIBLING
     private async Task CaptureLoopAsync(string adapterSelector, CancellationToken cancellationToken)
     {
@@ -235,17 +244,49 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         if (!SampledValuesFrameParser.TryParseEthernetFrame(ethernetFrame, out var frame))
             return;
 
-        var first = frame.Pdu.Asdus.FirstOrDefault();
+        var asdus = frame.Pdu.Asdus;
+        var first = asdus.FirstOrDefault();
         if (first is null)
             return;
 
         var profile = FindProfile(frame, first);
         var key = BuildKey(frame, first);
+        var gate = _continuity.GetOrAdd(key, _ => new SmvIngressContinuityGate());
+        var counters = asdus.Select(asdu => asdu.SampleCount).ToArray();
+        var wrap = ResolveCounterWrap(first, _measurementContext.NominalFrequencyHz);
+        var ingress = gate.ObserveFrame(counters, wrap);
+
+        if (ingress.Decision == SmvIngressDecision.DropDuplicate)
+        {
+            if (_continuityNotices.ShouldRaise(key, "DUPLICATE", timestamp))
+                Raise("SMV DROP", $"{first.SvId} duplicate smpCnt {ingress.SampleCount} discarded before measurement.");
+            return;
+        }
+
+        if (ingress.Decision == SmvIngressDecision.DropOutOfOrder)
+        {
+            if (_continuityNotices.ShouldRaise(key, "OUT_OF_ORDER", timestamp))
+                Raise("SMV DROP", $"{first.SvId} out-of-order smpCnt {ingress.SampleCount} discarded before measurement.");
+            return;
+        }
+
         var runtime = _streams.GetOrAdd(key, _ =>
         {
             Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
             return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
         });
+
+        if (ingress.Decision == SmvIngressDecision.RestartWindow &&
+            _continuityNotices.ShouldRaise(key, "GAP", timestamp))
+        {
+            Raise("SMV RESYNC", $"{first.SvId} smpCnt gap detected near {ingress.SampleCount}; holding coherent display during trust recovery.");
+        }
+
+        // Preserve the existing runtime. Communications discontinuities must not
+        // clear protection timers or a latched trip. The runtime records a forward
+        // gap, removes trip permission through its trust policy, and naturally
+        // replaces the one/two-cycle windows with contiguous post-gap samples while
+        // the UI holds the last coherent evidence.
         runtime.Observe(timestamp, frame, profile, replay);
     }
 
@@ -270,6 +311,22 @@ public sealed class SmvProcessBusController : IAsyncDisposable
              string.Equals(profile.Stream.DataSetReference, asdu.DataSetReference, StringComparison.Ordinal)));
         return exact ?? addressCandidates.FirstOrDefault(profile =>
             string.Equals(profile.Stream.SvId, asdu.SvId, StringComparison.Ordinal));
+    }
+
+    private static ushort ResolveCounterWrap(SampledValueAsdu asdu, double nominalFrequency)
+    {
+        if (!asdu.SampleRate.HasValue || asdu.SampleRate.Value == 0)
+            return 4000;
+
+        var value = asdu.SampleMode switch
+        {
+            0 => asdu.SampleRate.Value * nominalFrequency,
+            1 => asdu.SampleRate.Value,
+            _ => asdu.SampleRate.Value is 80 or 96
+                ? asdu.SampleRate.Value * nominalFrequency
+                : asdu.SampleRate.Value
+        };
+        return (ushort)Math.Clamp((int)Math.Round(value), 2, ushort.MaxValue);
     }
 
     private static string BuildKey(SampledValuesFrame frame, SampledValueAsdu asdu)
