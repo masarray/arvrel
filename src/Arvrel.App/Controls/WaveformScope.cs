@@ -33,6 +33,8 @@ public sealed class WaveformScope : FrameworkElement
     private double _retainedMaximum = 1.2;
     private double _lockedTriggerSample = double.NaN;
     private int _lockedTriggerCount;
+    private double _lockedPickupMarkerPosition = double.NaN;
+    private double _lockedTripMarkerPosition = double.NaN;
 
     public static readonly DependencyProperty FrameProperty = DependencyProperty.Register(
         nameof(Frame),
@@ -65,8 +67,14 @@ public sealed class WaveformScope : FrameworkElement
         var triggerFraction = Frame.PhaseA.Count == 0
             ? 0
             : triggerSample / Frame.PhaseA.Count;
-        var pickupPosition = RotateMarker(Frame.PickupPosition, triggerFraction);
-        var tripPosition = RotateMarker(Frame.TripPosition, triggerFraction);
+        var pickupPosition = ResolveEvidenceMarker(
+            Frame.PickupPosition,
+            triggerFraction,
+            ref _lockedPickupMarkerPosition);
+        var tripPosition = ResolveEvidenceMarker(
+            Frame.TripPosition,
+            triggerFraction,
+            ref _lockedTripMarkerPosition);
 
         DrawGrid(drawingContext, plot);
         DrawMarker(drawingContext, plot, pickupPosition, Color.FromRgb(204, 151, 52), "PICKUP");
@@ -133,12 +141,6 @@ public sealed class WaveformScope : FrameworkElement
             _lockedTriggerCount == reference.Count &&
             double.IsFinite(_lockedTriggerSample);
 
-        // Pickup/trip cursors are evidence markers, not a live tracking cursor. Once one
-        // exists, freeze the phase anchor so communications recovery cannot move both the
-        // waveform and the vertical cursor to another equivalent zero crossing.
-        if (previousAvailable && HasEvidenceMarker(Frame))
-            return _lockedTriggerSample;
-
         var selected = double.NaN;
         var selectedDistance = double.PositiveInfinity;
         var selectedSlope = double.NegativeInfinity;
@@ -191,8 +193,22 @@ public sealed class WaveformScope : FrameworkElement
         return _lockedTriggerSample;
     }
 
-    private static bool HasEvidenceMarker(WaveformFrame frame)
-        => double.IsFinite(frame.PickupPosition) || double.IsFinite(frame.TripPosition);
+    private static double ResolveEvidenceMarker(
+        double normalizedPosition,
+        double triggerFraction,
+        ref double lockedDisplayPosition)
+    {
+        if (!double.IsFinite(normalizedPosition) || normalizedPosition is < 0 or > 1)
+        {
+            lockedDisplayPosition = double.NaN;
+            return double.NaN;
+        }
+
+        if (!double.IsFinite(lockedDisplayPosition))
+            lockedDisplayPosition = RotateMarker(normalizedPosition, triggerFraction);
+
+        return lockedDisplayPosition;
+    }
 
     private static double PositiveModulo(double value, double modulus)
     {
