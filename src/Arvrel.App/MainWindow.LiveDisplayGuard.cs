@@ -100,7 +100,7 @@ public partial class MainWindow
             return;
         }
 
-        ProcessBusSnapshot snapshot;
+        SmvRuntimeSnapshot snapshot;
         try
         {
             snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
