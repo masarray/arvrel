@@ -14,6 +14,7 @@ public partial class MainWindow
     private string? _displayGuardStreamKey;
     private int _displayGuardPhasorCycle = -1;
     private bool _livePhasorTimerSuspended;
+    private bool _phasorQuantityGuardAttached;
 
     internal void InitializeLiveDisplayGuard()
     {
@@ -26,16 +27,35 @@ public partial class MainWindow
         if (_liveDisplayGuardTimer is not null)
             return;
 
+        AttachPhasorQuantityGuard();
         _liveDisplayGuardTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
-            Interval = TimeSpan.FromMilliseconds(32)
+            Interval = TimeSpan.FromMilliseconds(60)
         };
         _liveDisplayGuardTimer.Tick += (_, _) => ApplyLiveDisplayGuard();
         _liveDisplayGuardTimer.Start();
     }
 
+    private void AttachPhasorQuantityGuard()
+    {
+        if (_phasorQuantityGuardAttached || _phasorQuantityCombo is null)
+            return;
+
+        _phasorQuantityGuardAttached = true;
+        _phasorQuantityCombo.SelectionChanged += (_, _) =>
+        {
+            _lastCoherentPhasor = null;
+            _displayGuardPhasorCycle = -1;
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.Render,
+                new Action(ApplyLiveDisplayGuard));
+        };
+    }
+
     private void ApplyLiveDisplayGuard()
     {
+        AttachPhasorQuantityGuard();
+
         if (SourceCombo.SelectedIndex == 0)
         {
             ResumeStandardPhasorTimer();
@@ -71,7 +91,7 @@ public partial class MainWindow
                                snapshot.Waveform.PhaseB.Count == snapshot.Waveform.PhaseA.Count &&
                                snapshot.Waveform.PhaseC.Count == snapshot.Waveform.PhaseA.Count &&
                                snapshot.Waveform.Residual.Count == snapshot.Waveform.PhaseA.Count;
-        var coherent = snapshot.Measurement.SmvTrust.AllowsMeasurement && waveformComplete;
+        var coherent = waveformComplete && IsDisplayCoherentTrust(snapshot.Measurement.SmvTrust);
 
         if (coherent)
         {
@@ -116,7 +136,18 @@ public partial class MainWindow
                 _phasorDisplayMode,
                 coherent
                     ? "Waiting for a complete 4I+4V phasor window."
-                    : "Holding display until the SMV stream is coherent.");
+                    : $"Holding display · {snapshot.Measurement.SmvTrust.Code}.");
+    }
+
+    private static bool IsDisplayCoherentTrust(SmvTrustState trust)
+    {
+        if (!trust.AllowsMeasurement)
+            return false;
+
+        return trust.Code is
+            "HEALTHY" or
+            "SCL_UNBOUND" or
+            "SCALING_UNRESOLVED";
     }
 
     private void SuspendStandardPhasorTimer()
