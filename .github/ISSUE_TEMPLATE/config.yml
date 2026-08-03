@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/masarray/arvrel/security/advisories/new
+    about: Report vulnerabilities privately. Do not publish sensitive details in an issue.
+  - name: Commercial licensing and support
+    url: https://github.com/masarray/arvrel/blob/main/COMMERCIAL-LICENSING.md
+    about: Review the dual-licensing model and commercial contact route.
+  - name: Support policy
+    url: https://github.com/masarray/arvrel/blob/main/SUPPORT.md
+    about: Understand community and contractual support boundaries.
