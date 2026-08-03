@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
+using Arvrel.Protection;
 
 namespace Arvrel.App;
 
