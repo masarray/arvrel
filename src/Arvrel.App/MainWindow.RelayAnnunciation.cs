@@ -79,7 +79,10 @@ public partial class MainWindow
             {
                 var runtime = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
                 if (string.IsNullOrWhiteSpace(runtime.Stream.Key))
+                {
+                    ClearRelayAnnunciation();
                     return;
+                }
 
                 snapshot = runtime.Protection;
                 sourceIdentity = runtime.Stream.Key;
@@ -87,6 +90,7 @@ public partial class MainWindow
         }
         catch (InvalidOperationException)
         {
+            ClearRelayAnnunciation();
             return;
         }
 
@@ -106,6 +110,18 @@ public partial class MainWindow
         SetAnnunciationState(PhaseBLed, ResolveAnnunciationState(indication.PhaseB));
         SetAnnunciationState(PhaseCLed, ResolveAnnunciationState(indication.PhaseC));
         SetAnnunciationState(EarthLed, ResolveAnnunciationState(indication.Earth));
+    }
+
+    private void ClearRelayAnnunciation()
+    {
+        _relayAnnunciationSourceIdentity = null;
+        _relayAnnunciationLatch.Reset();
+        SetAnnunciationState(PickupLed, RelayIndicatorState.Off);
+        SetAnnunciationState(TripLed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseALed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseBLed, RelayIndicatorState.Off);
+        SetAnnunciationState(PhaseCLed, RelayIndicatorState.Off);
+        SetAnnunciationState(EarthLed, RelayIndicatorState.Off);
     }
 
     private static void SetAnnunciationState(System.Windows.Shapes.Ellipse lamp, RelayIndicatorState state)
