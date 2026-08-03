@@ -1,0 +1,46 @@
+name: Engineering feature proposal
+description: Propose a focused protection, process-bus, evidence, UX, or research capability
+title: "[Feature]: "
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Engineering problem
+      description: Describe the operator or laboratory need rather than only the requested control.
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Expected behaviour and workflow
+    validations:
+      required: true
+  - type: textarea
+    id: standard
+    attributes:
+      label: IEC 61850 / ANSI / protection context
+      description: State the relevant function, data model, measurement domain, or evidence requirement.
+  - type: textarea
+    id: tests
+    attributes:
+      label: Proposed deterministic tests
+      description: Include operate and secure/restrained cases when protection logic is involved.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Safety and compatibility boundary
+      description: Explain effects on SMV trust, virtual trip, settings, evidence, and existing files.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: The proposal preserves the virtual-output-only public build.
+          required: true
+        - label: No proprietary or restricted operational material is included.
+          required: true
