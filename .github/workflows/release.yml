@@ -1,0 +1,152 @@
+name: Windows beta release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arvrel-public-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build-package-release
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@v4
+        with:
+          path: arvrel
+          fetch-depth: 0
+
+      - name: Checkout pinned ARIEC61850 engine
+        uses: actions/checkout@v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version and release gate
+        id: release_gate
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Invalid VERSION value: $version"
+          }
+          $tag = "v$version"
+          $existing = git ls-remote --tags origin "refs/tags/$tag"
+          $required = [string]::IsNullOrWhiteSpace(($existing | Out-String))
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "required=$($required.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Version $version · tag $tag · release required: $required"
+
+      - name: Restore
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet restore ARVREL.sln
+
+      - name: Build
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet build ARVREL.sln --configuration Release --no-restore
+
+      - name: Test
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet test ARVREL.sln --configuration Release --no-build --logger "trx;LogFileName=release-tests.trx"
+
+      - name: Audit vulnerable NuGet dependencies
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = dotnet list ARVREL.sln package --vulnerable --include-transitive
+          $output | Write-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Install release tooling
+        if: steps.release_gate.outputs.required == 'true'
+        id: tooling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup installation failed with exit code $LASTEXITCODE."
+          }
+
+          $sbomAvailable = $true
+          dotnet tool install --global CycloneDX
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning 'CycloneDX tool installation failed; the release will retain the NuGet dependency report.'
+            $sbomAvailable = $false
+          }
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "sbom_available=$($sbomAvailable.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Build installer, portable package, checksums and manifests
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $skipSbom = '${{ steps.tooling.outputs.sbom_available }}' -ne 'true'
+          .\scripts\package-release.ps1 `
+            -Version '${{ steps.release_gate.outputs.version }}' `
+            -SkipSbom:$skipSbom
+
+      - name: Upload release-candidate artifact
+        if: steps.release_gate.outputs.required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARVREL-v${{ steps.release_gate.outputs.version }}-release-candidate
+          path: arvrel/artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub prerelease
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assets = Get-ChildItem artifacts\release -File | Sort-Object Name | ForEach-Object FullName
+          if ($assets.Count -lt 3) {
+            throw 'Expected installer, portable archive and checksum/manifest assets were not produced.'
+          }
+          gh release create '${{ steps.release_gate.outputs.tag }}' @assets `
+            --target $env:GITHUB_SHA `
+            --title 'ARVREL ${{ steps.release_gate.outputs.tag }}' `
+            --notes-file RELEASE-NOTES.md `
+            --prerelease `
+            --verify-tag:$false
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub release creation failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Existing release
+        if: steps.release_gate.outputs.required != 'true'
+        shell: pwsh
+        run: Write-Host 'The VERSION tag already exists; no duplicate release was created.'
