@@ -48,6 +48,13 @@ public sealed class WaveformScope : FrameworkElement
         set => SetValue(FrameProperty, value);
     }
 
+    public void ResetEvidenceMarkerLocks()
+    {
+        _lockedPickupMarkerPosition = double.NaN;
+        _lockedTripMarkerPosition = double.NaN;
+        InvalidateVisual();
+    }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
