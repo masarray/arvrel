@@ -157,16 +157,44 @@ internal static class RelayIndicatorLampBehavior
         switch (state)
         {
             case RelayIndicatorState.Green:
-                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, active: true, state, enforcePinnedFill);
+                SetLamp(
+                    ellipse,
+                    GreenLampBrush,
+                    GreenStrokeBrush,
+                    GreenGlow,
+                    active: true,
+                    state: state,
+                    enforcePinnedFill: enforcePinnedFill);
                 break;
             case RelayIndicatorState.Orange:
-                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, active: true, state, enforcePinnedFill);
+                SetLamp(
+                    ellipse,
+                    OrangeLampBrush,
+                    OrangeStrokeBrush,
+                    OrangeGlow,
+                    active: true,
+                    state: state,
+                    enforcePinnedFill: enforcePinnedFill);
                 break;
             case RelayIndicatorState.Red:
-                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, active: true, state, enforcePinnedFill);
+                SetLamp(
+                    ellipse,
+                    RedLampBrush,
+                    RedStrokeBrush,
+                    RedGlow,
+                    active: true,
+                    state: state,
+                    enforcePinnedFill: enforcePinnedFill);
                 break;
             default:
-                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null, active: false, RelayIndicatorState.Off, enforcePinnedFill);
+                SetLamp(
+                    ellipse,
+                    OffLampBrush,
+                    OffStrokeBrush,
+                    effect: null,
+                    active: false,
+                    state: RelayIndicatorState.Off,
+                    enforcePinnedFill: enforcePinnedFill);
                 break;
         }
     }
