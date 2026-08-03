@@ -56,11 +56,24 @@ public partial class MainWindow
         AddReleaseToolbarField(legacyToolbar, 4, "SV STREAM", StreamCombo);
         AddReleaseToolbarField(legacyToolbar, 6, "VIEW", ViewCombo);
 
-        Grid.SetColumn(actionPanel, 8);
+        var actionHost = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            UseLayoutRounding = true,
+            SnapsToDevicePixels = true
+        };
+        actionHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(15) });
+        actionHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+
+        Grid.SetRow(actionPanel, 1);
         actionPanel.HorizontalAlignment = HorizontalAlignment.Right;
         actionPanel.VerticalAlignment = VerticalAlignment.Center;
         actionPanel.Margin = new Thickness(0);
-        legacyToolbar.Children.Add(actionPanel);
+        actionHost.Children.Add(actionPanel);
+
+        Grid.SetColumn(actionHost, 8);
+        legacyToolbar.Children.Add(actionHost);
 
         foreach (var button in actionPanel.Children.OfType<Button>())
         {
@@ -70,12 +83,19 @@ public partial class MainWindow
             button.VerticalAlignment = VerticalAlignment.Center;
             button.VerticalContentAlignment = VerticalAlignment.Center;
             button.HorizontalContentAlignment = HorizontalAlignment.Center;
+            button.Padding = button == RunButton
+                ? new Thickness(13, 0, 13, 0)
+                : new Thickness(0);
+
+            AlignReleaseToolbarButtonContent(button.Content);
         }
 
         RunButton.MinWidth = 120;
-        RunButton.Padding = new Thickness(13, 0, 13, 0);
+        RunButtonText.VerticalAlignment = VerticalAlignment.Center;
+        RunButtonText.TextAlignment = TextAlignment.Center;
         RunButtonText.TextTrimming = TextTrimming.None;
         RunButtonText.TextWrapping = TextWrapping.NoWrap;
+        RunButtonIcon.VerticalAlignment = VerticalAlignment.Center;
 
         RefreshReleaseToolbarTooltips();
     }
@@ -126,6 +146,22 @@ public partial class MainWindow
 
         Grid.SetColumn(field, column);
         toolbar.Children.Add(field);
+    }
+
+    private static void AlignReleaseToolbarButtonContent(object? content)
+    {
+        if (content is StackPanel panel)
+        {
+            panel.VerticalAlignment = VerticalAlignment.Center;
+            panel.HorizontalAlignment = HorizontalAlignment.Center;
+            foreach (var child in panel.Children.OfType<FrameworkElement>())
+                child.VerticalAlignment = VerticalAlignment.Center;
+        }
+        else if (content is FrameworkElement element)
+        {
+            element.VerticalAlignment = VerticalAlignment.Center;
+            element.HorizontalAlignment = HorizontalAlignment.Center;
+        }
     }
 
     private void ReleaseToolbarCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
