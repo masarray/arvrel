@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If ARVREL supports your research, teaching, or engineering publication, please cite the software and version used."
+title: "ARVREL — Virtual Protection Relay Laboratory"
+type: software
+authors:
+  - family-names: "Sulistiono"
+    given-names: "Ari"
+    alias: "masarray"
+repository-code: "https://github.com/masarray/arvrel"
+url: "https://github.com/masarray/arvrel"
+license: "GPL-3.0-or-later"
+version: "0.1.0-beta.1"
+date-released: 2026-08-03
+keywords:
+  - IEC 61850
+  - Sampled Values
+  - protection relay
+  - process bus
+  - power systems
+  - virtual laboratory
+abstract: >-
+  ARVREL is a vendor-neutral Windows virtual protection relay laboratory for
+  IEC 61850 Sampled Values engineering, education, process-bus analysis,
+  protection-algorithm research, and virtual trip evidence.
