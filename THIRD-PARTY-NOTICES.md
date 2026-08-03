@@ -11,7 +11,13 @@ This notice is informational and does not replace the complete license text or p
 - **SharpPcap** — packet capture/injection library used by the ARIEC61850 Npcap transport; distributed under the license declared by the SharpPcap project/package.
 - **Npcap** — Windows packet capture driver supplied separately by the Npcap project. The ARVREL release does not grant Npcap redistribution rights and does not silently install the Npcap driver.
 - **MSTest / Microsoft.NET.Test.Sdk** — test-only dependencies used by continuous integration.
-- **Inno Setup** — used by release automation to compile the Windows installer; the compiler is not part of ARVREL source licensing.
+- **Inno Setup** — used by the community release automation to compile the Windows installer. The compiler is not part of the ARVREL distribution or ARVREL source license. Organizations producing commercial installer builds must review and obtain any installer-tool license required for their use.
+
+## Lucide and Feather icon geometry
+
+ARVREL includes project-owned WPF geometry definitions adapted from selected icons in the **Lucide** icon project. Lucide is distributed under the ISC License; portions derived from **Feather Icons** retain the MIT License. The geometry is rendered locally by WPF and no icon font or binary icon package is distributed.
+
+Upstream copyright and license notices remain applicable to the adapted geometry. The generated release dependency report does not enumerate these source-level visual assets, so this attribution is included directly in every installer and portable package.
 
 ## Release manifests
 
@@ -20,7 +26,8 @@ Official release assets include or are generated alongside:
 - a transitive NuGet dependency report;
 - a CycloneDX software bill of materials when the release tool is available;
 - SHA-256 checksums;
-- the ARVREL GPL license and commercial-licensing notice.
+- the ARVREL GPL license and commercial-licensing notice;
+- this source-asset attribution notice.
 
 Review the release manifest before redistribution. A commercial ARVREL agreement cannot sublicense or override a third-party component.
 
