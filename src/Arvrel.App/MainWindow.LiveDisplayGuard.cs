@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
 using Arvrel.Protection;
@@ -8,32 +10,38 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
-    private DispatcherTimer? _liveDisplayGuardTimer;
     private WaveformFrame? _lastCoherentWaveform;
     private PhasorDisplayFrame? _lastCoherentPhasor;
     private string? _displayGuardStreamKey;
     private int _displayGuardPhasorCycle = -1;
     private bool _livePhasorTimerSuspended;
     private bool _phasorQuantityGuardAttached;
+    private bool _liveDisplayRenderingAttached;
+    private long _lastLiveProjectionTicks;
 
     internal void InitializeLiveDisplayGuard()
     {
         ContentRendered += (_, _) => StartLiveDisplayGuard();
-        Closed += (_, _) => _liveDisplayGuardTimer?.Stop();
+        Closed += (_, _) => StopLiveDisplayGuard();
     }
 
     private void StartLiveDisplayGuard()
     {
-        if (_liveDisplayGuardTimer is not null)
+        if (_liveDisplayRenderingAttached)
             return;
 
         AttachPhasorQuantityGuard();
-        _liveDisplayGuardTimer = new DispatcherTimer(DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(60)
-        };
-        _liveDisplayGuardTimer.Tick += (_, _) => ApplyLiveDisplayGuard();
-        _liveDisplayGuardTimer.Start();
+        CompositionTarget.Rendering += LiveDisplayGuard_Rendering;
+        _liveDisplayRenderingAttached = true;
+    }
+
+    private void StopLiveDisplayGuard()
+    {
+        if (!_liveDisplayRenderingAttached)
+            return;
+
+        CompositionTarget.Rendering -= LiveDisplayGuard_Rendering;
+        _liveDisplayRenderingAttached = false;
     }
 
     private void AttachPhasorQuantityGuard()
@@ -46,13 +54,14 @@ public partial class MainWindow
         {
             _lastCoherentPhasor = null;
             _displayGuardPhasorCycle = -1;
+            _lastLiveProjectionTicks = 0;
             Dispatcher.BeginInvoke(
                 DispatcherPriority.Render,
-                new Action(ApplyLiveDisplayGuard));
+                new Action(ReassertLiveDisplay));
         };
     }
 
-    private void ApplyLiveDisplayGuard()
+    private void LiveDisplayGuard_Rendering(object? sender, EventArgs e)
     {
         AttachPhasorQuantityGuard();
 
@@ -64,17 +73,42 @@ public partial class MainWindow
 
         SuspendStandardPhasorTimer();
 
+        // Snapshot/projection work remains throttled, but the last accepted frame is
+        // reasserted on every WPF render. This closes the former race where the normal
+        // 40 ms UI timer briefly painted raw/discontinuous data before the 60 ms guard.
+        var nowTicks = Stopwatch.GetTimestamp();
+        var projectionDue = _lastLiveProjectionTicks == 0 ||
+                            Stopwatch.GetElapsedTime(_lastLiveProjectionTicks, nowTicks) >= TimeSpan.FromMilliseconds(35);
+        if (projectionDue)
+        {
+            _lastLiveProjectionTicks = nowTicks;
+            UpdateLiveDisplayProjection();
+        }
+
+        ReassertLiveDisplay();
+    }
+
+    private void UpdateLiveDisplayProjection()
+    {
         if (string.IsNullOrWhiteSpace(_selectedStreamKey))
         {
-            SmvScope.Frame = WaveformFrame.Empty;
-            if (_phasorScope is not null)
-                _phasorScope.Frame = PhasorDisplayFrame.Unavailable(
-                    _phasorDisplayMode,
-                    "Waiting for a coherent SMV measurement window.");
+            _displayGuardStreamKey = null;
+            _lastCoherentWaveform = null;
+            _lastCoherentPhasor = null;
+            _displayGuardPhasorCycle = -1;
             return;
         }
 
-        var snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
+        ProcessBusSnapshot snapshot;
+        try
+        {
+            snapshot = _processBus.GetSnapshot(_selectedStreamKey, ViewCombo.SelectedIndex == 1);
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(snapshot.Stream.Key))
             return;
 
@@ -93,32 +127,38 @@ public partial class MainWindow
                                snapshot.Waveform.Residual.Count == snapshot.Waveform.PhaseA.Count;
         var coherent = waveformComplete && IsDisplayCoherentTrust(snapshot.Measurement.SmvTrust);
 
-        if (coherent)
-        {
-            _lastCoherentWaveform = new WaveformFrame(
-                snapshot.Waveform.PhaseA,
-                snapshot.Waveform.PhaseB,
-                snapshot.Waveform.PhaseC,
-                snapshot.Waveform.Residual,
-                snapshot.Waveform.FrequencyHz,
-                _pickupPosition,
-                _tripPosition);
+        if (!coherent)
+            return;
 
-            var samplesPerCycle = Math.Max(1, snapshot.SamplesPerCycle);
-            var phasorCycle = snapshot.SampleCounter / samplesPerCycle;
-            if (_phasorScope is not null &&
-                (phasorCycle != _displayGuardPhasorCycle || _lastCoherentPhasor is null))
-            {
-                var projected = PhasorDisplayProjector.Project(
-                    snapshot.Measurement.Phasors,
-                    _phasorDisplayMode);
-                if (projected.IsAvailable)
-                {
-                    _lastCoherentPhasor = projected;
-                    _displayGuardPhasorCycle = phasorCycle;
-                }
-            }
-        }
+        _lastCoherentWaveform = new WaveformFrame(
+            snapshot.Waveform.PhaseA,
+            snapshot.Waveform.PhaseB,
+            snapshot.Waveform.PhaseC,
+            snapshot.Waveform.Residual,
+            snapshot.Waveform.FrequencyHz,
+            _pickupPosition,
+            _tripPosition);
+
+        var samplesPerCycle = Math.Max(1, snapshot.SamplesPerCycle);
+        var phasorCycle = snapshot.SampleCounter / samplesPerCycle;
+        if (_phasorScope is null ||
+            phasorCycle == _displayGuardPhasorCycle && _lastCoherentPhasor is not null)
+            return;
+
+        var projected = PhasorDisplayProjector.Project(
+            snapshot.Measurement.Phasors,
+            _phasorDisplayMode);
+        if (!projected.IsAvailable)
+            return;
+
+        _lastCoherentPhasor = projected;
+        _displayGuardPhasorCycle = phasorCycle;
+    }
+
+    private void ReassertLiveDisplay()
+    {
+        if (SourceCombo.SelectedIndex == 0)
+            return;
 
         SmvScope.Frame = _lastCoherentWaveform is null
             ? WaveformFrame.Empty
@@ -134,9 +174,7 @@ public partial class MainWindow
         _phasorScope.Frame = _lastCoherentPhasor
             ?? PhasorDisplayFrame.Unavailable(
                 _phasorDisplayMode,
-                coherent
-                    ? "Waiting for a complete 4I+4V phasor window."
-                    : $"Holding display · {snapshot.Measurement.SmvTrust.Code}.");
+                "Waiting for a coherent 4I+4V SMV window.");
     }
 
     private static bool IsDisplayCoherentTrust(SmvTrustState trust)
@@ -170,6 +208,7 @@ public partial class MainWindow
         _lastCoherentWaveform = null;
         _lastCoherentPhasor = null;
         _displayGuardPhasorCycle = -1;
+        _lastLiveProjectionTicks = 0;
     }
 }
 
