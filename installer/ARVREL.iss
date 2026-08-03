@@ -24,6 +24,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 LicenseFile=..\LICENSE
 InfoBeforeFile=..\COMMERCIAL-LICENSING.md
+SetupIconFile=..\Asset\icon\favicon.ico
 OutputDir=..\artifacts\release
 OutputBaseFilename=ARVREL-Setup-v{#AppVersion}-win-x64
 Compression=lzma2/ultra64
