@@ -256,8 +256,18 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         var wrap = ResolveCounterWrap(first, _measurementContext.NominalFrequencyHz);
         var ingress = gate.ObserveFrame(counters, wrap);
 
+        // Create the runtime before handling a rejected transition so the frame can be
+        // represented in stream telemetry and the trust gate without admitting payload
+        // samples into the measurement buffers.
+        var runtime = _streams.GetOrAdd(key, _ =>
+        {
+            Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
+            return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
+        });
+
         if (ingress.Decision == SmvIngressDecision.DropDuplicate)
         {
+            runtime.ObserveIngressRejection(timestamp, ingress.Decision, ingress.SampleCount, asdus.Count, replay);
             if (_continuityNotices.ShouldRaise(key, "DUPLICATE", timestamp))
                 Raise("SMV DROP", $"{first.SvId} duplicate smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
@@ -265,16 +275,11 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 
         if (ingress.Decision == SmvIngressDecision.DropOutOfOrder)
         {
+            runtime.ObserveIngressRejection(timestamp, ingress.Decision, ingress.SampleCount, asdus.Count, replay);
             if (_continuityNotices.ShouldRaise(key, "OUT_OF_ORDER", timestamp))
                 Raise("SMV DROP", $"{first.SvId} out-of-order smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
         }
-
-        var runtime = _streams.GetOrAdd(key, _ =>
-        {
-            Raise("STREAM", $"Discovered {first.SvId} · APPID 0x{frame.AppId:X4}.");
-            return new SmvStreamRuntime(key, frame, _settings, _measurementContext);
-        });
 
         if (ingress.Decision == SmvIngressDecision.RestartWindow &&
             _continuityNotices.ShouldRaise(key, "GAP", timestamp))
