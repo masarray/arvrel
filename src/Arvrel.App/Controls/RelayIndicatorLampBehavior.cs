@@ -7,6 +7,15 @@ using System.Windows.Shapes;
 
 namespace Arvrel.App.Controls;
 
+internal enum RelayIndicatorState
+{
+    Auto,
+    Off,
+    Green,
+    Orange,
+    Red
+}
+
 internal static class RelayIndicatorLampBehavior
 {
     private static readonly DependencyProperty IsAttachedProperty = DependencyProperty.RegisterAttached(
@@ -14,6 +23,12 @@ internal static class RelayIndicatorLampBehavior
         typeof(bool),
         typeof(RelayIndicatorLampBehavior),
         new PropertyMetadata(false));
+
+    private static readonly DependencyProperty PinnedStateProperty = DependencyProperty.RegisterAttached(
+        "PinnedState",
+        typeof(RelayIndicatorState),
+        typeof(RelayIndicatorLampBehavior),
+        new PropertyMetadata(RelayIndicatorState.Auto, OnPinnedStateChanged));
 
     private static readonly DependencyPropertyDescriptor FillDescriptor =
         DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Ellipse));
@@ -39,19 +54,19 @@ internal static class RelayIndicatorLampBehavior
         Color.FromRgb(73, 25, 0));
 
     private static readonly Brush RedLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 248, 246),
-        Color.FromRgb(255, 88, 76),
-        Color.FromRgb(211, 5, 23),
-        Color.FromRgb(70, 1, 8));
+        Color.FromRgb(255, 255, 255),
+        Color.FromRgb(255, 42, 48),
+        Color.FromRgb(230, 0, 24),
+        Color.FromRgb(82, 0, 7));
 
     private static readonly Brush OffStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(42, 51, 57)));
     private static readonly Brush GreenStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(151, 255, 181)));
     private static readonly Brush OrangeStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 224, 141)));
-    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 177, 169)));
+    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 196, 190)));
 
-    private static readonly Effect GreenGlow = CreateGlow(Color.FromRgb(31, 255, 99));
-    private static readonly Effect OrangeGlow = CreateGlow(Color.FromRgb(255, 157, 20));
-    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 35, 45));
+    private static readonly Effect GreenGlow = CreateGlow(Color.FromRgb(31, 255, 99), 15);
+    private static readonly Effect OrangeGlow = CreateGlow(Color.FromRgb(255, 157, 20), 15);
+    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 18, 34), 19);
 
     [ModuleInitializer]
     internal static void Initialize()
@@ -65,6 +80,18 @@ internal static class RelayIndicatorLampBehavior
             typeof(Ellipse),
             FrameworkElement.UnloadedEvent,
             new RoutedEventHandler(OnUnloaded));
+    }
+
+    internal static RelayIndicatorState GetPinnedState(Ellipse ellipse)
+        => (RelayIndicatorState)ellipse.GetValue(PinnedStateProperty);
+
+    internal static void SetPinnedState(Ellipse ellipse, RelayIndicatorState state)
+        => ellipse.SetValue(PinnedStateProperty, state);
+
+    private static void OnPinnedStateChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+    {
+        if (dependencyObject is Ellipse ellipse && ellipse.IsLoaded)
+            ApplyVisualState(ellipse);
     }
 
     private static void OnLoaded(object sender, RoutedEventArgs e)
@@ -94,21 +121,32 @@ internal static class RelayIndicatorLampBehavior
 
     private static void ApplyVisualState(Ellipse ellipse)
     {
+        var pinned = GetPinnedState(ellipse);
+        if (pinned != RelayIndicatorState.Auto)
+        {
+            ApplyResolvedState(ellipse, pinned);
+            return;
+        }
+
         if (ellipse.Fill is RadialGradientBrush)
             return;
 
         var active = IsActive(ellipse.Fill);
-        var state = active ? ResolveActiveState(ellipse.Name, ellipse.Fill) : LampState.Off;
+        var state = active ? ResolveActiveState(ellipse.Name, ellipse.Fill) : RelayIndicatorState.Off;
+        ApplyResolvedState(ellipse, state);
+    }
 
+    private static void ApplyResolvedState(Ellipse ellipse, RelayIndicatorState state)
+    {
         switch (state)
         {
-            case LampState.Green:
+            case RelayIndicatorState.Green:
                 SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, active: true);
                 break;
-            case LampState.Orange:
+            case RelayIndicatorState.Orange:
                 SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, active: true);
                 break;
-            case LampState.Red:
+            case RelayIndicatorState.Red:
                 SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, active: true);
                 break;
             default:
@@ -119,23 +157,24 @@ internal static class RelayIndicatorLampBehavior
 
     private static void SetLamp(Ellipse ellipse, Brush fill, Brush stroke, Effect? effect, bool active)
     {
-        ellipse.Fill = fill;
+        if (!ReferenceEquals(ellipse.Fill, fill))
+            ellipse.Fill = fill;
         ellipse.Stroke = stroke;
-        ellipse.StrokeThickness = active ? 1.15 : 1;
+        ellipse.StrokeThickness = active ? 1.25 : 1;
         ellipse.Opacity = active ? 1 : 0.88;
         ellipse.Effect = effect;
     }
 
-    private static LampState ResolveActiveState(string name, Brush source)
+    private static RelayIndicatorState ResolveActiveState(string name, Brush source)
     {
         return name switch
         {
-            "PickupLed" => LampState.Orange,
-            "TripLed" or "BlockLed" => LampState.Red,
-            "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? LampState.Green : LampState.Red,
+            "PickupLed" => RelayIndicatorState.Orange,
+            "TripLed" or "BlockLed" => RelayIndicatorState.Red,
+            "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? RelayIndicatorState.Green : RelayIndicatorState.Red,
             "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" =>
-                IsTripColor(source) ? LampState.Red : LampState.Orange,
-            _ => LampState.Green
+                IsTripColor(source) ? RelayIndicatorState.Red : RelayIndicatorState.Orange,
+            _ => RelayIndicatorState.Green
         };
     }
 
@@ -174,16 +213,16 @@ internal static class RelayIndicatorLampBehavior
             RadiusY = 0.72
         };
         brush.GradientStops.Add(new GradientStop(highlight, 0));
-        brush.GradientStops.Add(new GradientStop(core, 0.3));
-        brush.GradientStops.Add(new GradientStop(edge, 0.74));
+        brush.GradientStops.Add(new GradientStop(core, 0.28));
+        brush.GradientStops.Add(new GradientStop(edge, 0.72));
         brush.GradientStops.Add(new GradientStop(outerRim, 1));
         return Freeze(brush);
     }
 
-    private static Effect CreateGlow(Color color)
+    private static Effect CreateGlow(Color color, double blurRadius)
         => Freeze(new DropShadowEffect
         {
-            BlurRadius = 15,
+            BlurRadius = blurRadius,
             Color = color,
             Direction = 0,
             Opacity = 1,
@@ -195,13 +234,5 @@ internal static class RelayIndicatorLampBehavior
     {
         value.Freeze();
         return value;
-    }
-
-    private enum LampState
-    {
-        Off,
-        Green,
-        Orange,
-        Red
     }
 }
