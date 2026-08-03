@@ -29,11 +29,15 @@ internal static class WaveformEvidenceResetBootstrap
     {
         if (sender is not ComboBox combo ||
             combo.Name is not ("SourceCombo" or "StreamCombo") ||
-            Window.GetWindow(combo) is not MainWindow window)
+            Window.GetWindow(combo) is not MainWindow window ||
+            !window.IsLoaded)
         {
             return;
         }
 
+        // During InitializeComponent, SourceCombo/StreamCombo can raise SelectionChanged
+        // before the named SmvScope field has been created. The runtime cursor-reset path
+        // is only required after the window is loaded, when all named controls exist.
         window.ResetWaveformEvidenceMarkerLocks();
     }
 }
