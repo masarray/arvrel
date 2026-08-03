@@ -1,0 +1,16 @@
+# Default owner
+* @masarray
+
+# Safety-critical protection and process-bus paths
+/src/Arvrel.Protection/ @masarray
+/src/Arvrel.ProcessBus/ @masarray
+/tests/Arvrel.Protection.Tests/ @masarray
+/tests/Arvrel.ProcessBus.Tests/ @masarray
+
+# Release, licensing, and security governance
+/.github/workflows/ @masarray
+/installer/ @masarray
+/LICENSE @masarray
+/COMMERCIAL-LICENSING.md @masarray
+/SECURITY.md @masarray
+/CLA.md @masarray
