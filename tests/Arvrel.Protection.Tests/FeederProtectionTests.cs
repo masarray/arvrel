@@ -116,7 +116,11 @@ public sealed class FeederProtectionTests
         var phasors = new PhasorMeasurementSet(
             current, current, current, current * 3,
             voltage, voltage, voltage, voltage * 3,
-            50);
+            50)
+        {
+            NeutralCurrentAvailable = true,
+            NeutralVoltageAvailable = true
+        };
 
         var snapshot = Run(engine, phasors, 120);
 
@@ -124,6 +128,102 @@ public sealed class FeederProtectionTests
         Assert.IsTrue(snapshot.TripLatched);
         Assert.AreEqual("67N", snapshot.ActiveElement);
         Assert.IsTrue(snapshot.EarthPickup);
+    }
+
+    [TestMethod]
+    public void DirectionalEarth67N_PrefersIndependentResidualChannelOverBalancedPhaseSum()
+    {
+        var settings = Settings(new FeederProtectionSettings
+        {
+            DirectionalEarth67NEnabled = true,
+            DirectionalEarth67NPickupA = 0.30,
+            DirectionalEarth67NDelay = TimeSpan.FromMilliseconds(20),
+            DirectionalEarth67NCharacteristicAngleDeg = -45,
+            DirectionalEarth67NSense = DirectionalSense.Forward,
+            DirectionalEarth67NMinimumPolarizingVoltageV = 2
+        });
+        var currentResidual = Polar(0.6, -45);
+        var voltageResidual = Polar(15, 0);
+        var phasors = new PhasorMeasurementSet(
+            Polar(1, 0), Polar(1, -120), Polar(1, 120), currentResidual,
+            Polar(63.5, 0), Polar(63.5, -120), Polar(63.5, 120), voltageResidual,
+            50)
+        {
+            NeutralCurrentAvailable = true,
+            NeutralVoltageAvailable = true
+        };
+
+        Assert.IsTrue((phasors.PhaseACurrent + phasors.PhaseBCurrent + phasors.PhaseCCurrent).Magnitude < 0.001);
+        Assert.AreEqual(0.6, phasors.ResidualCurrent.Magnitude, 0.001);
+        Assert.AreEqual(15, phasors.ResidualVoltage.Magnitude, 0.001);
+
+        var snapshot = Run(new ProtectionEngine(settings), phasors, 30);
+
+        Assert.IsTrue(snapshot.Feeder.DirectionalEarth67N.Operated, snapshot.Feeder.EarthDirectionalDecision.Reason);
+        Assert.AreEqual("67N", snapshot.LatchedOperation?.Element);
+        Assert.AreEqual(0.6, snapshot.LatchedOperation?.TripQuantity ?? 0, 0.001);
+    }
+
+    [TestMethod]
+    public void OperatedFeederElement_TakesPriorityOverLegacyPickupForTripEvidence()
+    {
+        var settings = new ProtectionSettings
+        {
+            PhaseInstantaneousEnabled = true,
+            PhaseInstantaneousPickupA = 1,
+            PhaseInstantaneousDelay = TimeSpan.FromMilliseconds(500),
+            PhaseTimeEnabled = false,
+            EarthInstantaneousEnabled = false,
+            EarthTimeEnabled = false,
+            Feeder = new FeederProtectionSettings
+            {
+                Undervoltage27Enabled = true,
+                Undervoltage27PickupV = 90,
+                Undervoltage27Delay = TimeSpan.FromMilliseconds(20),
+                Undervoltage27Logic = VoltageSelectionLogic.TwoOfThree
+            }
+        };
+        var engine = new ProtectionEngine(settings);
+        var phasors = BalancedPhasors(2, 70, 0);
+
+        var snapshot = Run(engine, phasors, 30);
+
+        Assert.IsTrue(snapshot.Phase50.Pickup);
+        Assert.IsFalse(snapshot.Phase50.Operated);
+        Assert.IsTrue(snapshot.Feeder.Undervoltage27.Operated);
+        Assert.AreEqual("27", snapshot.ActiveElement);
+        Assert.AreEqual("27", snapshot.LatchedOperation?.Element);
+        Assert.AreEqual("V", snapshot.LatchedOperation?.QuantityUnit);
+        Assert.AreEqual(70, snapshot.LatchedOperation?.TripQuantity ?? 0, 0.001);
+    }
+
+    [TestMethod]
+    public void DirectionalPhase67_ProducesDeterministicFaultedPhaseEvidence()
+    {
+        var settings = Settings(new FeederProtectionSettings
+        {
+            DirectionalPhase67Enabled = true,
+            DirectionalPhase67PickupA = 1,
+            DirectionalPhase67Delay = TimeSpan.FromMilliseconds(20),
+            DirectionalPhase67CharacteristicAngleDeg = 0,
+            DirectionalPhase67Sense = DirectionalSense.Forward,
+            DirectionalPhase67MinimumPolarizingVoltageV = 5
+        });
+        var phasors = new PhasorMeasurementSet(
+            Polar(2, 0), Complex.Zero, Complex.Zero, Complex.Zero,
+            Polar(63.5, 0), Polar(63.5, -120), Polar(63.5, 120), Complex.Zero,
+            50);
+
+        var snapshot = Run(new ProtectionEngine(settings), phasors, 30);
+
+        Assert.IsTrue(snapshot.Feeder.DirectionalPhase67.Operated, snapshot.Feeder.PhaseDirectionalDecision.Reason);
+        Assert.IsTrue(snapshot.PhaseAPickup);
+        Assert.IsFalse(snapshot.PhaseBPickup);
+        Assert.IsFalse(snapshot.PhaseCPickup);
+        Assert.IsNotNull(snapshot.LatchedOperation);
+        Assert.IsTrue(snapshot.LatchedOperation.PhaseA);
+        Assert.IsFalse(snapshot.LatchedOperation.PhaseB);
+        Assert.IsFalse(snapshot.LatchedOperation.PhaseC);
     }
 
     [TestMethod]
