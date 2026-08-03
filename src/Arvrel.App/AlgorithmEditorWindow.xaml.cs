@@ -62,6 +62,7 @@ public partial class AlgorithmEditorWindow : Window
 
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ARVREL", "algorithms");
         Directory.CreateDirectory(directory);
+        var settingsFingerprint = _activeSettings.Fingerprint();
         var document = new
         {
             schemaVersion = 3,
@@ -72,16 +73,29 @@ public partial class AlgorithmEditorWindow : Window
             {
                 _activeSettings.GroupName,
                 _activeSettings.Revision,
-                fingerprint = _activeSettings.Fingerprint()
+                fingerprint = settingsFingerprint
             },
             mode = "deterministic-shadow-p2",
             activation = "not-active",
             outputBoundary = "virtual-only",
             source = EditorText.Text
         };
-        var path = Path.Combine(directory, $"{SelectedElement}-{result.ContentHash[..12]}.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
-        StatusText.Text = $"Shadow algorithm staged · {Path.GetFileName(path)} · active relay algorithm unchanged.";
+        var path = Path.Combine(
+            directory,
+            $"{SelectedElement}-{settingsFingerprint[..12]}-{result.ContentHash[..12]}.json");
+        var json = JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true });
+
+        try
+        {
+            using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            using var writer = new StreamWriter(stream);
+            writer.Write(json);
+            StatusText.Text = $"Shadow algorithm staged · {Path.GetFileName(path)} · active relay algorithm unchanged.";
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            StatusText.Text = $"Immutable shadow already staged · {Path.GetFileName(path)} · existing evidence was not overwritten.";
+        }
     }
 
     private void LoadSources(bool resetCustom)
