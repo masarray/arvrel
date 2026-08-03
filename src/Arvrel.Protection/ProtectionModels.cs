@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -115,6 +116,11 @@ public sealed record ProtectionSettings
         if (Revision < 1)
             throw new ArgumentOutOfRangeException(nameof(Revision));
 
+        ValidateDefinedEnum(PhaseTimeCurve, nameof(PhaseTimeCurve));
+        ValidateDefinedEnum(PhaseTimeResetMode, nameof(PhaseTimeResetMode));
+        ValidateDefinedEnum(EarthTimeCurve, nameof(EarthTimeCurve));
+        ValidateDefinedEnum(EarthTimeResetMode, nameof(EarthTimeResetMode));
+
         ValidateElement(PhaseInstantaneousPickupA, PhaseInstantaneousDelay, PhaseInstantaneousDropoutRatio,
             nameof(PhaseInstantaneousPickupA), nameof(PhaseInstantaneousDelay), nameof(PhaseInstantaneousDropoutRatio));
         ValidateElement(EarthInstantaneousPickupA, EarthInstantaneousDelay, EarthInstantaneousDropoutRatio,
@@ -147,7 +153,7 @@ public sealed record ProtectionSettings
 
     public string Fingerprint()
     {
-        var canonical = string.Join('|',
+        var canonical = CanonicalJoin(
             GroupName.Trim(), Revision,
             PhaseInstantaneousEnabled, PhaseInstantaneousPickupA, PhaseInstantaneousDelay.Ticks, PhaseInstantaneousDropoutRatio,
             PhaseTimeEnabled, PhaseTimePickupA, PhaseTimeCurve, PhaseTimeMultiplier, PhaseTimeDefiniteDelay.Ticks,
@@ -160,6 +166,19 @@ public sealed record ProtectionSettings
             Feeder.CanonicalIdentity());
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
+
+    internal static string CanonicalJoin(params object?[] values)
+        => string.Join('|', values.Select(FormatCanonicalValue));
+
+    private static string FormatCanonicalValue(object? value) => value switch
+    {
+        null => string.Empty,
+        double number => number.ToString("R", CultureInfo.InvariantCulture),
+        float number => number.ToString("R", CultureInfo.InvariantCulture),
+        decimal number => number.ToString(CultureInfo.InvariantCulture),
+        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty,
+        _ => value.ToString() ?? string.Empty
+    };
 
     private static void ValidateElement(
         double pickup,
@@ -213,6 +232,12 @@ public sealed record ProtectionSettings
         if (!double.IsFinite(value) || value <= 0)
             throw new ArgumentOutOfRangeException(name);
     }
+
+    private static void ValidateDefinedEnum<TEnum>(TEnum value, string name) where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+            throw new ArgumentOutOfRangeException(name, value, "Undefined enum value.");
+    }
 }
 
 public sealed record MeasurementFrame(
@@ -237,6 +262,19 @@ public sealed record ElementSnapshot(
     double PickupSetting,
     string Reason);
 
+public sealed record ProtectionOperationEvidence(
+    string Element,
+    DateTimeOffset PickupTimestamp,
+    DateTimeOffset TripTimestamp,
+    double PickupQuantity,
+    double TripQuantity,
+    string QuantitySymbol,
+    string QuantityUnit,
+    bool PhaseA,
+    bool PhaseB,
+    bool PhaseC,
+    bool Earth);
+
 public sealed record ProtectionSnapshot(
     DateTimeOffset Timestamp,
     ElementSnapshot Phase50,
@@ -255,6 +293,7 @@ public sealed record ProtectionSnapshot(
     SmvTrustState SmvTrust)
 {
     public FeederProtectionSnapshot Feeder { get; init; } = FeederProtectionSnapshot.Ready(Timestamp);
+    public ProtectionOperationEvidence? LatchedOperation { get; init; }
 
     public static ProtectionSnapshot Ready(DateTimeOffset timestamp) => new(
         timestamp,
