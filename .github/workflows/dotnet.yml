@@ -12,6 +12,7 @@ permissions:
 jobs:
   build-test:
     runs-on: windows-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout ARVREL
         uses: actions/checkout@v4
@@ -41,6 +42,36 @@ jobs:
         working-directory: arvrel
         run: dotnet test .\ARVREL.sln -c Release --no-build --logger "trx;LogFileName=arvrel-tests.trx"
 
+      - name: Audit vulnerable NuGet dependencies
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = dotnet list .\ARVREL.sln package --vulnerable --include-transitive
+          $text = $output | Out-String
+          $text | Write-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE."
+          }
+          if ($text -match 'has the following vulnerable packages') {
+            throw 'The dependency audit reported one or more vulnerable packages.'
+          }
+
+      - name: Install Inno Setup for release-candidate packaging
+        if: startsWith(github.head_ref, 'release/')
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup installation failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Package release candidate
+        if: startsWith(github.head_ref, 'release/')
+        shell: pwsh
+        working-directory: arvrel
+        run: .\scripts\package-release.ps1 -SkipSbom
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,3 +79,12 @@ jobs:
           name: arvrel-test-results
           path: arvrel/**/TestResults/*.trx
           if-no-files-found: ignore
+
+      - name: Upload release candidate
+        if: startsWith(github.head_ref, 'release/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: arvrel-release-candidate
+          path: arvrel/artifacts/release/*
+          if-no-files-found: error
+          retention-days: 14
