@@ -1,171 +1,238 @@
+<div align="center">
+
 # ARVREL
 
-**IEC 61850 Sampled Values virtual multifunction feeder relay and protection-algorithm laboratory for Windows.**
+### Virtual Protection Relay Laboratory for IEC 61850 Sampled Values
 
-ARVREL presents the protection cause-and-effect chain in one engineering workspace:
+Vendor-neutral Windows software for process-bus engineering, protection education, FAT/SAT preparation, algorithm research, waveform/phasor analysis, and virtual trip evidence.
+
+[![Windows CI](https://github.com/masarray/arvrel/actions/workflows/dotnet.yml/badge.svg)](https://github.com/masarray/arvrel/actions/workflows/dotnet.yml)
+[![Release](https://img.shields.io/github/v/release/masarray/arvrel?include_prereleases&label=beta)](https://github.com/masarray/arvrel/releases)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-0b7285)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-2563eb)](#system-requirements)
+[![Safety boundary](https://img.shields.io/badge/output-virtual%20only-b45309)](#safety-boundary)
+
+[Download beta](https://github.com/masarray/arvrel/releases) · [Windows setup](docs/WINDOWS_SETUP.md) · [Architecture](docs/ARCHITECTURE.md) · [Commercial licensing](COMMERCIAL-LICENSING.md) · [Security](SECURITY.md)
+
+</div>
+
+![ARVREL virtual protection relay laboratory](docs/assets/arvrel-main.png)
+
+## What ARVREL is
+
+ARVREL is a desktop virtual protection relay laboratory built around IEC 61850 Sampled Values. It combines a live/replay process-bus subscriber, coherent waveform and phasor instruments, configurable protection functions, a numerical-relay-style faceplate, deterministic research tooling, and exportable engineering evidence.
+
+It is designed for:
+
+- protection and substation-automation engineers;
+- IEC 61850 training and university laboratories;
+- process-bus integration and troubleshooting;
+- FAT/SAT preparation and controlled demonstration;
+- protection-algorithm research and reproducible software testing;
+- analysis of SCL-bound and synthetic Sampled Values streams.
+
+## Public beta status
+
+The current target is **v0.1.0-beta.1**. The beta is suitable for source review, education, controlled laboratory testing, and engineering evaluation. It is not presented as a certified protection IED or a hard real-time trip platform.
+
+Official release assets provide a self-contained Windows x64 installer and portable archive. Source-development builds use the sibling repositories:
 
 ```text
-4I+4V SMV → stream trust → RMS/phasor measurement → active algorithm → native settings → virtual trip → evidence
+Git/
+  ARIEC61850/
+  arvrel/
 ```
 
-> ARVREL is an engineering and educational laboratory. It is not a certified protection IED, calibrated relay test set, deterministic real-time platform, or authorization to operate primary equipment. Outputs are virtual only: no GOOSE trip, MMS control, relay contact, or physical trip path.
+## Core capabilities
 
-## Two operating modes
+### IEC 61850 process bus
 
-### Practitioner mode
+- live Npcap Sampled Values capture;
+- PCAP and PCAPNG replay;
+- SCL import and SampledValueControl profile matching;
+- APPID, destination MAC, VLAN, svID, datSet, confRev, quality, freshness, scaling, mapping, and `smpCnt` evidence;
+- transactional duplicate/out-of-order rejection before measurement ingestion;
+- coherent waveform/phasor hold during communication recovery;
+- remembered SCL file and Npcap adapter;
+- secondary and primary CT/VT display context.
 
-Configure and operate ARVREL through native numerical-relay-style settings without opening code:
+### Measurement and phasors
 
-- setting group name, revision and fingerprint;
-- 50P-1 and 50N enable, pickup, definite delay and dropout;
-- 51P and 51N enable, pickup, characteristic, TMS, definite delay, minimum operate time, dropout and reset behavior;
-- IEC Standard/Normal, Very, Extremely and Long-Time Inverse;
-- Definite Time and user-defined IEC-form curves;
-- 67P positive-sequence directional phase overcurrent;
-- 67N residual directional earth fault;
-- 27 undervoltage with phase selection logic;
-- 59 overvoltage with phase selection logic;
-- 59N residual overvoltage;
-- CT and VT primary/secondary context;
-- save/load `.arvsettings` presets and restore defaults.
+- IA, IB, IC, IN/3I0 and VA, VB, VC, VN/3V0;
+- newest one-cycle fundamental RMS phasors for protection;
+- complete two-cycle waveform windows for visual evidence;
+- positive-, negative-, and zero-sequence quantities;
+- explicit residual-channel preference with calculated phase-sum fallback;
+- current, voltage, and sequence phasor views;
+- common VA reference convention where voltage evidence is available.
 
-### Research mode
+### Protection functions
 
-Inspect the exact standard algorithm generated from the active setting group and edit a separate custom shadow definition:
-
-- read-only active standard source;
-- editable typed laboratory DSL;
-- deterministic safety-policy validation;
-- immutable shadow staging tied to the active settings fingerprint;
-- visible virtual-output-only boundary.
-
-Custom source remains shadow-only and does not replace the running standard algorithm. Runtime A/B comparison and explicit custom activation remain future research-engine work.
-
-## Multifunction feeder protection
-
-The active P2 feeder package adds a phasor-domain layer beside the existing overcurrent engine:
-
-| ANSI | Function | Current implementation |
+| ANSI | Function | Implementation |
 |---|---|---|
-| 67P | Directional phase overcurrent | Positive-sequence `V1/I1`, MTA, forward/reverse selection, minimum polarizing voltage and definite delay |
-| 67N | Directional earth fault | Residual `3V0/3I0`, MTA, forward/reverse selection, minimum polarizing voltage and definite delay |
-| 27 | Undervoltage | Phase-neutral, phase-phase or positive-sequence voltage with 1/2/3-of-3 logic |
-| 59 | Overvoltage | Phase-neutral, phase-phase or positive-sequence voltage with 1/2/3-of-3 logic |
-| 59N | Residual overvoltage | `3V0` pickup, dropout and definite delay |
+| 50P-1 | Instantaneous phase overcurrent | Pickup, dropout, definite delay |
+| 51P | Time phase overcurrent | IEC inverse, definite time, TMS, reset modes |
+| 50N | Instantaneous earth fault | Residual/neutral operating quantity |
+| 51N | Time earth fault | IEC inverse, definite time, TMS, reset modes |
+| 67P | Directional phase overcurrent | Positive-sequence V1/I1 polarization |
+| 67N | Directional earth fault | Residual 3V0/3I0 polarization |
+| 27 | Undervoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic |
+| 59 | Overvoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic |
+| 59N | Residual overvoltage | 3V0 magnitude |
 
-The feeder functions default to **disabled**. This preserves the existing 50/51 laboratory behavior until an operator explicitly enables and configures them.
+Protection evidence captures the operating element, pickup and trip timestamps, operating quantity and unit, settings identity, SMV trust state, and latched phase/earth cause.
 
-All feeder elements use the same SMV trust gate and virtual trip latch as 50/51. Directional elements remain restrained when phasors or minimum polarizing voltage are unavailable.
+### Practitioner and research workflows
 
-Functions such as 46, 47, 49, 81U/O, 32, 50BF, 79, 25 and 86 are not part of this P2 baseline yet.
+**Practitioner mode** provides familiar relay notation such as `I>`, `I0>`, `TMS`, `tI>`, `tMin`, and `tReset`, plus setting groups, revision, SHA-256 fingerprint, preset save/load, CT/VT context, and live curve-time previews.
 
-## Process-bus capabilities
+**Research mode** exposes the exact active standard algorithm source as read-only evidence. Editable custom source is validated and staged as an immutable shadow artifact; it does not replace the running protection algorithm.
 
-- live IEC 61850 Sampled Values capture through Npcap;
-- classic PCAP and PCAPNG replay;
-- dynamic stream discovery by source, destination, VLAN, APPID and `svID`;
-- SCL/SCD/CID/ICD/IID import through the sibling ARIEC61850 parser;
-- SCL-assisted stream binding and ordered payload decoding;
-- fixed value-quality fallback for common current and 4I+4V payloads;
-- explicit CT and VT primary/secondary contexts with 50/60 Hz selection;
-- one-cycle RMS for 50P, 51P, 50N and 51N;
-- one-cycle fundamental DFT phasors for feeder functions;
-- positive-, negative- and zero-sequence current and voltage quantities;
-- stationary two-cycle IA/IB/IC/3I0 waveform and retained voltage sample windows;
-- `smpCnt`, freshness, quality, scaling, mapping and configuration trust gates;
-- JSON evidence export;
-- compact WPF interface with locally rendered Lucide-derived icon geometry.
+## Five-minute start
 
-The internal deterministic source provides 4I+4V phasors and a repeatable A-G fault with voltage depression for laboratory checks.
+### Install a beta build
 
-## Relay faceplate
+1. Download the Windows x64 installer or portable ZIP from [Releases](https://github.com/masarray/arvrel/releases).
+2. Install Npcap separately when live capture is required.
+3. Launch ARVREL.
+4. Use **Internal demo** for the first test, or import an SCL file and select **Live Npcap**.
+5. Open **Relay settings** and **CT/VT context**.
+6. Use **Inject A-G fault** in the internal laboratory, or publish an authorized synthetic SV stream.
+7. Review waveform, phasor, relay LCD, event trace, trip cause, and exported evidence.
 
-The virtual relay LCD and keypad provide native operation pages for:
+### Build from source
 
-- current and voltage phasor measurements;
-- 50P/51P/50N/51N status;
-- 67P/67N/27/59/59N status;
-- native settings;
-- events and process-bus diagnostics;
-- last-trip record with pickup time, trip time, operate time and the correct current or voltage operating quantity;
-- directional angle and polarizing voltage for 67P/67N trip records.
-
-## Repository relationship
-
-Use sibling checkouts:
-
-```text
-C:\Git\
-├── ARIEC61850\
-└── arvrel\
-```
-
-`Directory.Build.props` detects the sibling engine automatically. The application remains buildable in deterministic simulation mode without it; live Npcap, replay decoding and SCL workflows require the sibling.
-
-## Build and run
-
-Requirements:
-
-- Windows 10/11 x64;
-- .NET 8 SDK;
-- Npcap for live capture;
-- sibling `ARIEC61850` checkout for process-bus workflows.
+Requirements: Windows 10/11 x64, .NET 8 SDK, Git, and Npcap for live capture.
 
 ```powershell
+cd C:\Git\ARIEC61850
+git pull origin main
+
 cd C:\Git\arvrel
 git pull origin main
-.\scripts\verify-sibling.cmd
 .\scripts\build.cmd
 .\scripts\run.cmd
 ```
 
-Direct command:
+Run deterministic tests:
 
 ```powershell
-dotnet run --project .\src\Arvrel.App\Arvrel.App.csproj -c Release
+dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Release
+dotnet test .\tests\Arvrel.ProcessBus.Tests\Arvrel.ProcessBus.Tests.csproj -c Release
 ```
 
-## Laboratory workflow
+## SMV trust policy
 
-1. Open **Relay Settings** and configure the active setting group.
-2. Open **CT/VT context** and enter CT, VT and nominal-frequency values.
-3. Enable the required feeder functions on the **Feeder protection** tab.
-4. Select the internal source, **Live Npcap**, or **PCAP replay**.
-5. Import the matching SCL when available.
-6. Start capture or open a capture file, then select a discovered SV stream.
-7. Review mapping, scaling, continuity, phasors, directional decision, protection operation and evidence.
-8. Switch to **Research mode** to inspect or stage algorithm source.
+ARVREL separates visibility from trip permission. A stream may remain measurable while virtual trip permission is blocked by recent communication or configuration evidence.
 
-A decoded but unbound or unscaled stream remains visible while trip permission is explicitly blocked. This prevents uncertain measurement provenance from silently producing a virtual trip.
+Typical trust states include:
+
+- `HEALTHY`;
+- `WINDOW_NOT_READY`;
+- `STREAM_STALE`;
+- `SMPCNT_DISCONTINUITY`;
+- `QUALITY_INVALID`;
+- `SCL_MISMATCH`;
+- `SCALING_UNRESOLVED`;
+- `SCL_UNBOUND`;
+- `PAYLOAD_INVALID`.
+
+Rejected duplicate and out-of-order frames are counted in evidence but their payload samples do not enter RMS, waveform, phasor, or protection buffers.
 
 ## Architecture
 
 ```text
-Arvrel.App
-  ├─ native current and feeder settings
-  ├─ interactive multifunction relay faceplate
-  ├─ research algorithm workspace
-  └─ immutable UI snapshots
-       ↓
-Arvrel.ProcessBus
-  ├─ Npcap live source
-  ├─ PCAP / PCAPNG reader
-  ├─ ARIEC61850 SV parser and SCL profiles
-  ├─ 4I+4V stream runtime and locked sample rings
-  ├─ CT/VT measurement context
-  └─ trust and evidence
-       ↓ MeasurementFrame + PhasorMeasurementSet
-Arvrel.Protection
-  ├─ IEC curve calculator
-  ├─ fundamental phasor and symmetrical-component engine
-  ├─ guarded 50P / 51P / 50N / 51N
-  └─ guarded 67P / 67N / 27 / 59 / 59N
+Internal deterministic source / Live Npcap / PCAP replay
+                         │
+                         ▼
+              ARIEC61850 parse + SCL model
+                         │
+                         ▼
+     continuity · mapping · scaling · quality · trust gates
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+      one-cycle measurement    two-cycle evidence
+      RMS + phasors            waveform + phasor hold
+              │                     │
+              ▼                     ▼
+      protection engine        WPF operator workspace
+              │
+              ▼
+  virtual trip latch · operation record · evidence export
 ```
 
-See [`docs/P1_1_DUAL_MODE.md`](docs/P1_1_DUAL_MODE.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PRD.md`](docs/PRD.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/P2_MULTIFUNCTION_FEEDER.md`](docs/P2_MULTIFUNCTION_FEEDER.md).
 
-## License
+## Safety boundary
 
-Copyright (C) 2026 Ari Sulistiono.
+ARVREL's standard public build is **virtual-output only**. It does not provide:
 
-ARVREL is licensed under GNU GPL v3.0 or later. Sibling and third-party components retain their own notices and licensing boundaries.
+- physical relay contacts;
+- operational GOOSE trip;
+- MMS control;
+- autonomous switching;
+- switching authority or interlocking approval;
+- IEC 61850 conformance certification;
+- IEC 60255 type-test or calibration evidence;
+- deterministic hard real-time guarantees.
+
+Use live capture only on isolated, authorized laboratory networks. Do not use ARVREL as the sole basis for operational protection settings, commissioning acceptance, or switching decisions.
+
+## Known beta limitations
+
+- unsigned community binaries may trigger Windows reputation warnings;
+- live performance depends on host scheduling, Npcap, drivers, publisher behaviour, adapter quality, and system load;
+- 46, 47, 49, 81U/O, 32, 37, 50BF, 79, 25, 86, 74TCS, and 60 are not implemented;
+- negative-sequence and memory polarization for 67N are deferred;
+- broad clean-machine, multi-adapter, and long-duration field validation continues during beta.
+
+## Evidence and privacy
+
+ARVREL stores local preferences and logs under `%LOCALAPPDATA%\ARVREL`. Do not publish customer captures, proprietary station SCL files, credentials, IP plans, or employer-confidential information. Use synthetic or contributor-owned fixtures.
+
+Crash log:
+
+```text
+%LOCALAPPDATA%\ARVREL\logs\arvrel-crash.log
+```
+
+## Release integrity
+
+Official releases are produced by GitHub Actions and include, when available:
+
+- self-contained Windows x64 installer;
+- self-contained portable ZIP;
+- SHA-256 checksums;
+- NuGet transitive dependency report;
+- CycloneDX SBOM;
+- build and engine commit metadata;
+- GPL, commercial-licensing, security, support, and third-party notices.
+
+## Licensing
+
+ARVREL source is licensed under **GPL-3.0-or-later**. GPL permits commercial use when its obligations are followed.
+
+A separate commercial license may be negotiated for proprietary redistribution, closed-source integration, OEM deployment, contractual support, or other agreed terms. See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
+
+Third-party components retain their own licenses. See [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+## Contributing, support, and security
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [`CLA.md`](CLA.md)
+- [`SUPPORT.md`](SUPPORT.md)
+- [`SECURITY.md`](SECURITY.md)
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+
+## Citation
+
+Research and teaching publications may cite the versioned software metadata in [`CITATION.cff`](CITATION.cff).
+
+---
+
+<div align="center">
+
+**ARVREL — inspect the process bus, evaluate the protection logic, preserve the evidence.**
+
+</div>
