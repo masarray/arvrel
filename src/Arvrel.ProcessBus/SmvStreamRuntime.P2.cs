@@ -94,9 +94,9 @@ internal sealed class SmvStreamRuntime
 
     /// <summary>
     /// Records a frame rejected by the transactional ingress gate. No payload value is
-    /// added to RMS, waveform or phasor buffers, but continuity telemetry and the SMV
-    /// trust block are updated atomically so evidence exports cannot under-report the
-    /// communication condition and protection cannot trip through the rejected edge.
+    /// added to RMS, waveform or phasor buffers, and no protection timer is evaluated
+    /// from the stale previous measurement. Telemetry and the trust projection are
+    /// updated atomically while the engine's time anchor advances to the capture edge.
     /// </summary>
     public void ObserveIngressRejection(
         DateTimeOffset timestamp,
@@ -132,12 +132,17 @@ internal sealed class SmvStreamRuntime
             var trust = SmvTrustState.TripBlocked(
                 "SMPCNT_DISCONTINUITY",
                 "Recent duplicate or out-of-order SV frame was rejected before measurement ingestion.");
-            _measurement = _measurement with
+            _measurement = _measurement with { SmvTrust = trust };
+            _protection.ObserveRejectedFrameTimestamp(timestamp);
+            _protectionSnapshot = _protectionSnapshot with
             {
                 Timestamp = timestamp,
+                TripRequested = false,
+                DecisionReason = _protectionSnapshot.TripLatched
+                    ? _protectionSnapshot.DecisionReason
+                    : $"TRIP BLOCKED · {trust.Code} · {trust.Detail}",
                 SmvTrust = trust
             };
-            _protectionSnapshot = _protection.Evaluate(_measurement);
         }
     }
 
