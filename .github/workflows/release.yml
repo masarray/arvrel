@@ -1,0 +1,223 @@
+name: Windows beta release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arvrel-public-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build-package-release
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@v4
+        with:
+          path: arvrel
+          fetch-depth: 0
+
+      - name: Checkout pinned ARIEC61850 engine
+        uses: actions/checkout@v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version and release completeness
+        id: release_gate
+        shell: pwsh
+        working-directory: arvrel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Invalid VERSION value: $version"
+          }
+
+          $tag = "v$version"
+          $installer = "ARVREL-Setup-v$version-win-x64.exe"
+          $portable = "ARVREL-v$version-win-x64-portable.zip"
+          $requiredAssetNames = @($installer, $portable, 'SHA256SUMS.txt')
+
+          $releaseText = (& gh release view $tag --json tagName,isDraft,isPrerelease,assets 2>$null | Out-String).Trim()
+          $releaseExists = $LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($releaseText)
+          $complete = $false
+          if ($releaseExists) {
+            $release = $releaseText | ConvertFrom-Json
+            $assetNames = @($release.assets | ForEach-Object name)
+            $missing = @($requiredAssetNames | Where-Object { $_ -notin $assetNames })
+            $complete = $missing.Count -eq 0 -and -not $release.isDraft
+            if (-not $complete) {
+              Write-Warning "Release $tag exists but is incomplete. Missing required assets: $($missing -join ', ')"
+            }
+          }
+
+          $tagExists = -not [string]::IsNullOrWhiteSpace((git ls-remote --tags origin "refs/tags/$tag" | Out-String))
+          if (-not $complete -and $tagExists) {
+            git fetch origin "refs/tags/$tag:refs/tags/$tag" --force
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to fetch existing tag $tag."
+            }
+            $tagCommit = (git rev-list -n 1 $tag).Trim()
+            if ($tagCommit -ne $env:GITHUB_SHA) {
+              throw "Incomplete release tag $tag points to $tagCommit, not current commit $env:GITHUB_SHA. Refusing to publish mismatched assets; repair/delete the partial tag or bump VERSION."
+            }
+          }
+
+          $required = -not $complete
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "required=$($required.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "release_exists=$($releaseExists.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Version $version · tag $tag · release exists: $releaseExists · complete: $complete · publication required: $required"
+
+      - name: Restore
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet restore ARVREL.sln
+
+      - name: Build
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet build ARVREL.sln --configuration Release --no-restore
+
+      - name: Test
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: dotnet test ARVREL.sln --configuration Release --no-build --logger "trx;LogFileName=release-tests.trx"
+
+      - name: Audit vulnerable NuGet dependencies
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = dotnet list ARVREL.sln package --vulnerable --include-transitive
+          $text = $output | Out-String
+          $text | Write-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE."
+          }
+          if ($text -match 'has the following vulnerable packages') {
+            throw 'The dependency audit reported one or more vulnerable packages. Release publication is blocked.'
+          }
+
+      - name: Install release tooling
+        if: steps.release_gate.outputs.required == 'true'
+        id: tooling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup installation failed with exit code $LASTEXITCODE."
+          }
+
+          $sbomAvailable = $true
+          dotnet tool install --global CycloneDX
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning 'CycloneDX tool installation failed; the release will retain the NuGet dependency report.'
+            $sbomAvailable = $false
+          }
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "sbom_available=$($sbomAvailable.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Build installer, portable package, checksums and manifests
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $skipSbom = '${{ steps.tooling.outputs.sbom_available }}' -ne 'true'
+          .\scripts\package-release.ps1 `
+            -Version '${{ steps.release_gate.outputs.version }}' `
+            -SkipSbom:$skipSbom
+
+      - name: Upload release-candidate artifact
+        if: steps.release_gate.outputs.required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARVREL-v${{ steps.release_gate.outputs.version }}-release-candidate
+          path: arvrel/artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish or repair GitHub prerelease
+        if: steps.release_gate.outputs.required == 'true'
+        shell: pwsh
+        working-directory: arvrel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ steps.release_gate.outputs.version }}'
+          $tag = '${{ steps.release_gate.outputs.tag }}'
+          $assets = @(Get-ChildItem artifacts\release -File | Sort-Object Name | ForEach-Object FullName)
+          $requiredNames = @(
+            "ARVREL-Setup-v$version-win-x64.exe",
+            "ARVREL-v$version-win-x64-portable.zip",
+            'SHA256SUMS.txt'
+          )
+          $producedNames = @(Get-ChildItem artifacts\release -File | ForEach-Object Name)
+          $missingProduced = @($requiredNames | Where-Object { $_ -notin $producedNames })
+          if ($missingProduced.Count -gt 0) {
+            throw "Required release assets were not produced: $($missingProduced -join ', ')"
+          }
+
+          if ('${{ steps.release_gate.outputs.release_exists }}' -eq 'true') {
+            gh release upload $tag @assets --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub release asset repair failed with exit code $LASTEXITCODE."
+            }
+            gh release edit $tag `
+              --title "ARVREL $tag" `
+              --notes-file RELEASE-NOTES.md `
+              --prerelease
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub release metadata repair failed with exit code $LASTEXITCODE."
+            }
+          } else {
+            gh release create $tag @assets `
+              --target $env:GITHUB_SHA `
+              --title "ARVREL $tag" `
+              --notes-file RELEASE-NOTES.md `
+              --prerelease
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub release creation failed with exit code $LASTEXITCODE."
+            }
+          }
+
+          $verifiedText = (& gh release view $tag --json isDraft,isPrerelease,assets | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($verifiedText)) {
+            throw "Unable to verify published release $tag."
+          }
+          $verified = $verifiedText | ConvertFrom-Json
+          $verifiedNames = @($verified.assets | ForEach-Object name)
+          $missingPublished = @($requiredNames | Where-Object { $_ -notin $verifiedNames })
+          if ($verified.isDraft -or -not $verified.isPrerelease -or $missingPublished.Count -gt 0) {
+            throw "Published release verification failed. Missing assets: $($missingPublished -join ', ')"
+          }
+          Write-Host "Verified prerelease $tag with required installer, portable archive and checksum assets."
+
+      - name: Existing complete release
+        if: steps.release_gate.outputs.required != 'true'
+        shell: pwsh
+        run: Write-Host 'The VERSION release already exists with all required assets; no duplicate publication was created.'

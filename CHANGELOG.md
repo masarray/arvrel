@@ -1,41 +1,59 @@
 # Changelog
 
-All notable public changes to ARVREL are documented here.
+All notable public changes to ARVREL are documented here. The project uses semantic-style version labels while the public API and evidence formats remain subject to change during beta.
 
-## [Unreleased]
-
-### P1.1 native relay settings and research mode
-
-- added a dedicated native protection setting workspace separate from CT/timebase context;
-- added setting-group name, revision, SHA-256 fingerprint, preset save/load and restore defaults;
-- added active enable, pickup, delay, dropout, TMS, minimum operate time and reset settings for 50P-1, 51P, 50N and 51N;
-- added IEC Standard/Normal, Very, Extremely, Long-Time, Definite Time and user-defined IEC-form characteristics;
-- added secondary-current setting entry with primary-equivalent CT readout;
-- added runtime setting replacement with timer and virtual trip-latch reset;
-- added explicit Practitioner and Research modes;
-- exposed exact active standard algorithm source and separate deterministic custom shadow staging;
-- added active setting identity to the main workspace, event trace and evidence;
-- added deterministic curve-family, disabled-element and setting-update regression tests.
-
-### P1 process-bus integration
-
-- added live Npcap Sampled Values capture through sibling ARIEC61850;
-- added classic PCAP and PCAPNG Ethernet replay;
-- added dynamic SV stream discovery and selection;
-- added SCL-assisted profile binding and ordered payload decoding;
-- added fixed value-quality fallback, circular sample rings, one-cycle RMS, and two-cycle waveform snapshots;
-- added CT ratio and nominal-frequency measurement context;
-- added freshness, `smpCnt`, quality, SCL, scaling, mapping trust gates;
-- connected live/replay measurements to 50P, 51P, 50N and 51N;
-- added JSON evidence export and process-bus regression tests;
-- replaced text/symbol button treatment with compact Lucide-derived icon buttons and filled primary actions.
+## [0.1.0-beta.1] — 2026-08-03
 
 ### Added
 
-- sibling-ready standalone repository extracted from the ARIEC61850 Virtual Relay Lab P0 work;
-- premium one-screen WPF protection workspace;
-- deterministic 50P, 51P, 50N and 51N engine;
-- stationary two-cycle waveform and virtual relay faceplate;
-- SMV measurement/pickup/trip trust boundary;
-- typed Algorithm Editor policy validation and shadow staging;
-- deterministic tests, Windows CI and GitHub publication scripts.
+- public Windows x64 installer and portable packaging pipeline;
+- automated prerelease publication, SHA-256 checksums, dependency report, and optional CycloneDX SBOM;
+- GPL-3.0-or-later and alternative commercial-licensing documentation;
+- security, support, contribution, CLA, conduct, citation, third-party, release-checklist, and soak-test documentation;
+- structured issue and pull-request templates;
+- professional README and SEO-ready static landing page;
+- explicit engine-owned protection operation evidence;
+- culture-invariant settings identities and malformed-enum validation;
+- rejected-SMV continuity telemetry without sample admission.
+
+### Protection and process-bus baseline
+
+- live Npcap Sampled Values capture and PCAP/PCAPNG replay;
+- SCL-assisted profile binding, mapping, scaling, quality, freshness, and `smpCnt` trust gates;
+- IA/IB/IC/IN and VA/VB/VC/VN measurement, RMS phasors, sequence quantities, waveform and phasor instruments;
+- 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N;
+- practitioner setting groups, IEC curves, familiar TMS notation, CT/VT context, presets, and fingerprints;
+- research mode with read-only active source and deterministic shadow staging;
+- numerical-relay LCD, event trace, annunciation, virtual trip latch, and evidence export.
+
+### Changed
+
+- trip attribution prioritizes operated elements across legacy and feeder functions;
+- pickup/trip timing is tracked per element;
+- relay annunciation consumes causes captured at the protection evaluation that latched the trip;
+- 67P produces deterministic phase-cause evidence;
+- 67N uses explicit decoded IN/3I0 and VN/3V0 channels when present, with calculated fallback;
+- research shadow artifacts are immutable by settings fingerprint and source hash;
+- relay LED animation state is guarded against synchronous WPF reentrancy;
+- SCL file and Npcap adapter preferences are restored locally on startup;
+- coherent waveform/phasor presentation is held during SMV trust recovery.
+
+### Fixed
+
+- potential relay-lamp UI stack overflow;
+- cross-element pickup/trip evidence mixing;
+- short-fault evidence loss between UI polling intervals;
+- feeder trip records attributed to an earlier legacy pickup;
+- completed trip evidence overwritten by a subsequent pickup;
+- duplicate/out-of-order frames missing from exported continuity telemetry;
+- culture-dependent SHA-256 settings fingerprints;
+- malformed enum values terminating settings workflows;
+- explicit residual phasors being discarded in directional earth-fault logic;
+- waveform and phasor instability during local publisher focus changes;
+- startup crash caused by premature XAML selection handling;
+- relay phase operated lenses showing a blue core beneath a red glow;
+- avoidable text clipping in common 1600-pixel layouts.
+
+### Known limitations
+
+See [`RELEASE-NOTES.md`](RELEASE-NOTES.md) and the README safety boundary. The release remains a public beta and virtual-output-only laboratory build.

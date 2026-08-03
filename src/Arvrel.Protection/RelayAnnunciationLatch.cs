@@ -18,7 +18,7 @@ public sealed record RelayAnnunciationSnapshot(
 /// <summary>
 /// Models numerical-relay annunciation behaviour independently from the WPF renderer.
 /// Pickup indications are momentary amber indications. The phase/earth causes captured
-/// at the trip transition remain latched red until the protection trip latch is reset.
+/// by the protection engine at the trip transition remain latched red until reset.
 /// </summary>
 public sealed class RelayAnnunciationLatch
 {
@@ -38,10 +38,21 @@ public sealed class RelayAnnunciationLatch
         var anyPickup = HasAnyPickup(snapshot);
         if (snapshot.TripLatched && !_tripWasLatched)
         {
-            _phaseATripLatched = snapshot.PhaseAPickup;
-            _phaseBTripLatched = snapshot.PhaseBPickup;
-            _phaseCTripLatched = snapshot.PhaseCPickup;
-            _earthTripLatched = snapshot.EarthPickup;
+            if (snapshot.LatchedOperation is { } evidence)
+            {
+                _phaseATripLatched = evidence.PhaseA;
+                _phaseBTripLatched = evidence.PhaseB;
+                _phaseCTripLatched = evidence.PhaseC;
+                _earthTripLatched = evidence.Earth;
+            }
+            else
+            {
+                // Compatibility fallback for historical evidence snapshots.
+                _phaseATripLatched = snapshot.PhaseAPickup;
+                _phaseBTripLatched = snapshot.PhaseBPickup;
+                _phaseCTripLatched = snapshot.PhaseCPickup;
+                _earthTripLatched = snapshot.EarthPickup;
+            }
         }
 
         _tripWasLatched = snapshot.TripLatched;

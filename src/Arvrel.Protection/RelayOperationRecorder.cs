@@ -25,113 +25,176 @@ public sealed record RelayOperationTransition(
     bool ResetObserved,
     RelayOperationRecord? Operation);
 
+/// <summary>
+/// Projects engine-owned protection evidence into relay-faceplate transitions.
+/// The protection engine captures pickup/trip timestamps, quantities and causes at
+/// evaluation time; this recorder therefore remains correct even when the UI polls
+/// after a short fault has already dropped out.
+/// </summary>
 public sealed class RelayOperationRecorder
 {
-    private bool _lastPickup;
+    private string? _lastPickupElement;
     private bool _lastTrip;
     private bool _lastBlocked;
+    private DateTimeOffset? _lastConsumedTripTimestamp;
     private int _sequence;
+    private RelayOperationRecord? _pending;
+    private RelayOperationRecord? _lastCompleted;
 
-    public RelayOperationRecord? Current { get; private set; }
+    /// <summary>
+    /// The last completed trip remains visible until a source reset. Before the first
+    /// completed operation, the currently timing pickup is returned.
+    /// </summary>
+    public RelayOperationRecord? Current => _lastCompleted ?? _pending;
 
     public RelayOperationTransition Observe(ProtectionSnapshot snapshot, MeasurementFrame measurement)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(measurement.SmvTrust);
 
-        var pickup = HasPickup(snapshot);
-        var pickupStarted = pickup && !_lastPickup;
-        var tripOccurred = snapshot.TripLatched && !_lastTrip;
         var blockedStarted = snapshot.Blocked && !_lastBlocked;
         var resetObserved = !snapshot.TripLatched && _lastTrip;
+        var pickupStarted = false;
+        var tripOccurred = false;
+        RelayOperationRecord? transitionOperation = null;
 
-        if (pickupStarted)
+        if (snapshot.LatchedOperation is { } evidence &&
+            (!_lastConsumedTripTimestamp.HasValue ||
+             _lastConsumedTripTimestamp.Value != evidence.TripTimestamp))
         {
-            var element = ResolveElement(snapshot);
-            var quantity = ResolveOperatingQuantity(element, snapshot, measurement);
-            Current = new RelayOperationRecord(
-                ++_sequence,
-                snapshot.Timestamp,
-                null,
-                element,
-                string.Empty,
-                quantity.Value,
-                0,
-                quantity.Symbol,
-                quantity.Unit);
+            var sequence = _pending is not null &&
+                           string.Equals(_pending.PickupElement, evidence.Element, StringComparison.Ordinal) &&
+                           _pending.PickupTimestamp == evidence.PickupTimestamp
+                ? _pending.Sequence
+                : ++_sequence;
+
+            pickupStarted = _pending is null ||
+                            !string.Equals(_pending.PickupElement, evidence.Element, StringComparison.Ordinal) ||
+                            _pending.PickupTimestamp != evidence.PickupTimestamp;
+
+            var completed = new RelayOperationRecord(
+                sequence,
+                evidence.PickupTimestamp,
+                evidence.TripTimestamp,
+                evidence.Element,
+                evidence.Element,
+                evidence.PickupQuantity,
+                evidence.TripQuantity,
+                evidence.QuantitySymbol,
+                evidence.QuantityUnit);
+
+            _lastCompleted = completed;
+            _pending = null;
+            _lastConsumedTripTimestamp = evidence.TripTimestamp;
+            _lastPickupElement = null;
+            tripOccurred = true;
+            transitionOperation = completed;
         }
-
-        if (tripOccurred)
+        else if (!snapshot.TripLatched)
         {
-            var element = ResolveElement(snapshot);
-            var quantity = ResolveOperatingQuantity(element, snapshot, measurement);
-            Current ??= new RelayOperationRecord(
-                ++_sequence,
-                snapshot.Timestamp,
-                null,
-                element,
-                string.Empty,
-                quantity.Value,
-                0,
-                quantity.Symbol,
-                quantity.Unit);
-            Current = Current with
+            var pickupElement = ResolvePickupElement(snapshot);
+            if (pickupElement is not null &&
+                !string.Equals(pickupElement, _lastPickupElement, StringComparison.Ordinal))
             {
-                TripTimestamp = snapshot.Timestamp,
-                TripElement = element,
-                TripQuantity = quantity.Value,
-                QuantitySymbol = quantity.Symbol,
-                QuantityUnit = quantity.Unit
-            };
+                var quantity = ResolveOperatingQuantity(pickupElement, snapshot, measurement);
+                _pending = new RelayOperationRecord(
+                    ++_sequence,
+                    snapshot.Timestamp,
+                    null,
+                    pickupElement,
+                    string.Empty,
+                    quantity.Value,
+                    0,
+                    quantity.Symbol,
+                    quantity.Unit);
+                pickupStarted = true;
+                transitionOperation = _pending;
+            }
+
+            if (pickupElement is null)
+                _pending = null;
+            _lastPickupElement = pickupElement;
+        }
+        else if (snapshot.TripLatched && !_lastTrip)
+        {
+            // Compatibility fallback for snapshots produced by older evidence files.
+            var element = ResolveElement(snapshot);
+            var quantity = ResolveOperatingQuantity(element, snapshot, measurement);
+            var pendingMatches = _pending is not null &&
+                                 string.Equals(_pending.PickupElement, element, StringComparison.Ordinal);
+            pickupStarted = !pendingMatches;
+            var completed = new RelayOperationRecord(
+                pendingMatches ? _pending!.Sequence : ++_sequence,
+                pendingMatches ? _pending!.PickupTimestamp : snapshot.Timestamp,
+                snapshot.Timestamp,
+                element,
+                element,
+                pendingMatches ? _pending!.PickupQuantity : quantity.Value,
+                quantity.Value,
+                quantity.Symbol,
+                quantity.Unit);
+            _lastCompleted = completed;
+            _pending = null;
+            tripOccurred = true;
+            transitionOperation = completed;
         }
 
-        if (!pickup && !snapshot.TripLatched && Current?.TripTimestamp is null)
-            Current = null;
-
-        _lastPickup = pickup;
         _lastTrip = snapshot.TripLatched;
         _lastBlocked = snapshot.Blocked;
 
-        return new RelayOperationTransition(pickupStarted, tripOccurred, blockedStarted, resetObserved, Current);
+        return new RelayOperationTransition(
+            pickupStarted,
+            tripOccurred,
+            blockedStarted,
+            resetObserved,
+            transitionOperation ?? Current);
     }
 
     public void ResetCurrent()
     {
-        Current = null;
-        _lastPickup = false;
+        _pending = null;
+        _lastCompleted = null;
+        _lastPickupElement = null;
         _lastTrip = false;
         _lastBlocked = false;
+        _lastConsumedTripTimestamp = null;
     }
 
-    private static bool HasPickup(ProtectionSnapshot snapshot)
-        => snapshot.Phase50.Pickup ||
-           snapshot.Phase51.Pickup ||
-           snapshot.Earth50.Pickup ||
-           snapshot.Earth51.Pickup ||
-           snapshot.Feeder.DirectionalPhase67.Pickup ||
-           snapshot.Feeder.DirectionalEarth67N.Pickup ||
-           snapshot.Feeder.Undervoltage27.Pickup ||
-           snapshot.Feeder.Overvoltage59.Pickup ||
-           snapshot.Feeder.ResidualOvervoltage59N.Pickup;
+    private static string? ResolvePickupElement(ProtectionSnapshot snapshot)
+    {
+        var elements = EnumerateElements(snapshot);
+        var operated = elements.FirstOrDefault(element => element.Snapshot.Operated);
+        if (operated.Code is not null)
+            return operated.Code;
+        var pickup = elements.FirstOrDefault(element => element.Snapshot.Pickup);
+        return pickup.Code;
+    }
 
     private static string ResolveElement(ProtectionSnapshot snapshot)
     {
         if (!string.IsNullOrWhiteSpace(snapshot.ActiveElement) &&
             !string.Equals(snapshot.ActiveElement, "NONE", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(snapshot.ActiveElement, "READY", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(snapshot.ActiveElement, "PHASOR UNAVAILABLE", StringComparison.OrdinalIgnoreCase))
+            !string.Equals(snapshot.ActiveElement, "PHASOR UNAVAILABLE", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(snapshot.ActiveElement, "SMV BLOCK", StringComparison.OrdinalIgnoreCase))
+        {
             return NormalizeElement(snapshot.ActiveElement);
+        }
 
-        if (snapshot.Phase50.Pickup || snapshot.Phase50.Operated) return "50P-1";
-        if (snapshot.Phase51.Pickup || snapshot.Phase51.Operated) return "51P";
-        if (snapshot.Earth50.Pickup || snapshot.Earth50.Operated) return "50N";
-        if (snapshot.Earth51.Pickup || snapshot.Earth51.Operated) return "51N";
-        if (snapshot.Feeder.DirectionalPhase67.Pickup || snapshot.Feeder.DirectionalPhase67.Operated) return "67P";
-        if (snapshot.Feeder.DirectionalEarth67N.Pickup || snapshot.Feeder.DirectionalEarth67N.Operated) return "67N";
-        if (snapshot.Feeder.Undervoltage27.Pickup || snapshot.Feeder.Undervoltage27.Operated) return "27";
-        if (snapshot.Feeder.Overvoltage59.Pickup || snapshot.Feeder.Overvoltage59.Operated) return "59";
-        if (snapshot.Feeder.ResidualOvervoltage59N.Pickup || snapshot.Feeder.ResidualOvervoltage59N.Operated) return "59N";
-        return "UNKNOWN";
+        return ResolvePickupElement(snapshot) ?? "UNKNOWN";
+    }
+
+    private static IEnumerable<(string? Code, ElementSnapshot Snapshot)> EnumerateElements(ProtectionSnapshot snapshot)
+    {
+        yield return ("50P-1", snapshot.Phase50);
+        yield return ("51P", snapshot.Phase51);
+        yield return ("50N", snapshot.Earth50);
+        yield return ("51N", snapshot.Earth51);
+        yield return ("67P", snapshot.Feeder.DirectionalPhase67);
+        yield return ("67N", snapshot.Feeder.DirectionalEarth67N);
+        yield return ("27", snapshot.Feeder.Undervoltage27);
+        yield return ("59", snapshot.Feeder.Overvoltage59);
+        yield return ("59N", snapshot.Feeder.ResidualOvervoltage59N);
     }
 
     private static string NormalizeElement(string activeElement)
@@ -146,7 +209,12 @@ public sealed class RelayOperationRecorder
     {
         return element switch
         {
-            "50N" or "51N" or "67N" => new OperatingQuantity(measurement.Residual, "3I0", "A"),
+            "50N" or "51N" or "67N" => new OperatingQuantity(
+                snapshot.Feeder.DirectionalEarth67N.OperatingQuantity > 0 && element == "67N"
+                    ? snapshot.Feeder.DirectionalEarth67N.OperatingQuantity
+                    : measurement.Residual,
+                "3I0",
+                "A"),
             "27" => new OperatingQuantity(snapshot.Feeder.Undervoltage27.OperatingQuantity, "V OP", "V"),
             "59" => new OperatingQuantity(snapshot.Feeder.Overvoltage59.OperatingQuantity, "V OP", "V"),
             "59N" => new OperatingQuantity(snapshot.Feeder.ResidualOvervoltage59N.OperatingQuantity, "3V0", "V"),

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARVREL — IEC 61850 Sampled Values Virtual Protection Relay Laboratory</title>
+  <meta name="description" content="ARVREL is a vendor-neutral Windows virtual protection relay laboratory for IEC 61850 Sampled Values, process-bus engineering, phasor analysis, protection education, and virtual trip evidence.">
+  <meta name="keywords" content="IEC 61850 Sampled Values, virtual protection relay, process bus software, SMV subscriber, relay testing laboratory, protection relay simulator, IEC 61850 training">
+  <meta name="author" content="Ari Sulistiono / masarray">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ARVREL — Virtual Protection Relay Laboratory">
+  <meta property="og:description" content="Vendor-neutral IEC 61850 Sampled Values engineering and protection-algorithm laboratory for Windows.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/">
+  <meta property="og:image" content="https://raw.githubusercontent.com/masarray/arvrel/main/docs/assets/arvrel-main.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#10232f">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ARVREL",
+    "alternateName": "ARVREL Virtual Protection Relay Laboratory",
+    "applicationCategory": "EngineeringApplication",
+    "operatingSystem": "Windows 10, Windows 11",
+    "softwareVersion": "0.1.0-beta.1",
+    "description": "Vendor-neutral virtual protection relay laboratory for IEC 61850 Sampled Values engineering, education, phasor analysis, process-bus troubleshooting, and virtual trip evidence.",
+    "url": "https://github.com/masarray/arvrel",
+    "downloadUrl": "https://github.com/masarray/arvrel/releases",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "author": {
+      "@type": "Person",
+      "name": "Ari Sulistiono",
+      "url": "https://github.com/masarray"
+    },
+    "isAccessibleForFree": true
+  }
+  </script>
+  <style>
+    :root{color-scheme:light;--ink:#10232f;--muted:#557080;--line:#d8e2e8;--paper:#f5f8fa;--panel:#fff;--accent:#1779ae;--safe:#177245;--warn:#a85f00;--max:1160px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.58}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}.wrap{width:min(calc(100% - 32px),var(--max));margin:auto}
+    header{position:sticky;top:0;z-index:20;background:rgba(16,35,47,.96);border-bottom:1px solid #294351;color:#fff}.nav{height:64px;display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{font-weight:750;letter-spacing:.04em}.navlinks{display:flex;gap:22px;font-size:.92rem}.nav a{color:#dcebf2}.hero{padding:72px 0 44px;background:linear-gradient(155deg,#10232f 0%,#173847 60%,#1a4657 100%);color:#fff}.eyebrow{font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:#8fd2ef;font-weight:700}.hero h1{font-size:clamp(2.35rem,6vw,4.8rem);line-height:1.02;margin:.35rem 0 1rem;letter-spacing:-.045em}.hero p{max-width:760px;font-size:clamp(1.05rem,2vw,1.3rem);color:#d5e5ec}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid #6aa9c4;border-radius:6px;color:#fff;font-weight:650}.button.primary{background:#eaf7fc;color:#103345;border-color:#eaf7fc}.button:hover{text-decoration:none;transform:translateY(-1px)}.badges{display:flex;flex-wrap:wrap;gap:9px;margin-top:24px}.badge{border:1px solid #557686;border-radius:999px;padding:5px 10px;font-size:.78rem;color:#dbe9ef}
+    main section{padding:64px 0}.section-title{max-width:760px;margin-bottom:30px}.section-title h2{font-size:clamp(1.7rem,3vw,2.6rem);line-height:1.15;margin:0 0 10px}.section-title p{color:var(--muted);margin:0}.shot{background:#dce5ea;border:1px solid #c5d3da;border-radius:10px;padding:10px;box-shadow:0 16px 46px rgba(25,50,64,.12)}.shot img{display:block;width:100%;height:auto;border-radius:5px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px}.card h3{margin:0 0 8px;font-size:1.05rem}.card p{margin:0;color:var(--muted)}.matrix{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}table{width:100%;border-collapse:collapse;min-width:680px}th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line)}th{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;background:#eef4f6}tr:last-child td{border-bottom:0}.safety{background:#fff8ec;border-block:1px solid #ead7b8}.safety strong{color:var(--warn)}.code{background:#10232f;color:#dcebf2;border-radius:7px;padding:18px;overflow:auto;font:13px/1.65 Consolas,monospace}.two{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:start}.list{padding-left:20px}.list li{margin:8px 0}.footer{background:#10232f;color:#a9c0cb;padding:38px 0}.footer-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap}.footer a{color:#d9ebf2}.small{font-size:.86rem}
+    @media(max-width:820px){.navlinks{display:none}.hero{padding-top:54px}.grid,.two{grid-template-columns:1fr}main section{padding:48px 0}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand">ARVREL</div>
+    <nav class="navlinks" aria-label="Primary navigation">
+      <a href="#capabilities">Capabilities</a><a href="#protection">Protection</a><a href="#start">Start</a><a href="#safety">Safety</a><a href="https://github.com/masarray/arvrel">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">IEC 61850 process-bus engineering</div>
+    <h1>See the stream.<br>Evaluate the protection.<br>Preserve the evidence.</h1>
+    <p>ARVREL is a vendor-neutral Windows virtual protection relay laboratory for Sampled Values capture and replay, coherent waveform and phasor analysis, configurable protection functions, and virtual trip records.</p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/masarray/arvrel/releases">Download public beta</a>
+      <a class="button" href="https://github.com/masarray/arvrel">Review source</a>
+      <a class="button" href="https://github.com/masarray/arvrel/blob/main/COMMERCIAL-LICENSING.md">Commercial licensing</a>
+    </div>
+    <div class="badges"><span class="badge">Windows 10/11 x64</span><span class="badge">GPL-3.0-or-later</span><span class="badge">Commercial option</span><span class="badge">Virtual output only</span></div>
+  </div>
+</section>
+
+<main>
+  <section>
+    <div class="wrap">
+      <div class="shot"><img src="assets/arvrel-main.png" width="1600" height="950" alt="ARVREL IEC 61850 Sampled Values virtual protection relay workspace with waveform, phasor, relay LCD, protection states, and event trace"></div>
+    </div>
+  </section>
+
+  <section id="capabilities">
+    <div class="wrap">
+      <div class="section-title"><h2>One workspace for the protection cause-and-effect chain</h2><p>From Ethernet evidence and SCL binding to RMS/phasor measurement, active settings, virtual trip, and exportable records.</p></div>
+      <div class="grid">
+        <article class="card"><h3>Live and replay process bus</h3><p>Npcap live capture plus PCAP/PCAPNG replay with APPID, VLAN, svID, datSet, confRev, quality, freshness, mapping, scaling, and smpCnt evidence.</p></article>
+        <article class="card"><h3>Coherent instruments</h3><p>4I+4V one-cycle protection phasors, symmetrical components, two-cycle waveform evidence, residual channels, primary/secondary display, and held healthy frames during recovery.</p></article>
+        <article class="card"><h3>Protection evidence</h3><p>Per-element pickup timing, operated-element attribution, trip quantity and unit, settings fingerprint, SMV trust state, and latched phase/earth causes.</p></article>
+        <article class="card"><h3>Practitioner workflow</h3><p>Familiar I&gt;, I0&gt;, TMS, tI&gt;, tMin, and tReset notation with native settings, preset files, CT/VT context, and curve-time previews.</p></article>
+        <article class="card"><h3>Research workflow</h3><p>Read-only active algorithm source and deterministic shadow validation. Staged research artifacts cannot replace the running standard algorithm.</p></article>
+        <article class="card"><h3>Trust before trip</h3><p>Rejected duplicate/out-of-order frames never enter measurement buffers. Recent continuity, quality, scaling, or SCL issues visibly remove virtual trip permission.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="protection">
+    <div class="wrap">
+      <div class="section-title"><h2>Multifunction feeder-protection baseline</h2><p>The public beta implements real measurement-domain functions rather than display-only labels.</p></div>
+      <div class="matrix"><table><thead><tr><th>ANSI</th><th>Function</th><th>Implementation</th></tr></thead><tbody>
+        <tr><td>50P-1</td><td>Instantaneous phase overcurrent</td><td>Pickup, dropout, definite delay</td></tr>
+        <tr><td>51P</td><td>Time phase overcurrent</td><td>IEC inverse, definite time, TMS, reset modes</td></tr>
+        <tr><td>50N / 51N</td><td>Earth-fault overcurrent</td><td>Independent IN/3I0 channel with calculated fallback</td></tr>
+        <tr><td>67P</td><td>Directional phase overcurrent</td><td>Positive-sequence V1/I1 polarization, direction, MTA, minimum voltage</td></tr>
+        <tr><td>67N</td><td>Directional earth fault</td><td>Residual 3V0/3I0 polarization, direction, MTA, minimum voltage</td></tr>
+        <tr><td>27 / 59</td><td>Under/overvoltage</td><td>Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic</td></tr>
+        <tr><td>59N</td><td>Residual overvoltage</td><td>3V0 magnitude and definite delay</td></tr>
+      </tbody></table></div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap two">
+      <div><div class="section-title"><h2>Start with the internal laboratory, then connect an authorized SV source</h2><p>The official beta package is self-contained for Windows x64. Npcap remains a separately licensed prerequisite for live capture.</p></div>
+        <ol class="list"><li>Download the installer or portable ZIP from GitHub Releases.</li><li>Launch ARVREL and validate the deterministic internal A-G fault.</li><li>Import an SCL file, select an adapter, and bind the intended SV stream.</li><li>Set CT/VT context and protection settings.</li><li>Observe trust state, waveform, phasor, LCD, operation record, and evidence export.</li></ol>
+      </div>
+      <pre class="code">cd C:\Git\ARIEC61850
+git pull origin main
+
+cd C:\Git\arvrel
+git pull origin main
+.\scripts\build.cmd
+.\scripts\run.cmd</pre>
+    </div>
+  </section>
+
+  <section class="safety" id="safety">
+    <div class="wrap"><div class="section-title"><h2>Clear engineering boundary</h2><p><strong>ARVREL is virtual-output laboratory software.</strong> It is not a certified protection IED, calibrated relay test set, operational GOOSE trip source, MMS controller, switching authority, or IEC 60255 type-test result. Use live features only on isolated, authorized test networks.</p></div>
+      <div class="actions"><a class="button" style="color:#713e00;border-color:#b98845" href="https://github.com/masarray/arvrel/blob/main/SECURITY.md">Security policy</a><a class="button" style="color:#713e00;border-color:#b98845" href="https://github.com/masarray/arvrel/blob/main/README.md#safety-boundary">Full safety boundary</a></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap"><div class="section-title"><h2>Open source with a commercial path</h2><p>The public source is GPL-3.0-or-later, including commercial use under GPL obligations. A separate written commercial license is available for proprietary redistribution, OEM integration, contractual support, and negotiated enterprise terms.</p></div>
+      <div class="actions"><a class="button" style="color:#10232f;border-color:#8aa1ad" href="https://github.com/masarray/arvrel/blob/main/LICENSE">GPL license</a><a class="button" style="color:#10232f;border-color:#8aa1ad" href="https://github.com/masarray/arvrel/blob/main/COMMERCIAL-LICENSING.md">Commercial model</a><a class="button" style="color:#10232f;border-color:#8aa1ad" href="https://github.com/masarray/arvrel/blob/main/THIRD-PARTY-NOTICES.md">Third-party notices</a></div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer"><div class="wrap footer-grid"><div><strong>ARVREL</strong><div class="small">Virtual Protection Relay Laboratory</div></div><div class="small"><a href="https://github.com/masarray/arvrel/releases">Releases</a> · <a href="https://github.com/masarray/arvrel">Source</a> · <a href="https://github.com/masarray/arvrel/issues">Issues</a> · <a href="https://github.com/masarray">Maintainer</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; commercial terms available separately.</div></div></footer>
+</body>
+</html>

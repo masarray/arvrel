@@ -54,6 +54,45 @@ public sealed class SmvFeederRuntimeTests
         Assert.AreEqual(160, snapshot.Waveform.VoltageA.Count);
     }
 
+    [TestMethod]
+    public void RejectedDuplicate_UpdatesTrustAndTelemetryWithoutAdmittingSamples()
+    {
+        var profile = CreateProfile();
+        var source = MacAddress.Parse("02:00:00:00:00:68");
+        var first = CreateFrame(profile, source, 0, 0);
+        var runtime = new SmvStreamRuntime("continuity", first, new ProtectionSettings(), new SmvMeasurementContext());
+        var start = DateTimeOffset.UtcNow;
+
+        for (var sample = 0; sample < 200; sample++)
+        {
+            runtime.Observe(
+                start.AddTicks(sample * 2_500),
+                CreateFrame(profile, source, (ushort)sample, sample),
+                profile,
+                replay: true);
+        }
+
+        var before = runtime.Snapshot(start.AddMilliseconds(50), primaryDisplay: false, replay: true);
+        runtime.ObserveIngressRejection(
+            start.AddMilliseconds(51),
+            SmvIngressDecision.DropDuplicate,
+            sampleCount: 199,
+            asduCount: 1,
+            replay: true);
+        var after = runtime.Snapshot(start.AddMilliseconds(51), primaryDisplay: false, replay: true);
+
+        Assert.AreEqual(before.Waveform.PhaseA.Count, after.Waveform.PhaseA.Count);
+        CollectionAssert.AreEqual(before.Waveform.PhaseA.ToArray(), after.Waveform.PhaseA.ToArray());
+        Assert.AreEqual(before.FrameCount + 1, after.FrameCount);
+        Assert.AreEqual(before.AsduCount + 1, after.AsduCount);
+        Assert.AreEqual(before.DuplicateCount + 1, after.DuplicateCount);
+        Assert.AreEqual(before.OutOfOrderCount, after.OutOfOrderCount);
+        Assert.AreEqual("SMPCNT_DISCONTINUITY", after.Measurement.SmvTrust.Code);
+        Assert.IsFalse(after.Measurement.SmvTrust.AllowsTrip);
+        Assert.AreEqual("SMPCNT_DISCONTINUITY", after.Protection.SmvTrust.Code);
+        Assert.IsTrue(after.Diagnostics.Any(item => item.Contains("rejected before measurement", StringComparison.OrdinalIgnoreCase)));
+    }
+
     private static SampledValuesPublisherProfile CreateProfile()
     {
         var entries = new List<SclDataSetEntry>();

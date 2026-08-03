@@ -60,9 +60,6 @@ internal static class RelayIndicatorLampBehavior
         Color.FromRgb(210, 96, 0),
         Color.FromRgb(73, 25, 0));
 
-    // Keep every visible part of the operated lens inside the red family. A white
-    // specular centre can be perceived as cyan next to the historical phase-blue
-    // local Fill, especially when the latter is rewritten by the measurement timer.
     private static readonly Brush RedLampBrush = CreateLampBrush(
         Color.FromRgb(255, 218, 218),
         Color.FromRgb(255, 46, 52),
@@ -120,8 +117,11 @@ internal static class RelayIndicatorLampBehavior
             return;
 
         FillDescriptor.RemoveValueChanged(ellipse, OnFillChanged);
-        ellipse.BeginAnimation(Shape.FillProperty, null);
+
+        // BeginAnimation can synchronously raise the Fill value-changed callback.
+        // Move the guard first so teardown cannot re-enter the pinned-state path.
         ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
+        ellipse.BeginAnimation(Shape.FillProperty, null);
         ellipse.SetValue(IsAttachedProperty, false);
     }
 
@@ -157,44 +157,16 @@ internal static class RelayIndicatorLampBehavior
         switch (state)
         {
             case RelayIndicatorState.Green:
-                SetLamp(
-                    ellipse,
-                    GreenLampBrush,
-                    GreenStrokeBrush,
-                    GreenGlow,
-                    active: true,
-                    state: state,
-                    enforcePinnedFill: enforcePinnedFill);
+                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Orange:
-                SetLamp(
-                    ellipse,
-                    OrangeLampBrush,
-                    OrangeStrokeBrush,
-                    OrangeGlow,
-                    active: true,
-                    state: state,
-                    enforcePinnedFill: enforcePinnedFill);
+                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Red:
-                SetLamp(
-                    ellipse,
-                    RedLampBrush,
-                    RedStrokeBrush,
-                    RedGlow,
-                    active: true,
-                    state: state,
-                    enforcePinnedFill: enforcePinnedFill);
+                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, true, state, enforcePinnedFill);
                 break;
             default:
-                SetLamp(
-                    ellipse,
-                    OffLampBrush,
-                    OffStrokeBrush,
-                    effect: null,
-                    active: false,
-                    state: RelayIndicatorState.Off,
-                    enforcePinnedFill: enforcePinnedFill);
+                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null, false, RelayIndicatorState.Off, enforcePinnedFill);
                 break;
         }
     }
@@ -228,26 +200,30 @@ internal static class RelayIndicatorLampBehavior
         if (applied == state)
             return;
 
-        // An animation has higher WPF value precedence than the legacy local Fill writes
-        // still emitted by the measurement renderer. Holding a zero-duration object key
-        // frame makes the annunciation latch the authoritative visible colour: phase-blue
-        // can remain as an underlying compatibility value but cannot leak through the red
-        // operated lens between timer ticks.
         var animation = new ObjectAnimationUsingKeyFrames
         {
             Duration = new Duration(TimeSpan.Zero),
             FillBehavior = FillBehavior.HoldEnd
         };
-        animation.KeyFrames.Add(new DiscreteObjectKeyFrame(
-            fill,
-            KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        animation.KeyFrames.Add(new DiscreteObjectKeyFrame(fill, KeyTime.FromTimeSpan(TimeSpan.Zero)));
         animation.Freeze();
 
-        ellipse.BeginAnimation(
-            Shape.FillProperty,
-            animation,
-            HandoffBehavior.SnapshotAndReplace);
+        // Mark the transition before BeginAnimation. WPF can synchronously notify
+        // FillDescriptor while applying the animation; the marker makes that callback
+        // idempotent and prevents recursive animation creation / UI stack overflow.
         ellipse.SetValue(AppliedPinnedStateProperty, state);
+        try
+        {
+            ellipse.BeginAnimation(
+                Shape.FillProperty,
+                animation,
+                HandoffBehavior.SnapshotAndReplace);
+        }
+        catch
+        {
+            ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
+            throw;
+        }
     }
 
     private static void ClearPinnedFillOverride(Ellipse ellipse)
@@ -255,8 +231,10 @@ internal static class RelayIndicatorLampBehavior
         if ((RelayIndicatorState)ellipse.GetValue(AppliedPinnedStateProperty) == RelayIndicatorState.Auto)
             return;
 
-        ellipse.BeginAnimation(Shape.FillProperty, null);
+        // Clear the guard before removing the animation for the same synchronous
+        // callback reason as ApplyPinnedFillOverride.
         ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
+        ellipse.BeginAnimation(Shape.FillProperty, null);
     }
 
     private static RelayIndicatorState ResolveActiveState(string name, Brush source)

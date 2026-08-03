@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,6 +63,7 @@ public partial class AlgorithmEditorWindow : Window
 
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ARVREL", "algorithms");
         Directory.CreateDirectory(directory);
+        var settingsFingerprint = _activeSettings.Fingerprint();
         var document = new
         {
             schemaVersion = 3,
@@ -72,16 +74,66 @@ public partial class AlgorithmEditorWindow : Window
             {
                 _activeSettings.GroupName,
                 _activeSettings.Revision,
-                fingerprint = _activeSettings.Fingerprint()
+                fingerprint = settingsFingerprint
             },
             mode = "deterministic-shadow-p2",
             activation = "not-active",
             outputBoundary = "virtual-only",
             source = EditorText.Text
         };
-        var path = Path.Combine(directory, $"{SelectedElement}-{result.ContentHash[..12]}.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
-        StatusText.Text = $"Shadow algorithm staged · {Path.GetFileName(path)} · active relay algorithm unchanged.";
+        var path = Path.Combine(
+            directory,
+            $"{SelectedElement}-{settingsFingerprint[..12]}-{result.ContentHash[..12]}.json");
+        var temporaryPath = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        var json = JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true });
+
+        try
+        {
+            WriteDurableTemporaryFile(temporaryPath, json);
+            try
+            {
+                File.Move(temporaryPath, path, overwrite: false);
+                StatusText.Text = $"Shadow algorithm staged · {Path.GetFileName(path)} · active relay algorithm unchanged.";
+            }
+            catch (IOException) when (File.Exists(path))
+            {
+                File.Delete(temporaryPath);
+                StatusText.Text = $"Immutable shadow already staged · {Path.GetFileName(path)} · existing evidence was not overwritten.";
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDelete(temporaryPath);
+            StatusText.Text = $"Shadow staging failed · {ex.Message} · no immutable artifact was claimed.";
+        }
+    }
+
+    private static void WriteDurableTemporaryFile(string path, string content)
+    {
+        var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(content);
+        using var stream = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 16_384,
+            FileOptions.WriteThrough);
+        stream.Write(bytes);
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // Best-effort cleanup only. The hidden temporary file is never presented
+            // as staged evidence and has a unique name for later housekeeping.
+        }
     }
 
     private void LoadSources(bool resetCustom)
