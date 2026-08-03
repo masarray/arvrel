@@ -68,6 +68,13 @@ public sealed record FeederProtectionSettings
 
     public void Validate()
     {
+        ValidateDefinedEnum(Undervoltage27Mode, nameof(Undervoltage27Mode));
+        ValidateDefinedEnum(Undervoltage27Logic, nameof(Undervoltage27Logic));
+        ValidateDefinedEnum(Overvoltage59Mode, nameof(Overvoltage59Mode));
+        ValidateDefinedEnum(Overvoltage59Logic, nameof(Overvoltage59Logic));
+        ValidateDefinedEnum(DirectionalPhase67Sense, nameof(DirectionalPhase67Sense));
+        ValidateDefinedEnum(DirectionalEarth67NSense, nameof(DirectionalEarth67NSense));
+
         ValidatePositive(Undervoltage27PickupV, nameof(Undervoltage27PickupV));
         ValidateDelay(Undervoltage27Delay, nameof(Undervoltage27Delay));
         if (!double.IsFinite(Undervoltage27ResetRatio) || Undervoltage27ResetRatio < 1 || Undervoltage27ResetRatio > 2)
@@ -94,7 +101,7 @@ public sealed record FeederProtectionSettings
         ValidatePositive(DirectionalEarth67NMinimumPolarizingVoltageV, nameof(DirectionalEarth67NMinimumPolarizingVoltageV));
     }
 
-    public string CanonicalIdentity() => string.Join('|',
+    public string CanonicalIdentity() => ProtectionSettings.CanonicalJoin(
         Undervoltage27Enabled, Undervoltage27PickupV, Undervoltage27Delay.Ticks, Undervoltage27ResetRatio, Undervoltage27Mode, Undervoltage27Logic,
         Overvoltage59Enabled, Overvoltage59PickupV, Overvoltage59Delay.Ticks, Overvoltage59DropoutRatio, Overvoltage59Mode, Overvoltage59Logic,
         ResidualOvervoltage59NEnabled, ResidualOvervoltage59NPickupV, ResidualOvervoltage59NDelay.Ticks, ResidualOvervoltage59NDropoutRatio,
@@ -126,6 +133,12 @@ public sealed record FeederProtectionSettings
         if (!double.IsFinite(value) || value is < -180 or > 180)
             throw new ArgumentOutOfRangeException(name);
     }
+
+    private static void ValidateDefinedEnum<TEnum>(TEnum value, string name) where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+            throw new ArgumentOutOfRangeException(name, value, "Undefined enum value.");
+    }
 }
 
 public sealed record PhasorMeasurementSet(
@@ -142,6 +155,18 @@ public sealed record PhasorMeasurementSet(
     private static readonly Complex A = Complex.FromPolarCoordinates(1, 2 * Math.PI / 3);
     private static readonly Complex A2 = A * A;
 
+    /// <summary>
+    /// True when the fourth current channel is an explicitly decoded IN/3I0 channel.
+    /// When false, residual current is calculated from IA+IB+IC.
+    /// </summary>
+    public bool NeutralCurrentAvailable { get; init; }
+
+    /// <summary>
+    /// True when the fourth voltage channel is an explicitly decoded VN/3V0 channel.
+    /// When false, residual voltage is calculated from VA+VB+VC.
+    /// </summary>
+    public bool NeutralVoltageAvailable { get; init; }
+
     public Complex PositiveSequenceCurrent => (PhaseACurrent + A * PhaseBCurrent + A2 * PhaseCCurrent) / 3;
     public Complex NegativeSequenceCurrent => (PhaseACurrent + A2 * PhaseBCurrent + A * PhaseCCurrent) / 3;
     public Complex ZeroSequenceCurrent => (PhaseACurrent + PhaseBCurrent + PhaseCCurrent) / 3;
@@ -150,8 +175,13 @@ public sealed record PhasorMeasurementSet(
     public Complex NegativeSequenceVoltage => (PhaseAVoltage + A2 * PhaseBVoltage + A * PhaseCVoltage) / 3;
     public Complex ZeroSequenceVoltage => (PhaseAVoltage + PhaseBVoltage + PhaseCVoltage) / 3;
 
-    public Complex ResidualCurrent => PhaseACurrent + PhaseBCurrent + PhaseCCurrent;
-    public Complex ResidualVoltage => PhaseAVoltage + PhaseBVoltage + PhaseCVoltage;
+    public Complex ResidualCurrent => NeutralCurrentAvailable
+        ? NeutralCurrent
+        : PhaseACurrent + PhaseBCurrent + PhaseCCurrent;
+
+    public Complex ResidualVoltage => NeutralVoltageAvailable
+        ? NeutralVoltage
+        : PhaseAVoltage + PhaseBVoltage + PhaseCVoltage;
 
     public double[] PhaseToNeutralVoltages =>
     [
@@ -631,6 +661,10 @@ public static class FundamentalPhasorEstimator
             EstimateRms(phaseBVoltage, samplesPerCycle),
             EstimateRms(phaseCVoltage, samplesPerCycle),
             EstimateRms(neutralVoltage, samplesPerCycle),
-            frequencyHz);
+            frequencyHz)
+        {
+            NeutralCurrentAvailable = true,
+            NeutralVoltageAvailable = true
+        };
     }
 }
