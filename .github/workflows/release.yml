@@ -140,8 +140,7 @@ jobs:
             --target $env:GITHUB_SHA `
             --title 'ARVREL ${{ steps.release_gate.outputs.tag }}' `
             --notes-file RELEASE-NOTES.md `
-            --prerelease `
-            --verify-tag:$false
+            --prerelease
           if ($LASTEXITCODE -ne 0) {
             throw "GitHub release creation failed with exit code $LASTEXITCODE."
           }
