@@ -15,7 +15,7 @@ public partial class MainWindow
     private Button? _advancedInjectionButton;
     private DispatcherTimer? _advancedInjectionPresentationTimer;
 
-    private bool IsAdvancedInjectionOpen => _advancedInjectionWindow is { IsVisible: true };
+    private bool IsAdvancedInjectionOpen => _advancedInjectionWindow is not null;
 
     internal void InitializeAdvancedInjectionFoundation()
     {
@@ -170,11 +170,14 @@ public partial class MainWindow
             window.Closing -= AdvancedInjectionWindow_Closing;
             window.Closed -= AdvancedInjectionWindow_Closed;
             var editor = window.DetachEditor();
-            if (editor is not null && _virtualInjectionView is null)
+            if (editor is not null && !ReferenceEquals(editor, _virtualInjectionView))
                 throw new InvalidOperationException("The Advanced Injection Window returned an unexpected editor instance.");
         }
 
         _advancedInjectionWindow = null;
+        if (_advancedInjectionOwnerClosing)
+            return;
+
         ReattachMainInjectionEditor();
         UpdateAdvancedInjectionWorkspaceAvailability();
         ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce: false);
