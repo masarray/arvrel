@@ -27,7 +27,14 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission;
 - opening Advanced Injection transfers the existing Direct editor out of Main Window, hides the Main `INJECT` tab, and leaves Main Window in DUAL monitoring mode;
 - closing Advanced Injection restores the same editor and `INJECT` tab without replacing the configured source, output state, or trip latch;
-- leaving Internal demo closes the Advanced Injection Window safely so Live Npcap and PCAP replay retain exclusive source context.
+- leaving Internal demo closes the Advanced Injection Window safely so Live Npcap and PCAP replay retain exclusive source context;
+- steady-state injection status and phasor presentation now update only when their underlying state or vectors change, reducing redundant WPF redraws and visible text churn;
+- high-density injection fingerprints and provenance are retained in tooltips/evidence while the primary header and relay footer use shorter operator-facing text.
+
+### Fixed
+
+- **Inject A-G fault** now consistently loads the A-G profile and immediately starts the virtual source when stopped, rather than only arming or toggling the preset;
+- repeated status-brush allocation and unconditional phasor-frame assignment that could make steady text and vector labels appear to flicker.
 
 ## [0.1.0-beta.1] — 2026-08-03
 
