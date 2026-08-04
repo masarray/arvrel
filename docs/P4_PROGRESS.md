@@ -42,7 +42,8 @@ Updated: 2026-08-04
 - [x] Virtual-injection atomic/coherence runtime tests
 - [x] NuGet vulnerability audit
 - [x] Changed-file scope review: 13 expected files, no live/replay engine modification
-- [ ] Release-candidate packaging gate — runs after draft is marked ready
+- [x] Feature PR marked ready for review
+- [x] Release-candidate packaging correctly deferred: repository policy runs it only on a future `release/*` branch
 
 ## Manual visual and interaction QA
 
@@ -52,7 +53,7 @@ These checks require launching the Windows WPF application; they cannot be hones
 - [ ] Visual smoke test at 1520×900 default window
 - [ ] Verify DataGrid keyboard editing and validation feedback
 - [ ] Verify preset → custom edit → invalid edit → recovery sequence
-- [ ] Verify phasor, LCD, annunciation, and operation evidence
+- [ ] Verify phasor, LCD, annunciation, operation evidence, and export interaction
 - [ ] Verify live Npcap and PCAP replay remain visually and operationally unchanged
 
 ## Merge gate
@@ -60,5 +61,5 @@ These checks require launching the Windows WPF application; they cannot be hones
 - [x] Review changed-file scope
 - [x] Resolve all compiler and CI findings
 - [x] Update changelog, README, engineering contract, and checklist
-- [ ] Mark PR ready and run release-candidate gate
+- [x] Mark PR ready for review
 - [ ] Squash merge to `main`
