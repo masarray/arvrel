@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Arvrel.App.Services;
 using Microsoft.Win32;
 
 namespace Arvrel.App;
@@ -96,7 +97,7 @@ public partial class MainWindow
 
         var profile = _scenario.ActiveProfile;
         FrequencyText.Text = $"{profile.FrequencyHz:0.000} Hz";
-        SamplesPerCycleText.Text = $"  ·  {Arvrel.App.Services.DeterministicLabScenario.SamplesPerCycle} samples/cycle";
+        SamplesPerCycleText.Text = $"  ·  {DeterministicLabScenario.SamplesPerCycle} samples/nominal cycle · {DeterministicLabScenario.SampleRateHz / 1000:0.###} kHz";
         SampleCounterText.Text = $"  ·  smpCnt {_scenario.SampleCounter:0000}";
         SyncText.Text = "  ·  virtual sync";
         SyncText.Foreground = _scenario.SmvDegraded ? WarningBrush : HealthyBrush;
@@ -116,7 +117,7 @@ public partial class MainWindow
         WaveformSubtitleText.Text = _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection
             ? $"{profile.Name} · {_scenario.WindowStatus} · {shortFingerprint} · valid changes auto-apply atomically"
             : $"Virtual injection waveform · {profile.Name} · {_scenario.NeutralCurrentProvenance} · {_scenario.NeutralVoltageProvenance}";
-        WaveformSubtitleText.ToolTip = $"Profile {profile.Name}\nFingerprint {_scenario.InjectionFingerprint}\nIN {_scenario.NeutralCurrentProvenance}\nVN {_scenario.NeutralVoltageProvenance}";
+        WaveformSubtitleText.ToolTip = $"Profile {profile.Name}\nFingerprint {_scenario.InjectionFingerprint}\nInjected frequency {profile.FrequencyHz:0.###} Hz\nNominal DFT {DeterministicLabScenario.Frequency:0.###} Hz\nSampling {DeterministicLabScenario.SampleRateHz:0.###} samples/s\nIN {_scenario.NeutralCurrentProvenance}\nVN {_scenario.NeutralVoltageProvenance}";
         RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · injection {shortFingerprint} · {_scenario.WindowStatus}";
 
         if (_scenario.WindowStatus == "coherent" &&
@@ -167,7 +168,10 @@ public partial class MainWindow
                 fingerprint = _scenario.InjectionFingerprint,
                 appliedAt = _scenario.AppliedAt,
                 windowStatus = _scenario.WindowStatus,
-                samplesPerCycle = Arvrel.App.Services.DeterministicLabScenario.SamplesPerCycle,
+                injectedFrequencyHz = _scenario.ActiveProfile.FrequencyHz,
+                nominalFrequencyHz = DeterministicLabScenario.Frequency,
+                sampleRateHz = DeterministicLabScenario.SampleRateHz,
+                samplesPerNominalCycle = DeterministicLabScenario.SamplesPerCycle,
                 cycles = 2,
                 neutralCurrentProvenance = _scenario.NeutralCurrentProvenance,
                 neutralVoltageProvenance = _scenario.NeutralVoltageProvenance,
