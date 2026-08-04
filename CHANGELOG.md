@@ -22,18 +22,24 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - the Internal analysis workspace defaults to **DUAL** while Injection, Waveform, and Phasor-only views remain available;
 - configured injection values remain armed while stopped and energize only after START;
 - STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table;
-- the main Run control mirrors the same Start injection / Stop injection interlock;
+- the top-right toolbar is the single Start injection / Stop injection authority; duplicate editor-footer controls were removed;
 - changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions;
 - relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission;
 - opening Advanced Injection transfers the existing Direct editor out of Main Window, hides the Main `INJECT` tab, and leaves Main Window in DUAL monitoring mode;
+- the Advanced launcher now belongs inside the simple INJECT workspace instead of occupying the main analysis-tab row;
 - closing Advanced Injection restores the same editor and `INJECT` tab without replacing the configured source, output state, or trip latch;
 - leaving Internal demo closes the Advanced Injection Window safely so Live Npcap and PCAP replay retain exclusive source context;
 - steady-state injection status and phasor presentation now update only when their underlying state or vectors change, reducing redundant WPF redraws and visible text churn;
+- Internal injection keeps the 40 ms protection-execution cadence but renders waveform, relay LCD, LEDs, measurements, status, and footer only when operator-visible state changes;
+- the Internal source strip now presents stable `frequency · samples/cycle · 4 kHz · VIRTUAL · output state` facts instead of a continuously moving synthetic `smpCnt`;
 - high-density injection fingerprints and provenance are retained in tooltips/evidence while the primary header and relay footer use shorter operator-facing text.
 
 ### Fixed
 
 - **Inject A-G fault** now consistently loads the A-G profile and immediately starts the virtual source when stopped, rather than only arming or toggling the preset;
+- clipped `INJECT` and Advanced controls in the 1520×900 analysis header;
+- competing periodic renderers that alternated `INTERNAL · GOOD` with `STOPPED`, `STARTING`, or `RUNNING`;
+- steady-state flicker in the injection subtitle, virtual-relay lower-left footer, LCD measurements, LEDs, and waveform caused by unconditional 40 ms WPF tree updates;
 - repeated status-brush allocation and unconditional phasor-frame assignment that could make steady text and vector labels appear to flicker.
 
 ## [0.1.0-beta.1] — 2026-08-03

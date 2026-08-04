@@ -26,7 +26,10 @@ public sealed class AdvancedInjectionWindow : Window
         MinWidth = 960;
         MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
+        // The launcher now lives inside the Main INJECT workspace and is hidden
+        // while this window owns the editor. A taskbar entry keeps the modeless
+        // laboratory accessible if it is minimized or covered by another app.
+        ShowInTaskbar = true;
         Background = CreateBrush("#F3F6F9");
         FontFamily = new FontFamily("Segoe UI Variable, Segoe UI");
 
