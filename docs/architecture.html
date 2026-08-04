@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Architecture — ARVREL</title><meta name="description" content="Understand ARVREL repository boundaries, runtime pipeline, threading model, protection engine, trust gates, and evidence flow."><link rel="canonical" href="https://masarray.github.io/arvrel/architecture.html"><link rel="stylesheet" href="assets/site.css"><link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml"></head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="index.html"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="architecture.html" aria-current="page">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">Home</a> / Architecture</div><p class="eyebrow">System design</p><h1>Separate reusable IEC 61850 primitives from relay-specific decisions.</h1><p class="lede">ARVREL owns the virtual-relay application, measurement context, trust policy, protection algorithms, and evidence presentation. The sibling ARIEC61850 repository remains the reusable frame, SCL, Sampled Values, and Npcap engine.</p></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Repository boundary</p><h2>Two repositories, one explicit responsibility split.</h2></div><div class="grid-2">
+<article class="card"><span class="label">ARIEC61850</span><h3>Reusable protocol and transport engine</h3><p>IEC 61850 frame models, SCL parsing, Sampled Values decoding primitives, PCAP handling, and Npcap transport components.</p></article>
+<article class="card"><span class="label">ARVREL</span><h3>Virtual relay and engineering workflow</h3><p>Process-bus orchestration, measurement windows, trust policy, protection elements, relay faceplate, operator workflow, evidence, and export.</p></article>
+</div><pre class="code" style="margin-top:18px">C:\Git\
+├── ARIEC61850\
+└── arvrel\
+    ├── src\Arvrel.App
+    ├── src\Arvrel.ProcessBus
+    ├── src\Arvrel.Protection
+    └── tests\...</pre></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Runtime pipeline</p><h2>Protection decisions are downstream of identity and trust evidence.</h2></div><div class="chain">
+<div class="chain-step"><span>01</span><strong>Internal source, Npcap, or replay</strong></div><div class="chain-step"><span>02</span><strong>ARIEC61850 parse and SCL model</strong></div><div class="chain-step"><span>03</span><strong>Stream key, mapping, scaling</strong></div><div class="chain-step"><span>04</span><strong>One-cycle RMS and phasors</strong></div><div class="chain-step"><span>05</span><strong>Protection elements and timers</strong></div><div class="chain-step"><span>06</span><strong>SMV trust permission</strong></div><div class="chain-step"><span>07</span><strong>Latch, snapshot, JSON evidence</strong></div>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Project model</p><h2>Core logic remains outside the WPF render cadence.</h2></div><div class="grid-3">
+<article class="card"><h3>Arvrel.ProcessBus</h3><p>Live/replay sources, stream discovery, SCL binding, decoding, sample rings, RMS, phasors, continuity, trust, and immutable evidence models.</p></article>
+<article class="card"><h3>Arvrel.Protection</h3><p>Deterministic protection elements, timers, direction, trip latch, operation records, and algorithm-policy behavior independent from WPF refresh.</p></article>
+<article class="card"><h3>Arvrel.App</h3><p>Windows operator shell, waveform and phasor instruments, relay LCD, settings workflow, event presentation, persistence, and export.</p></article>
+</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Threading and state</p><h2>Capture, replay, evaluation, and presentation have different lifecycles.</h2></div><div class="grid-2">
+<div class="card"><h3>Background work</h3><ul class="check-list"><li>Npcap capture runs outside the UI dispatcher through a bounded transport channel.</li><li>PCAP replay runs on a worker task.</li><li>Per-stream mutable rings and protection state are guarded privately.</li><li>Protection is evaluated when decoded ASDUs arrive, not when WPF renders.</li></ul></div>
+<div class="card"><h3>Operator presentation</h3><ul class="check-list"><li>The UI requests immutable snapshots at a bounded cadence.</li><li>Complete two-cycle evidence windows feed waveform presentation.</li><li>The newest complete one-cycle window feeds protection RMS and phasors.</li><li>Last coherent evidence can remain visible while unhealthy live data recovers.</li></ul></div>
+</div><div class="callout safe" style="margin-top:20px"><strong>Design intent:</strong> UI responsiveness must not define protection timing, and diagnostic visibility must not silently become trip authority.</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Known boundary</p><h2>Architecture supports engineering evaluation, not certified real-time protection.</h2></div><ul class="check-list"><li>Outputs remain virtual only.</li><li>No calibrated measurement or IEC 60255 type-test claim is made.</li><li>Windows, Npcap, adapter drivers, publisher behavior, and host load influence live performance.</li><li>Generic SCL layouts use the reusable engine; inferred fixed layouts must remain clearly identified.</li><li>Custom algorithm source remains shadow-only.</li></ul><div class="actions"><a class="button light" href="https://github.com/masarray/arvrel/blob/main/docs/ARCHITECTURE.md">Read source architecture notes</a><a class="button light" href="evidence-and-trust.html">Explore trust architecture</a></div><div class="pager"><a href="workflows/education-research.html"><span>Previous</span>Education and research</a><a href="evidence-and-trust.html" style="text-align:right"><span>Next</span>Evidence and trust</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Virtual Protection Relay Laboratory</div></div><div class="small"><a href="evidence-and-trust.html">Trust</a> · <a href="safety-and-limitations.html">Safety</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body></html>
