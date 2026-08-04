@@ -11,14 +11,19 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - fixed 4 kHz nominal sampling grid feeding the existing mean-removed 50 Hz single-bin DFT, so off-nominal injection exposes the estimator response instead of changing the measurement grid;
 - normal, phase/ground-fault, voltage, and directional protection presets that populate the same editable table;
 - IN/VN explicit virtual channels with calculated `IA+IB+IC` and `VA+VB+VC` residual fallback;
-- injection SHA-256 identity and internal evidence schema version 3;
-- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, protection operation/restraint, and trip-latch retention.
+- interlocked **START** and **STOP** controls aligned with the ARSVIN publisher operating pattern;
+- configured-versus-effective output identity, state timestamps, and internal evidence schema version 4;
+- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, stopped-zero output, protection operation/restraint, exact pickup threshold, configured delay, and trip-latch retention.
 
 ### Changed
 
 - Internal demo is no longer limited to a fixed A-G scenario;
-- the Internal analysis workspace defaults to Injection + Phasor while Waveform, Dual, and Phasor-only views remain available;
-- changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions.
+- the Internal analysis workspace defaults to **DUAL** while Injection, Waveform, and Phasor-only views remain available;
+- configured injection values remain armed while stopped and energize only after START;
+- STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table;
+- the main Run control mirrors the same Start injection / Stop injection interlock;
+- changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions;
+- relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission.
 
 ## [0.1.0-beta.1] — 2026-08-03
 
