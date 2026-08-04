@@ -46,7 +46,7 @@ public partial class MainWindow
             Padding = new Thickness(10, 0, 10, 0),
             FontSize = 9.5,
             FontWeight = FontWeights.SemiBold,
-            ToolTip = "Open the modeless Advanced Injection Laboratory. The Main Window INJECT workspace is hidden while it owns the editor."
+            ToolTip = "Open the Advanced Injection Laboratory."
         };
         _advancedInjectionButton.Click += AdvancedInjectionButton_Click;
         controlsLine.Children.Add(_advancedInjectionButton);
@@ -54,9 +54,11 @@ public partial class MainWindow
         SourceCombo.SelectionChanged += AdvancedInjectionSourceChanged;
         Closing += AdvancedInjectionOwner_Closing;
 
+        // Observe source/profile state at a modest rate. The target controls and
+        // AdvancedInjectionWindow suppress assignments when values are unchanged.
         _advancedInjectionPresentationTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(120)
+            Interval = TimeSpan.FromMilliseconds(250)
         };
         _advancedInjectionPresentationTimer.Tick += (_, _) => RefreshAdvancedInjectionPresentation();
         _advancedInjectionPresentationTimer.Start();
@@ -122,7 +124,7 @@ public partial class MainWindow
             window.Show();
             window.FocusDirectEditor();
             AddEvent("ADV INJECT", "Advanced Injection Window opened; Main INJECT workspace hidden");
-            StatusText.Text = "Advanced Injection Laboratory opened. Main Window remains a waveform, phasor, and relay monitoring surface.";
+            StatusText.Text = "Advanced Injection Laboratory opened. Main Window remains in relay-monitoring mode.";
             RefreshAdvancedInjectionPresentation();
         }
         catch
@@ -183,8 +185,8 @@ public partial class MainWindow
         ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce: false);
         AddEvent("ADV CLOSE", "Main INJECT workspace restored; DUAL monitoring retained");
         StatusText.Text = _scenario.IsRunning
-            ? "Advanced Injection Window closed. Injection remains running and the Main Window simple editor is available again."
-            : "Advanced Injection Window closed. Main Window injection workspace is available again.";
+            ? "Advanced Injection Window closed. Injection remains running."
+            : "Advanced Injection Window closed.";
     }
 
     private void ReattachMainInjectionEditor()
@@ -233,15 +235,27 @@ public partial class MainWindow
         var simpleEditorAvailable = internalMode && !IsAdvancedInjectionOpen;
 
         if (_analysisModeButtons.TryGetValue(AnalysisWorkspaceMode.Injection, out var injectionButton))
-            injectionButton.Visibility = simpleEditorAvailable ? Visibility.Visible : Visibility.Collapsed;
+        {
+            var desiredVisibility = simpleEditorAvailable ? Visibility.Visible : Visibility.Collapsed;
+            if (injectionButton.Visibility != desiredVisibility)
+                injectionButton.Visibility = desiredVisibility;
+        }
 
         if (_advancedInjectionButton is not null)
         {
-            _advancedInjectionButton.Visibility = internalMode ? Visibility.Visible : Visibility.Collapsed;
-            _advancedInjectionButton.Content = IsAdvancedInjectionOpen ? "FOCUS INJECTION" : "ADVANCED";
-            _advancedInjectionButton.ToolTip = IsAdvancedInjectionOpen
-                ? "Bring the active Advanced Injection Laboratory to the foreground."
-                : "Open the modeless Advanced Injection Laboratory. The Main Window INJECT workspace is hidden while it owns the editor.";
+            var desiredVisibility = internalMode ? Visibility.Visible : Visibility.Collapsed;
+            if (_advancedInjectionButton.Visibility != desiredVisibility)
+                _advancedInjectionButton.Visibility = desiredVisibility;
+
+            var desiredContent = IsAdvancedInjectionOpen ? "FOCUS INJECTION" : "ADVANCED";
+            if (!Equals(_advancedInjectionButton.Content, desiredContent))
+                _advancedInjectionButton.Content = desiredContent;
+
+            var desiredToolTip = IsAdvancedInjectionOpen
+                ? "Bring the Advanced Injection Laboratory to the foreground."
+                : "Open the Advanced Injection Laboratory.";
+            if (!Equals(_advancedInjectionButton.ToolTip, desiredToolTip))
+                _advancedInjectionButton.ToolTip = desiredToolTip;
         }
 
         if (!simpleEditorAvailable && _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
@@ -254,11 +268,10 @@ public partial class MainWindow
         if (_advancedInjectionWindow is null)
             return;
 
-        var shortFingerprint = _scenario.InjectionFingerprint[..12];
         _advancedInjectionWindow.UpdateRuntimeStatus(
             _scenario.ActiveProfile.Name,
             _scenario.OutputState,
-            shortFingerprint);
+            _scenario.InjectionFingerprint[..12]);
     }
 }
 
