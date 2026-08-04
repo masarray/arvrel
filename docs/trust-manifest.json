@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "product": "ARVREL",
+  "displayName": "ARVREL Virtual Protection Relay Laboratory",
+  "version": "0.1.0-beta.1",
+  "releaseTag": "v0.1.0-beta.1",
+  "maturity": "public engineering beta",
+  "platforms": [
+    "Windows 10 x64",
+    "Windows 11 x64"
+  ],
+  "outputAuthority": "virtual-only",
+  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.1",
+  "requiredReleaseAssets": [
+    "ARVREL-Setup-v0.1.0-beta.1-win-x64.exe",
+    "ARVREL-v0.1.0-beta.1-win-x64-portable.zip",
+    "SHA256SUMS.txt"
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifest": "SHA256SUMS.txt",
+    "instruction": "Calculate SHA-256 locally and compare it exactly with the value published in the same GitHub Release."
+  },
+  "engine": {
+    "repository": "masarray/ARIEC61850",
+    "commit": "c1afc68c9931e857eb787b0f249db2c2b0b757c4"
+  },
+  "binarySigning": {
+    "status": "not-claimed",
+    "note": "The public site does not claim that the current community binaries are Authenticode-signed. Verify the GitHub Release source and SHA-256 before execution."
+  },
+  "sbom": {
+    "status": "release-dependent",
+    "note": "CycloneDX SBOM and dependency evidence are published when produced by the release workflow; the selected GitHub Release asset list is authoritative."
+  },
+  "safetyBoundary": "ARVREL is virtual-output laboratory software, not a certified protection IED, calibrated relay test set, hard-real-time trip platform, or switching authority.",
+  "sourceOfTruth": {
+    "releaseWorkflow": "https://github.com/masarray/arvrel/blob/main/.github/workflows/release.yml",
+    "versionFile": "https://github.com/masarray/arvrel/blob/main/VERSION",
+    "releaseNotes": "https://github.com/masarray/arvrel/blob/main/RELEASE-NOTES.md",
+    "securityPolicy": "https://github.com/masarray/arvrel/blob/main/SECURITY.md"
+  }
+}
