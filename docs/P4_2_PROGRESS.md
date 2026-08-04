@@ -38,8 +38,8 @@ Create a modeless Advanced Injection Window that becomes the only visible inject
 - [x] Process-bus tests
 - [x] Virtual-injection tests
 - [x] NuGet vulnerability audit
-- [ ] Static public-site validation after documentation commit
-- [ ] Final changed-file scope review
+- [x] Static public-site validation
+- [x] Final changed-file scope review: five expected P4.2.0 files; no parser, process-bus, or protection-function implementation changes
 - [ ] Mark PR ready for review
 - [ ] Squash merge to `main`
 
