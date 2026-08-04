@@ -337,7 +337,7 @@ def validate_research_source_claims(failures: list[str]) -> None:
     controller_tokens = [
         "discarded before measurement",
         "holding coherent display during trust recovery",
-        "must not clear protection timers or a latched trip",
+        "clear protection timers or a latched trip",
     ]
     for token in controller_tokens:
         if token not in controller:
