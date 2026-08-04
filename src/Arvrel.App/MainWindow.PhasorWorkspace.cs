@@ -127,7 +127,7 @@ public partial class MainWindow
         StreamHealthText.TextTrimming = TextTrimming.CharacterEllipsis;
         StreamHealthText.VerticalAlignment = VerticalAlignment.Center;
 
-        var subtitle = titleBlock.Children.OfType<TextBlock>().Skip(1).FirstOrDefault();
+        var subtitle = titleBlock.Children.OfType<TextBlock>().FirstOrDefault();
         if (subtitle is not null)
         {
             subtitle.Width = 232;
