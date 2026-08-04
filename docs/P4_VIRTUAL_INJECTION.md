@@ -114,7 +114,7 @@ Internal evidence schema version 3 includes:
 - [x] Reset relay and reset-all separation
 - [x] Evidence schema v3
 - [x] Deterministic core tests
-- [ ] Final Windows CI confirmation
+- [x] Final Windows CI confirmation
 - [ ] Visual smoke test on packaged application
 
 ## Safety boundary
