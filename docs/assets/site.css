@@ -239,7 +239,28 @@ td { font-size: .9rem; }
 .small { font-size: .82rem; }
 
 @media (max-width: 1040px) {
-  .nav-links a:not(.nav-cta) { display: none; }
+  .nav {
+    min-height: auto;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 0 8px;
+  }
+  .brand { align-self: flex-start; }
+  .nav-links {
+    width: 100%;
+    gap: 14px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 3px 1px 5px;
+    scrollbar-width: thin;
+  }
+  .nav-links a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
+  }
   .hero-grid { grid-template-columns: 1fr; }
   .hero-visual { max-width: 800px; }
   .proof-grid { grid-template-columns: repeat(4, 1fr); }
@@ -267,4 +288,8 @@ td { font-size: .9rem; }
   .chain { grid-template-columns: 1fr; }
   .chain-step { border-right: 0; }
   .actions .button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .button:hover { transform: none; }
 }
