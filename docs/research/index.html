@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research and Validation — ARVREL</title>
+  <meta name="description" content="Review ARVREL's source-grounded signal-processing method, deterministic protection tests, Sampled Values trust handling, directional protection notes, related work, and research boundaries.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <link rel="alternate" href="../data/research-scenarios.json" type="application/json" title="ARVREL deterministic research scenarios">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ARVREL research and validation">
+  <meta property="og:description" content="Trace public engineering claims from source implementation to deterministic tests and reproducible laboratory scenarios.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "ARVREL Research and Validation",
+    "description": "Source-grounded application notes, deterministic validation scenarios, related work, and research boundaries for ARVREL.",
+    "url": "https://masarray.github.io/arvrel/research/",
+    "about": {"@type": "SoftwareApplication", "name": "ARVREL", "softwareVersion": "0.1.0-beta.1"}
+  }
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / Research and validation</div><p class="eyebrow">Source → test → scenario → evidence</p><h1>Make every protection claim traceable.</h1><p class="lede">ARVREL's research layer links public statements to the current implementation, deterministic tests, machine-readable scenarios, and explicit limitations. It distinguishes what is verified in software from what remains unimplemented, unbenchmarked, or outside the public-beta claim.</p><div class="actions"><a class="button primary" href="validation.html">Open validation matrix</a><a class="button secondary" href="../data/research-scenarios.json">Download scenario catalog</a><a class="button secondary" href="../roadmap.html">Review roadmap</a></div></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Verified method</p><h2>Fundamental phasors use a one-cycle single-bin DFT—not a full FFT.</h2><p>The estimator requires a complete one-cycle sample window, removes the window mean, correlates the samples with fundamental-frequency sine and cosine terms, and scales the complex result to RMS. This is sufficient for the implemented fundamental phasor and sequence calculations without claiming a harmonic-spectrum FFT.</p></div><div class="grid-3">
+<article class="card"><span class="label">Window</span><h3>Complete one cycle</h3><p>The newest complete one-cycle window is required before the estimator produces a protection phasor.</p></article>
+<article class="card"><span class="label">Estimator</span><h3>DC-removed fundamental bin</h3><p>The sample mean is removed before cosine/sine correlation at one nominal fundamental bin.</p></article>
+<article class="card"><span class="label">Result</span><h3>Complex RMS phasor</h3><p>The result supports magnitude, phase, residual quantities, and positive-, negative-, and zero-sequence calculations.</p></article>
+</div><div class="actions"><a class="button light" href="signal-processing.html">Read application note AN-01</a><a class="button light" href="https://github.com/masarray/arvrel/blob/main/src/Arvrel.Protection/FeederProtection.cs#L606-L674">Inspect estimator source</a></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Application notes</p><h2>Three implementation questions receive source-grounded answers.</h2></div><div class="grid-3">
+<a class="card card-link" href="signal-processing.html"><span class="label">AN-01</span><h3>Fundamental signal estimation</h3><p>Windowing, DC removal, single-bin DFT mathematics, RMS scaling, sequence quantities, and known limitations.</p></a>
+<a class="card card-link" href="smv-continuity.html"><span class="label">AN-02</span><h3>SMV continuity and trust</h3><p>Duplicate rejection, out-of-order rejection, forward-gap recovery, coherent display hold, and trip-permission restraint.</p></a>
+<a class="card card-link" href="directional-protection.html"><span class="label">AN-03</span><h3>67P and 67N polarization</h3><p>V1/I1 and 3V0/3I0 quantities, minimum polarizing voltage, characteristic angle, directional torque, operate, and restraint.</p></a>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Deterministic validation</p><h2>Operate cases must be paired with secure or restrained cases.</h2><p>The public scenario catalog maps scenario identifiers to exact test methods and source paths. It covers fundamental measurement, normal-load security, 50 operation, trust-blocked trip, 27/59/59N, and forward/reverse 67 behavior.</p></div><div class="matrix"><table><thead><tr><th>Evidence class</th><th>Examples</th><th>Public meaning</th></tr></thead><tbody>
+<tr><td>Measurement</td><td><code>SIG-001</code></td><td>Balanced RMS and positive-sequence behavior are checked against synthetic one-cycle sine samples.</td></tr>
+<tr><td>Operate</td><td><code>P50-002</code>, <code>V27-001</code>, <code>DIR-001</code></td><td>The configured pickup and delay lead to a virtual operation under healthy trust.</td></tr>
+<tr><td>Secure / restrained</td><td><code>P50-001</code>, <code>DIR-002</code></td><td>Normal load or reverse direction does not assert the virtual trip latch.</td></tr>
+<tr><td>Trust restraint</td><td><code>TRUST-001</code></td><td>Pickup remains diagnostically visible while unhealthy SMV evidence blocks a new trip.</td></tr>
+</tbody></table></div><div class="actions"><a class="button light" href="validation.html">Review validation matrix</a><a class="button light" href="../laboratory-exercises.html">Open laboratory exercises</a></div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Related work</p><h2>ARVREL is comparable where the processing chain overlaps—and intentionally different elsewhere.</h2><p>Research on lightweight or virtual protective relays commonly combines IEC 61850 Sampled Values, digital signal processing, protection functions, and virtualized execution. ARVREL implements the SV-to-protection-to-evidence chain, but it does not currently claim transformer differential 87T, CPU-isolated deployment, certified real-time performance, or operational trip authority.</p></div><div class="grid-2">
+<article class="card"><h3>What ARVREL contributes now</h3><ul class="check-list"><li>Live or replayed IEC 61850 SV subscription</li><li>Source-visible fundamental phasor estimation</li><li>50/51/50N/51N/67P/67N/27/59/59N</li><li>Transport, configuration, measurement, and trip trust separation</li><li>Reviewable virtual-operation evidence</li></ul></article>
+<article class="card"><h3>What remains a research track</h3><ul class="check-list"><li>87T multi-terminal differential protection</li><li>Vector-group and CT compensation</li><li>Inrush and CT-saturation restraint</li><li>CPU isolation and real-time scheduling benchmarks</li><li>HIL, IEC 60255, calibration, and conformance evidence</li></ul></article>
+</div><div class="actions"><a class="button light" href="related-work.html">Read related-work positioning</a><a class="button light" href="../roadmap.html">Review entry criteria</a></div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Research boundary</p><h2>Automated software tests are necessary evidence, not certification.</h2><p>Passing deterministic tests demonstrates repeatable behavior for the tested code and fixtures. It does not establish calibrated accuracy, hard-real-time determinism, IEC 60255 type testing, IEC 61850 conformance, commissioning acceptance, operational switching authority, or suitability as a production protection IED.</p></div><div class="actions"><a class="button light" href="../safety-and-limitations.html">Review safety and limitations</a><a class="button light" href="https://github.com/masarray/arvrel/blob/main/CITATION.cff">Citation metadata</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL Research</div><div class="small">Source-grounded virtual protection evidence</div></div><div class="small"><a href="validation.html">Validation</a> · <a href="../laboratory-exercises.html">Laboratories</a> · <a href="../roadmap.html">Roadmap</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body>
+</html>
