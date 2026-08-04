@@ -75,18 +75,9 @@ public partial class MainWindow
 
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            // Existing XAML handlers run first. This projection then keeps the editor,
-            // phasor, labels, presets, and reset state synchronized with the source.
             SyncVirtualInjectionEditorFromProfile(_scenario.ActiveProfile);
             RefreshPhasorFrame();
             RefreshVirtualInjectionPresentation();
-
-            if (e.OriginalSource is Button button && ReferenceEquals(button, InjectFaultButton))
-            {
-                StatusText.Text = _scenario.FaultActive
-                    ? "A-G virtual injection applied. Edit any channel to continue from the visible preset values."
-                    : "A-G injection cleared. The relay trip latch remains until Reset relay or Reset all.";
-            }
         }));
     }
 
@@ -104,26 +95,30 @@ public partial class MainWindow
         FpsText.Text = "  ·  internal injection";
         StreamHealthText.Text = _scenario.SmvDegraded
             ? "  ·  INTERNAL · WARN"
-            : _scenario.WindowStatus == "coherent"
-                ? "  ·  INTERNAL · GOOD"
-                : "  ·  INTERNAL · REBUILD";
+            : !_scenario.IsRunning
+                ? "  ·  INTERNAL · STOPPED"
+                : _scenario.WindowStatus == "coherent"
+                    ? "  ·  INTERNAL · RUNNING"
+                    : "  ·  INTERNAL · STARTING";
         StreamHealthText.Foreground = _scenario.SmvDegraded
             ? WarningBrush
-            : _scenario.WindowStatus == "coherent"
+            : _scenario.IsRunning
                 ? HealthyBrush
-                : WarningBrush;
+                : BrushFrom("#657586");
 
         var shortFingerprint = _scenario.InjectionFingerprint[..12];
+        var outputLabel = _scenario.IsRunning ? "OUTPUT ACTIVE" : "OUTPUT ZERO";
         WaveformSubtitleText.Text = _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection
-            ? $"{profile.Name} · {_scenario.WindowStatus} · {shortFingerprint} · valid changes auto-apply atomically"
-            : $"Virtual injection waveform · {profile.Name} · {_scenario.NeutralCurrentProvenance} · {_scenario.NeutralVoltageProvenance}";
-        WaveformSubtitleText.ToolTip = $"Profile {profile.Name}\nFingerprint {_scenario.InjectionFingerprint}\nInjected frequency {profile.FrequencyHz:0.###} Hz\nNominal DFT {DeterministicLabScenario.Frequency:0.###} Hz\nSampling {DeterministicLabScenario.SampleRateHz:0.###} samples/s\nIN {_scenario.NeutralCurrentProvenance}\nVN {_scenario.NeutralVoltageProvenance}";
-        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · injection {shortFingerprint} · {_scenario.WindowStatus}";
+            ? $"{profile.Name} · {outputLabel} · {_scenario.OutputState} · {shortFingerprint}"
+            : $"Virtual injection waveform · {outputLabel} · {profile.Name} · {_scenario.NeutralCurrentProvenance} · {_scenario.NeutralVoltageProvenance}";
+        WaveformSubtitleText.ToolTip = $"Configured profile {profile.Name}\nConfigured fingerprint {_scenario.InjectionFingerprint}\nEffective output fingerprint {_scenario.OutputFingerprint}\nOutput state {_scenario.OutputState}\nInjected frequency {profile.FrequencyHz:0.###} Hz\nNominal DFT {DeterministicLabScenario.Frequency:0.###} Hz\nSampling {DeterministicLabScenario.SampleRateHz:0.###} samples/s\nIN {_scenario.NeutralCurrentProvenance}\nVN {_scenario.NeutralVoltageProvenance}";
+        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · injection {shortFingerprint} · {_scenario.OutputState}";
 
-        if (_scenario.WindowStatus == "coherent" &&
+        if (_scenario.IsRunning &&
+            _scenario.WindowStatus == "coherent" &&
             _virtualInjectionStatusText?.Text.StartsWith("APPLIED", StringComparison.Ordinal) == true)
         {
-            SetVirtualInjectionStatus("READY", HealthyBrush, "#EAF5EC", "#B9D8BF");
+            SetVirtualInjectionStatus("RUNNING · OUTPUT ACTIVE", HealthyBrush, "#EAF5EC", "#B9D8BF");
         }
     }
 
@@ -157,16 +152,21 @@ public partial class MainWindow
         var step = _scenario.Advance(TimeSpan.Zero, _pickupPosition, _tripPosition);
         var evidence = new
         {
-            schemaVersion = 3,
+            schemaVersion = 4,
             exportedAt = DateTimeOffset.Now,
             application = "ARVREL",
             operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
             sourceMode = "Internal virtual injection",
             injection = new
             {
-                profile = _scenario.ActiveProfile,
-                fingerprint = _scenario.InjectionFingerprint,
-                appliedAt = _scenario.AppliedAt,
+                configuredProfile = _scenario.ActiveProfile,
+                effectiveOutputProfile = _scenario.OutputProfile,
+                configuredFingerprint = _scenario.InjectionFingerprint,
+                effectiveOutputFingerprint = _scenario.OutputFingerprint,
+                configuredAt = _scenario.AppliedAt,
+                outputStateChangedAt = _scenario.OutputStateChangedAt,
+                isRunning = _scenario.IsRunning,
+                outputState = _scenario.OutputState,
                 windowStatus = _scenario.WindowStatus,
                 injectedFrequencyHz = _scenario.ActiveProfile.FrequencyHz,
                 nominalFrequencyHz = DeterministicLabScenario.Frequency,
@@ -175,7 +175,8 @@ public partial class MainWindow
                 cycles = 2,
                 neutralCurrentProvenance = _scenario.NeutralCurrentProvenance,
                 neutralVoltageProvenance = _scenario.NeutralVoltageProvenance,
-                trustDegraded = _scenario.SmvDegraded
+                trustDegraded = _scenario.SmvDegraded,
+                stopContract = "STOP forces all effective virtual voltage and current outputs to zero while retaining the configured profile."
             },
             measurement = step.Measurement,
             protection = _snapshot,

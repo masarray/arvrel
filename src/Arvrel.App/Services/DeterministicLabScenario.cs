@@ -25,11 +25,16 @@ public sealed class DeterministicLabScenario
     }
 
     public bool SmvDegraded { get; set; }
+    public bool IsRunning => _runtime.IsRunning;
     public long SampleCounter => _runtime.SampleCounter;
     public VirtualInjectionProfile ActiveProfile => _runtime.ActiveProfile;
+    public VirtualInjectionProfile OutputProfile => _runtime.OutputProfile;
     public DateTimeOffset AppliedAt => _runtime.AppliedAt;
+    public DateTimeOffset OutputStateChangedAt => _runtime.OutputStateChangedAt;
     public string InjectionFingerprint => _runtime.InjectionFingerprint;
+    public string OutputFingerprint => _runtime.OutputFingerprint;
     public string WindowStatus => _runtime.WindowStatus;
+    public string OutputState => _runtime.OutputState;
     public string NeutralCurrentProvenance => ActiveProfile.ExplicitNeutralCurrent
         ? "explicit-virtual-channel"
         : "calculated-phase-sum";
@@ -42,6 +47,10 @@ public sealed class DeterministicLabScenario
 
     public bool ApplyPreset(string name)
         => ApplyProfile(VirtualInjectionPresets.Create(name, ActiveProfile.FrequencyHz));
+
+    public bool StartInjection() => _runtime.Start();
+
+    public bool StopInjection() => _runtime.Stop();
 
     public ScenarioStep Advance(TimeSpan delta, double pickupPosition, double tripPosition)
     {
