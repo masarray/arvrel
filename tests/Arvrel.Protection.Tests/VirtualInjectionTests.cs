@@ -27,6 +27,27 @@ public sealed class VirtualInjectionTests
     }
 
     [TestMethod]
+    public void OffNominalInjection_UsesFixedNominalSamplingGrid()
+    {
+        var profile = VirtualInjectionPresets.Create("Normal balanced", frequencyHz: 60);
+        var frame = VirtualInjectionGenerator.Generate(
+            profile,
+            DateTimeOffset.UtcNow,
+            SmvTrustState.Healthy,
+            samplesPerCycle: 80,
+            cycles: 2,
+            nominalFrequencyHz: 50);
+        var phasors = frame.Measurement.Phasors!;
+
+        Assert.AreEqual(50, frame.NominalFrequencyHz, 0.001);
+        Assert.AreEqual(4000, frame.SampleRateHz, 0.001);
+        Assert.AreEqual(60, phasors.FrequencyHz, 0.001);
+        Assert.IsTrue(
+            Math.Abs(phasors.PhaseACurrent.Magnitude - 1) > 0.05,
+            "A 60 Hz injection must expose the response of the fixed 50 Hz DFT window rather than silently changing the sampling grid.");
+    }
+
+    [TestMethod]
     public void DisabledNeutralChannels_UseCalculatedPhaseSums()
     {
         var profile = VirtualInjectionPresets.Create("A-G fault");
