@@ -35,8 +35,8 @@ Remove visible text churn and steady-state flicker from the Internal virtual-inj
 - [x] Virtual-injection tests
 - [x] NuGet vulnerability audit
 - [x] Initial scope review: four UI/injection files only
-- [ ] Static public-site validation after documentation commit
-- [ ] Final changed-file scope review
+- [x] Documentation commit does not modify public-site assets; no static deployment gate required
+- [x] Final changed-file scope review: four UI/injection files plus changelog and progress document; no parser, process-bus, or protection-function implementation changes
 - [ ] Mark PR ready for review
 - [ ] Squash merge to `main`
 
