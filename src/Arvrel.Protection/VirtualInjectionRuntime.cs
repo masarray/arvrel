@@ -2,12 +2,16 @@ namespace Arvrel.Protection;
 
 public sealed record VirtualInjectionRuntimeSnapshot(
     VirtualInjectionFrame Frame,
+    VirtualInjectionProfile ConfiguredProfile,
     long SampleCounter,
     DateTimeOffset Timestamp,
     DateTimeOffset AppliedAt,
-    string WindowStatus)
+    DateTimeOffset OutputStateChangedAt,
+    string WindowStatus,
+    bool IsRunning)
 {
-    public bool IsCoherent => string.Equals(WindowStatus, "coherent", StringComparison.Ordinal);
+    public bool IsCoherent => IsRunning && string.Equals(WindowStatus, "coherent", StringComparison.Ordinal);
+    public string OutputState => IsRunning ? (IsCoherent ? "running" : "starting") : "stopped";
 }
 
 public sealed class VirtualInjectionRuntime
@@ -19,7 +23,8 @@ public sealed class VirtualInjectionRuntime
     private DateTimeOffset _timestamp;
     private long _sampleCounter;
     private TimeSpan _coherenceRemaining;
-    private VirtualInjectionProfile _activeProfile;
+    private VirtualInjectionProfile _configuredProfile;
+    private bool _isRunning;
 
     public VirtualInjectionRuntime(
         VirtualInjectionProfile? initialProfile = null,
@@ -43,33 +48,73 @@ public sealed class VirtualInjectionRuntime
         _nominalFrequencyHz = nominalFrequencyHz;
         _counterWrap = counterWrap;
         _timestamp = initialTimestamp ?? DateTimeOffset.UtcNow;
-        _activeProfile = (initialProfile ?? VirtualInjectionPresets.Create("Normal balanced", nominalFrequencyHz)).Normalize();
+        _configuredProfile = (initialProfile ?? VirtualInjectionPresets.Create("Normal balanced", nominalFrequencyHz)).Normalize();
         AppliedAt = _timestamp;
+        OutputStateChangedAt = _timestamp;
     }
 
-    public VirtualInjectionProfile ActiveProfile => _activeProfile;
+    public VirtualInjectionProfile ActiveProfile => _configuredProfile;
+    public VirtualInjectionProfile OutputProfile => _isRunning
+        ? _configuredProfile
+        : CreateZeroOutputProfile(_configuredProfile);
     public DateTimeOffset AppliedAt { get; private set; }
+    public DateTimeOffset OutputStateChangedAt { get; private set; }
     public long SampleCounter => _sampleCounter;
     public int SamplesPerCycle => _samplesPerCycle;
     public int Cycles => _cycles;
     public double NominalFrequencyHz => _nominalFrequencyHz;
     public double SampleRateHz => _nominalFrequencyHz * _samplesPerCycle;
-    public string WindowStatus => _coherenceRemaining > TimeSpan.Zero ? "rebuilding" : "coherent";
-    public string InjectionFingerprint => _activeProfile.Fingerprint();
+    public bool IsRunning => _isRunning;
+    public string WindowStatus => !_isRunning
+        ? "stopped"
+        : _coherenceRemaining > TimeSpan.Zero
+            ? "rebuilding"
+            : "coherent";
+    public string OutputState => !_isRunning
+        ? "stopped"
+        : _coherenceRemaining > TimeSpan.Zero
+            ? "starting"
+            : "running";
+    public string InjectionFingerprint => _configuredProfile.Fingerprint();
+    public string OutputFingerprint => OutputProfile.Fingerprint();
 
     public bool Apply(VirtualInjectionProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        // Complete validation and normalization before mutating the active state.
-        // A rejected edit therefore cannot partially replace the last valid source.
+        // Validate and normalize the complete configured source before mutation.
+        // When the output is stopped this only changes the armed values; generated
+        // voltage and current remain zero until Start is explicitly requested.
         var normalized = profile.Normalize();
-        if (string.Equals(normalized.Fingerprint(), _activeProfile.Fingerprint(), StringComparison.Ordinal))
+        if (string.Equals(normalized.Fingerprint(), _configuredProfile.Fingerprint(), StringComparison.Ordinal))
             return false;
 
-        _activeProfile = normalized;
+        _configuredProfile = normalized;
         AppliedAt = _timestamp;
+        if (_isRunning)
+            _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
+        return true;
+    }
+
+    public bool Start()
+    {
+        if (_isRunning)
+            return false;
+
+        _isRunning = true;
+        OutputStateChangedAt = _timestamp;
         _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
+        return true;
+    }
+
+    public bool Stop()
+    {
+        if (!_isRunning)
+            return false;
+
+        _isRunning = false;
+        OutputStateChangedAt = _timestamp;
+        _coherenceRemaining = TimeSpan.Zero;
         return true;
     }
 
@@ -92,17 +137,17 @@ public sealed class VirtualInjectionRuntime
             ? SmvTrustState.TripBlocked(
                 "SMPCNT_GAP",
                 "Repeated sample-counter discontinuity exceeds the active trip policy.")
-            : _coherenceRemaining > TimeSpan.Zero
+            : _isRunning && _coherenceRemaining > TimeSpan.Zero
                 ? new SmvTrustState(
                     true,
                     false,
                     false,
                     "INJECTION_REBUILD",
-                    "A new virtual injection profile is rebuilding a complete coherent nominal one-cycle measurement window.")
+                    "Virtual output has started or changed and is rebuilding one coherent nominal measurement cycle.")
                 : SmvTrustState.Healthy;
 
         var frame = VirtualInjectionGenerator.Generate(
-            _activeProfile,
+            OutputProfile,
             _timestamp,
             trust,
             _samplesPerCycle,
@@ -110,10 +155,13 @@ public sealed class VirtualInjectionRuntime
             _nominalFrequencyHz);
         return new VirtualInjectionRuntimeSnapshot(
             frame,
+            _configuredProfile,
             _sampleCounter,
             _timestamp,
             AppliedAt,
-            WindowStatus);
+            OutputStateChangedAt,
+            WindowStatus,
+            _isRunning);
     }
 
     public void Reset(VirtualInjectionProfile? profile = null)
@@ -121,8 +169,26 @@ public sealed class VirtualInjectionRuntime
         _timestamp = DateTimeOffset.UtcNow;
         _sampleCounter = 0;
         _coherenceRemaining = TimeSpan.Zero;
+        _isRunning = false;
         if (profile is not null)
-            _activeProfile = profile.Normalize();
+            _configuredProfile = profile.Normalize();
         AppliedAt = _timestamp;
+        OutputStateChangedAt = _timestamp;
     }
+
+    private static VirtualInjectionProfile CreateZeroOutputProfile(VirtualInjectionProfile configured)
+        => new(
+            $"{configured.Name} · output stopped",
+            configured.FrequencyHz,
+            Zero(configured.PhaseAVoltage),
+            Zero(configured.PhaseBVoltage),
+            Zero(configured.PhaseCVoltage),
+            Zero(configured.NeutralVoltage),
+            Zero(configured.PhaseACurrent),
+            Zero(configured.PhaseBCurrent),
+            Zero(configured.PhaseCCurrent),
+            Zero(configured.NeutralCurrent));
+
+    private static VirtualInjectionChannel Zero(VirtualInjectionChannel channel)
+        => new(channel.Enabled, 0, 0);
 }
