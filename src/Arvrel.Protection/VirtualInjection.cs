@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
@@ -141,7 +140,9 @@ public sealed record VirtualInjectionFrame(
     double[] PhaseCVoltageSamples,
     double[] ResidualVoltageSamples,
     int SamplesPerCycle,
-    int Cycles)
+    int Cycles,
+    double NominalFrequencyHz,
+    double SampleRateHz)
 {
     public string NeutralCurrentProvenance => Profile.ExplicitNeutralCurrent
         ? "explicit-virtual-channel"
@@ -159,7 +160,8 @@ public static class VirtualInjectionGenerator
         DateTimeOffset timestamp,
         SmvTrustState trust,
         int samplesPerCycle = 80,
-        int cycles = 2)
+        int cycles = 2,
+        double nominalFrequencyHz = 50)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(trust);
@@ -167,18 +169,21 @@ public static class VirtualInjectionGenerator
             throw new ArgumentOutOfRangeException(nameof(samplesPerCycle));
         if (cycles < 1 || cycles > 20)
             throw new ArgumentOutOfRangeException(nameof(cycles));
+        if (!double.IsFinite(nominalFrequencyHz) || nominalFrequencyHz <= 0)
+            throw new ArgumentOutOfRangeException(nameof(nominalFrequencyHz));
 
         profile = profile.Normalize();
         var count = checked(samplesPerCycle * cycles);
+        var sampleRateHz = nominalFrequencyHz * samplesPerCycle;
 
-        var va = GenerateChannel(profile.PhaseAVoltage, count, samplesPerCycle, phaseChannel: true);
-        var vb = GenerateChannel(profile.PhaseBVoltage, count, samplesPerCycle, phaseChannel: true);
-        var vc = GenerateChannel(profile.PhaseCVoltage, count, samplesPerCycle, phaseChannel: true);
-        var vnExplicit = GenerateChannel(profile.NeutralVoltage, count, samplesPerCycle, phaseChannel: false);
-        var ia = GenerateChannel(profile.PhaseACurrent, count, samplesPerCycle, phaseChannel: true);
-        var ib = GenerateChannel(profile.PhaseBCurrent, count, samplesPerCycle, phaseChannel: true);
-        var ic = GenerateChannel(profile.PhaseCCurrent, count, samplesPerCycle, phaseChannel: true);
-        var inExplicit = GenerateChannel(profile.NeutralCurrent, count, samplesPerCycle, phaseChannel: false);
+        var va = GenerateChannel(profile.PhaseAVoltage, count, sampleRateHz, profile.FrequencyHz);
+        var vb = GenerateChannel(profile.PhaseBVoltage, count, sampleRateHz, profile.FrequencyHz);
+        var vc = GenerateChannel(profile.PhaseCVoltage, count, sampleRateHz, profile.FrequencyHz);
+        var vnExplicit = GenerateChannel(profile.NeutralVoltage, count, sampleRateHz, profile.FrequencyHz);
+        var ia = GenerateChannel(profile.PhaseACurrent, count, sampleRateHz, profile.FrequencyHz);
+        var ib = GenerateChannel(profile.PhaseBCurrent, count, sampleRateHz, profile.FrequencyHz);
+        var ic = GenerateChannel(profile.PhaseCCurrent, count, sampleRateHz, profile.FrequencyHz);
+        var inExplicit = GenerateChannel(profile.NeutralCurrent, count, sampleRateHz, profile.FrequencyHz);
 
         var residualCurrent = profile.ExplicitNeutralCurrent
             ? inExplicit
@@ -236,17 +241,17 @@ public static class VirtualInjectionGenerator
             vc,
             residualVoltage,
             samplesPerCycle,
-            cycles);
+            cycles,
+            nominalFrequencyHz,
+            sampleRateHz);
     }
 
     private static double[] GenerateChannel(
         VirtualInjectionChannel channel,
         int count,
-        int samplesPerCycle,
-        bool phaseChannel)
+        double sampleRateHz,
+        double injectedFrequencyHz)
     {
-        if (!channel.Enabled && phaseChannel)
-            return new double[count];
         if (!channel.Enabled)
             return new double[count];
 
@@ -255,10 +260,11 @@ public static class VirtualInjectionGenerator
         var phase = VirtualInjectionChannel.NormalizeAngle(channel.AngleDegrees) * Math.PI / 180;
         for (var index = 0; index < count; index++)
         {
-            var fundamental = 2 * Math.PI * index / samplesPerCycle;
-            // Cosine convention keeps the entered engineering phasor angle equal to
-            // the complex angle returned by the single-bin estimator.
-            result[index] = peak * Math.Cos(fundamental + phase);
+            var angle = 2 * Math.PI * injectedFrequencyHz * index / sampleRateHz;
+            // Cosine convention keeps the entered engineering angle aligned with
+            // the estimator at nominal frequency. Off-nominal signals deliberately
+            // expose the response of the fixed nominal-frequency DFT window.
+            result[index] = peak * Math.Cos(angle + phase);
         }
         return result;
     }
