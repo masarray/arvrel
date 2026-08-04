@@ -33,21 +33,24 @@ public sealed class VirtualInjectionRunStopProtectionTests
         Assert.IsFalse(stopped.TripLatched);
 
         runtime.Start();
-        runtime.Advance(TimeSpan.FromMilliseconds(20), false);
-
-        ProtectionSnapshot beforeDelay = stopped;
+        ProtectionSnapshot firstAllowedPickup = stopped;
         for (var elapsed = 0; elapsed < 20; elapsed += 5)
-            beforeDelay = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(5), false).Frame.Measurement);
+            firstAllowedPickup = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(5), false).Frame.Measurement);
 
-        Assert.AreEqual(pickupA, beforeDelay.Phase50.OperatingQuantity, 0.002);
+        Assert.AreEqual(pickupA, firstAllowedPickup.Phase50.OperatingQuantity, 0.002);
+        Assert.IsTrue(firstAllowedPickup.Phase50.Pickup);
+        Assert.IsFalse(firstAllowedPickup.Phase50.Operated);
+        Assert.IsFalse(firstAllowedPickup.TripLatched);
+
+        var beforeDelay = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(10), false).Frame.Measurement);
         Assert.IsTrue(beforeDelay.Phase50.Pickup);
         Assert.IsFalse(beforeDelay.Phase50.Operated);
         Assert.IsFalse(beforeDelay.TripLatched);
 
-        var atDelay = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(5), false).Frame.Measurement);
-        Assert.IsTrue(atDelay.Phase50.Operated);
-        Assert.IsTrue(atDelay.TripLatched);
-        Assert.AreEqual("50P-1", atDelay.LatchedOperation?.Element);
+        var afterDelay = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(15), false).Frame.Measurement);
+        Assert.IsTrue(afterDelay.Phase50.Operated);
+        Assert.IsTrue(afterDelay.TripLatched);
+        Assert.AreEqual("50P-1", afterDelay.LatchedOperation?.Element);
 
         runtime.Stop();
         var stoppedAgain = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(5), false).Frame.Measurement);
