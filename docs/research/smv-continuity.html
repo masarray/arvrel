@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMV Continuity and Trust — ARVREL Research Note AN-02</title>
+  <meta name="description" content="Review how ARVREL handles smpCnt continuity, duplicates, out-of-order frames, forward gaps, coherent evidence, measurement admission, pickup visibility, and virtual-trip permission.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/smv-continuity.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ARVREL AN-02 — SMV continuity and trust">
+  <meta property="og:description" content="Source-grounded handling of duplicate, out-of-order, gap, recovery, and virtual-trip permission states.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/smv-continuity.html">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"SMV Continuity and Trust in ARVREL","articleSection":"Research application note AN-02","about":{"@type":"SoftwareApplication","name":"ARVREL","softwareVersion":"0.1.0-beta.1"},"mainEntityOfPage":"https://masarray.github.io/arvrel/research/smv-continuity.html"}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Research</a> / AN-02</div><p class="eyebrow">Application note AN-02</p><h1>Unhealthy frames remain evidence without becoming trusted samples.</h1><p class="lede">ARVREL evaluates <code>smpCnt</code> continuity before admitting payload samples into measurement buffers. Duplicate and out-of-order frames are rejected; forward gaps restart contiguous windows and remove new-trip permission while the last coherent display evidence may remain visible.</p><div class="actions"><a class="button primary" href="https://github.com/masarray/arvrel/blob/main/src/Arvrel.ProcessBus/SmvIngressContinuityGate.cs">Inspect continuity gate</a><a class="button secondary" href="https://github.com/masarray/arvrel/blob/main/src/Arvrel.ProcessBus/SmvProcessBusController.cs">Inspect controller</a></div></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Ingress decision</p><h2>Counter behavior is classified before measurement admission.</h2></div><div class="matrix"><table><thead><tr><th>Observed counter relation</th><th>Decision</th><th>Payload consequence</th><th>Evidence consequence</th></tr></thead><tbody>
+<tr><td>Expected next <code>smpCnt</code></td><td>Accept</td><td>Samples may enter the runtime pipeline</td><td>Normal continuity state</td></tr>
+<tr><td>Same as last accepted</td><td>Drop duplicate</td><td>Payload rejected before measurement</td><td>Duplicate counter and notice retained</td></tr>
+<tr><td>Backward / old counter</td><td>Drop out of order</td><td>Payload rejected before measurement</td><td>Ordering telemetry retained</td></tr>
+<tr><td>Forward discontinuity</td><td>Restart window</td><td>Post-gap samples rebuild contiguous windows</td><td>Gap and recovery state retained</td></tr>
+</tbody></table></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Continuity model</p><h2>Modulo arithmetic distinguishes wrap, forward gaps, and backward frames.</h2><p>The gate derives the expected next counter from the last accepted counter and the resolved wrap value. A forward displacement smaller than half the wrap is treated as a gap/restart; a backward displacement is rejected as out of order.</p></div><pre class="code">expected = (previous + 1) mod wrap
+
+current == expected   → accept
+current == previous   → drop duplicate
+forward < wrap / 2    → restart contiguous window
+otherwise             → drop out of order</pre><div class="callout warn" style="margin-top:20px"><strong>Scope:</strong> this classification is continuity evidence for the current stream identity. It is not a network-wide time-synchronization or publisher-health certification.</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">State preservation</p><h2>A communication gap does not silently erase protection history.</h2></div><div class="grid-3">
+<article class="card"><span class="label">Timers</span><h3>Dynamic protection state is preserved</h3><p>The runtime does not clear timers merely because a forward communication discontinuity occurred. Trust policy determines whether a new operation can be asserted.</p></article>
+<article class="card"><span class="label">Latch</span><h3>Existing trip evidence remains latched</h3><p>A previously latched virtual trip is not automatically erased by a stream gap. Reset remains an explicit operator action.</p></article>
+<article class="card"><span class="label">Display</span><h3>Last coherent evidence may be held</h3><p>The UI can retain the last complete waveform and phasor evidence while contiguous post-gap windows rebuild, preventing a partial or mixed window from appearing coherent.</p></article>
+</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Trust permissions</p><h2>Visibility, pickup evaluation, and trip authority are distinct.</h2></div><div class="permission-list">
+<div class="permission"><code>AllowsMeasurement</code><p>Transport, decode, mapping, scaling, freshness, and window evidence permit quantities to enter the measurement pipeline.</p></div>
+<div class="permission"><code>AllowsPickup</code><p>Protection pickup and timing may remain visible for diagnosis when the current trust state allows evaluation.</p></div>
+<div class="permission"><code>AllowsTrip</code><p>An operated element may assert a new virtual trip only when the current trust policy grants trip permission.</p></div>
+</div><div class="callout safe" style="margin-top:20px"><strong>Key behavior:</strong> the automated protection test demonstrates a blocked state in which phase pickup remains visible while a repeated <code>smpCnt</code> gap prevents the virtual trip latch from asserting.</div><div class="actions"><a class="button light" href="validation.html#trust-001">Open TRUST-001 evidence</a><a class="button light" href="https://github.com/masarray/arvrel/blob/main/tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs">Inspect protection test</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Research questions</p><h2>Current logic creates a clear baseline for stronger continuity studies.</h2></div><div class="grid-2">
+<article class="card"><h3>Validated in the current beta</h3><ul class="check-list"><li>Modulo counter progression</li><li>Duplicate rejection</li><li>Out-of-order rejection</li><li>Forward-gap window restart</li><li>Pickup-visible, trip-blocked protection state</li><li>Explicit stream and trust evidence</li></ul></article>
+<article class="card"><h3>Future research track</h3><ul class="check-list"><li>Loss-burst and jitter sweeps</li><li>Multiple ASDUs per frame under stress</li><li>Cross-stream time alignment</li><li>Publisher restart and <code>confRev</code> transition policy</li><li>PTP quality and time-error evidence</li><li>Hardware-in-the-loop latency characterization</li></ul></article>
+</div><div class="pager"><a href="signal-processing.html"><span>Previous</span>AN-01 Signal estimation</a><a href="directional-protection.html" style="text-align:right"><span>Next</span>AN-03 Directional protection</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">AN-02</div><div class="small">SMV continuity and trust</div></div><div class="small"><a href="validation.html">Validation</a> · <a href="../evidence-and-trust.html">Trust model</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body>
+</html>
