@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
@@ -18,12 +19,6 @@ public partial class MainWindow
             return;
 
         _globalUiStabilityInitialized = true;
-
-        // The legacy timer rendered every text block, LED, waveform, and footer
-        // every 40 ms. It also competed with the virtual-injection presentation
-        // timer, causing INTERNAL/GOOD and STOPPED/RUNNING strings to alternate.
-        // Keep the 40 ms protection execution cadence, but render only when the
-        // values visible to the operator actually change.
         _timer.Tick -= Timer_Tick;
         _timer.Tick += StableTimer_Tick;
         _lastInternalPresentationSignature = null;
@@ -64,23 +59,31 @@ public partial class MainWindow
                 return;
 
             var measurement = last.Measurement;
-            var signature = FormattableString.Invariant(
-                $"{_scenario.InjectionFingerprint}|{_scenario.OutputState}|{_scenario.WindowStatus}|{_scenario.SmvDegraded}|" +
-                $"{measurement.PhaseA:0.0000}|{measurement.PhaseB:0.0000}|{measurement.PhaseC:0.0000}|{measurement.Residual:0.0000}|" +
-                $"{_snapshot.Phase50.State}:{_snapshot.Phase50.Progress:0.0000}|" +
-                $"{_snapshot.Phase51.State}:{_snapshot.Phase51.Progress:0.0000}|" +
-                $"{_snapshot.Earth50.State}:{_snapshot.Earth50.Progress:0.0000}|" +
-                $"{_snapshot.Earth51.State}:{_snapshot.Earth51.Progress:0.0000}|" +
-                $"{_snapshot.TripLatched}|{_snapshot.ActiveElement}|{_snapshot.DecisionReason}|{_snapshot.SmvTrust.Code}|" +
-                $"{_pickupPosition:R}|{_tripPosition:R}");
+            var signature = string.Join(
+                "|",
+                _scenario.InjectionFingerprint,
+                _scenario.OutputState,
+                _scenario.WindowStatus,
+                _scenario.SmvDegraded.ToString(CultureInfo.InvariantCulture),
+                measurement.PhaseA.ToString("0.0000", CultureInfo.InvariantCulture),
+                measurement.PhaseB.ToString("0.0000", CultureInfo.InvariantCulture),
+                measurement.PhaseC.ToString("0.0000", CultureInfo.InvariantCulture),
+                measurement.Residual.ToString("0.0000", CultureInfo.InvariantCulture),
+                $"{_snapshot.Phase50.State}:{_snapshot.Phase50.Progress.ToString("0.0000", CultureInfo.InvariantCulture)}",
+                $"{_snapshot.Phase51.State}:{_snapshot.Phase51.Progress.ToString("0.0000", CultureInfo.InvariantCulture)}",
+                $"{_snapshot.Earth50.State}:{_snapshot.Earth50.Progress.ToString("0.0000", CultureInfo.InvariantCulture)}",
+                $"{_snapshot.Earth51.State}:{_snapshot.Earth51.Progress.ToString("0.0000", CultureInfo.InvariantCulture)}",
+                _snapshot.TripLatched.ToString(CultureInfo.InvariantCulture),
+                _snapshot.ActiveElement,
+                _snapshot.DecisionReason,
+                _snapshot.SmvTrust.Code,
+                _pickupPosition.ToString("R", CultureInfo.InvariantCulture),
+                _tripPosition.ToString("R", CultureInfo.InvariantCulture));
 
             if (string.Equals(_lastInternalPresentationSignature, signature, StringComparison.Ordinal))
                 return;
 
             RenderInternal(last, _snapshot);
-            // RenderInternal contains the legacy generic labels. Apply the
-            // injection-specific concise presentation in the same dispatcher
-            // turn so no intermediate GOOD/STOPPED text reaches the screen.
             RefreshVirtualInjectionRunStopPresentation();
             _lastInternalPresentationSignature = signature;
             return;
@@ -93,8 +96,6 @@ public partial class MainWindow
             RefreshStreamList(force: false);
         }
 
-        // Live/replay instruments remain responsive at roughly 8 Hz while
-        // avoiding a full WPF tree update at the 25 Hz protection cadence.
         _stableExternalRenderDivider++;
         if (_stableExternalRenderDivider < 3)
             return;
