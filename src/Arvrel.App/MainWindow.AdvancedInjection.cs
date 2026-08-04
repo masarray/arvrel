@@ -24,8 +24,18 @@ public partial class MainWindow
         if (!_phasorWorkspaceInitialized ||
             !_virtualInjectionInitialized ||
             _analysisHost is null ||
-            _virtualInjectionView is null ||
-            _phasorQuantityCombo?.Parent is not Panel controlsLine)
+            _virtualInjectionView is null)
+        {
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.ApplicationIdle,
+                new Action(InitializeAdvancedInjectionFoundation));
+            return;
+        }
+
+        var injectionToolbar = _virtualInjectionView.Children
+            .OfType<Grid>()
+            .FirstOrDefault(child => Grid.GetRow(child) == 0);
+        if (injectionToolbar is null)
         {
             Dispatcher.BeginInvoke(
                 DispatcherPriority.ApplicationIdle,
@@ -37,25 +47,26 @@ public partial class MainWindow
         _advancedInjectionButton = new Button
         {
             Style = FindResource("CompactButton") as Style,
-            Content = "ADVANCED",
-            MinWidth = 78,
-            Height = 32,
-            MinHeight = 32,
-            MaxHeight = 32,
-            Margin = new Thickness(8, 0, 0, 0),
+            Content = "Advanced…",
+            MinWidth = 86,
+            Height = 28,
+            MinHeight = 28,
+            MaxHeight = 28,
+            Margin = new Thickness(0, 0, 8, 0),
             Padding = new Thickness(10, 0, 10, 0),
             FontSize = 9.5,
             FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
             ToolTip = "Open the Advanced Injection Laboratory."
         };
         _advancedInjectionButton.Click += AdvancedInjectionButton_Click;
-        controlsLine.Children.Add(_advancedInjectionButton);
+        Grid.SetColumn(_advancedInjectionButton, 5);
+        injectionToolbar.Children.Add(_advancedInjectionButton);
 
         SourceCombo.SelectionChanged += AdvancedInjectionSourceChanged;
         Closing += AdvancedInjectionOwner_Closing;
 
-        // Observe source/profile state at a modest rate. The target controls and
-        // AdvancedInjectionWindow suppress assignments when values are unchanged.
         _advancedInjectionPresentationTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(250)
@@ -243,19 +254,11 @@ public partial class MainWindow
 
         if (_advancedInjectionButton is not null)
         {
-            var desiredVisibility = internalMode ? Visibility.Visible : Visibility.Collapsed;
+            // The launcher belongs to the simple INJECT workspace. Once the
+            // modeless window owns the editor it disappears with that authority.
+            var desiredVisibility = simpleEditorAvailable ? Visibility.Visible : Visibility.Collapsed;
             if (_advancedInjectionButton.Visibility != desiredVisibility)
                 _advancedInjectionButton.Visibility = desiredVisibility;
-
-            var desiredContent = IsAdvancedInjectionOpen ? "FOCUS INJECTION" : "ADVANCED";
-            if (!Equals(_advancedInjectionButton.Content, desiredContent))
-                _advancedInjectionButton.Content = desiredContent;
-
-            var desiredToolTip = IsAdvancedInjectionOpen
-                ? "Bring the Advanced Injection Laboratory to the foreground."
-                : "Open the Advanced Injection Laboratory.";
-            if (!Equals(_advancedInjectionButton.ToolTip, desiredToolTip))
-                _advancedInjectionButton.ToolTip = desiredToolTip;
         }
 
         if (!simpleEditorAvailable && _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
