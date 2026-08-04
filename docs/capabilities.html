@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capabilities — ARVREL Virtual Protection Relay Laboratory</title>
+  <meta name="description" content="Explore ARVREL capabilities for IEC 61850 Sampled Values capture, SCL binding, phasor measurement, multifunction protection, trust gating, and evidence export.">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/capabilities.html">
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="ARVREL capabilities">
+  <meta property="og:description" content="From Sampled Values identity and measurement to virtual protection decisions and reviewable evidence.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/capabilities.html">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="index.html"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html" aria-current="page">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">Home</a> / Capabilities</div><p class="eyebrow">Product capability map</p><h1>One workspace for the protection cause-and-effect chain.</h1><p class="lede">ARVREL connects process-bus capture, identity, measurement, protection, trust permission, and operation evidence while keeping each engineering boundary visible.</p></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Process bus</p><h2>Inspect live and recorded Sampled Values.</h2><p>Use Npcap live capture or replay PCAP and PCAPNG files. ARVREL exposes stream identity and transport evidence before those samples influence measurement or protection.</p></div><div class="grid-3">
+<article class="card"><span class="label">Acquisition</span><h3>Live Npcap capture</h3><p>Select a Windows adapter and inspect authorized IEC 61850 Sampled Values traffic on an isolated laboratory network.</p></article>
+<article class="card"><span class="label">Reproducibility</span><h3>PCAP / PCAPNG replay</h3><p>Replay recorded frames for deterministic investigation, regression work, teaching, and controlled demonstrations.</p></article>
+<article class="card"><span class="label">Identity</span><h3>SCL-assisted binding</h3><p>Evaluate APPID, destination MAC, VLAN, <code>svID</code>, dataset, <code>confRev</code>, channel mapping, and scaling provenance.</p></article>
+</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Measurement</p><h2>Convert complete windows into coherent engineering quantities.</h2><p>Protection quantities use the newest complete one-cycle window. Waveform evidence uses complete two-cycle windows and can hold the last coherent frame during stream recovery.</p></div><div class="grid-3">
+<article class="card"><h3>4I + 4V channels</h3><p>IA, IB, IC, IN/3I0 and VA, VB, VC, VN/3V0 with secondary and primary CT/VT display context.</p></article>
+<article class="card"><h3>Phasors and sequences</h3><p>Fundamental RMS phasors plus positive-, negative-, and zero-sequence quantities for protection and analysis.</p></article>
+<article class="card"><h3>Residual provenance</h3><p>Explicit decoded neutral/residual channels are preferred, with clearly identified phase-sum fallback where required.</p></article>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Protection</p><h2>Evaluate implemented feeder-protection functions.</h2><p>All active outputs remain virtual. The public beta implements measurement-domain elements rather than display-only labels.</p></div><div class="matrix"><table><thead><tr><th>ANSI</th><th>Function</th><th>Implementation</th><th>Boundary</th></tr></thead><tbody>
+<tr><td>50P-1</td><td>Instantaneous phase overcurrent</td><td>Pickup, dropout, definite delay</td><td>Virtual operation only</td></tr>
+<tr><td>51P</td><td>Time phase overcurrent</td><td>IEC inverse, definite time, TMS, reset modes</td><td>No IEC 60255 type-test claim</td></tr>
+<tr><td>50N / 51N</td><td>Earth-fault overcurrent</td><td>Explicit IN/3I0 preferred; calculated fallback</td><td>Virtual operation only</td></tr>
+<tr><td>67P</td><td>Directional phase overcurrent</td><td>Positive-sequence V1/I1 polarization</td><td>No memory polarization</td></tr>
+<tr><td>67N</td><td>Directional earth fault</td><td>Residual 3V0/3I0 polarization</td><td>Negative-sequence and memory polarization deferred</td></tr>
+<tr><td>27 / 59</td><td>Under / overvoltage</td><td>Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic</td><td>Trust-gated measurement provenance</td></tr>
+<tr><td>59N</td><td>Residual overvoltage</td><td>3V0 magnitude and definite delay</td><td>Virtual operation only</td></tr>
+</tbody></table></div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Operation and evidence</p><h2>Preserve what caused the virtual decision.</h2></div><div class="grid-3">
+<article class="card"><h3>Practitioner workflow</h3><p>Native settings, familiar notation, setting groups, revisions, presets, CT/VT context, curve previews, and SHA-256 settings fingerprints.</p></article>
+<article class="card"><h3>Relay evidence</h3><p>Pickup and trip timestamps, operated element, phase/earth cause, operating quantity and unit, trust state, event trace, and JSON export.</p></article>
+<article class="card"><h3>Research boundary</h3><p>Read-only active standard source plus validated immutable shadow artifacts. Editable custom source does not replace the running algorithm.</p></article>
+</div><div class="pager"><a href="index.html"><span>Previous</span>Product overview</a><a href="workflows/index.html" style="text-align:right"><span>Next</span>Engineering workflows</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Virtual Protection Relay Laboratory</div></div><div class="small"><a href="download.html">Download</a> · <a href="quick-start.html">Quick start</a> · <a href="https://github.com/masarray/arvrel">Source</a> · <a href="https://github.com/masarray/arvrel/issues">Issues</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
+</body>
+</html>
