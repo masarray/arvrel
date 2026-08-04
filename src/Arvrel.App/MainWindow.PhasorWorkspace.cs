@@ -23,7 +23,7 @@ public partial class MainWindow
     private PhasorScope? _phasorScope;
     private ComboBox? _phasorQuantityCombo;
     private DispatcherTimer? _phasorRefreshTimer;
-    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Injection;
+    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Dual;
     private PhasorDisplayMode _phasorDisplayMode = PhasorDisplayMode.Current;
     private TextBlock? _analysisTitleText;
     private TextBlock? _analysisBadgeText;
@@ -266,11 +266,14 @@ public partial class MainWindow
             return;
 
         var internalMode = SourceCombo.SelectedIndex == 0;
+        var injectionAvailable = internalMode && !IsAdvancedInjectionOpen;
         if (_analysisModeButtons.TryGetValue(AnalysisWorkspaceMode.Injection, out var injectionButton))
-            injectionButton.Visibility = internalMode ? Visibility.Visible : Visibility.Collapsed;
+            injectionButton.Visibility = injectionAvailable ? Visibility.Visible : Visibility.Collapsed;
 
-        if (internalMode)
-            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Injection, announce);
+        if (!injectionAvailable && _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
+            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
+        else if (internalMode)
+            ApplyAnalysisWorkspaceMode(_analysisWorkspaceMode, announce);
         else if (_analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
             ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
         else
@@ -282,14 +285,18 @@ public partial class MainWindow
         if (_analysisHost is null || _phasorScope is null)
             return;
 
-        if (mode == AnalysisWorkspaceMode.Injection && SourceCombo.SelectedIndex != 0)
+        var injectionAvailable = SourceCombo.SelectedIndex == 0 && !IsAdvancedInjectionOpen;
+        if (mode == AnalysisWorkspaceMode.Injection && !injectionAvailable)
             mode = AnalysisWorkspaceMode.Dual;
 
         _analysisWorkspaceMode = mode;
         SmvScope.Visibility = Visibility.Collapsed;
         _phasorScope.Visibility = Visibility.Collapsed;
-        if (_virtualInjectionView is not null)
-            _virtualInjectionView.Visibility = Visibility.Collapsed;
+
+        var editorIsInMainWorkspace = _virtualInjectionView is not null &&
+                                      ReferenceEquals(_virtualInjectionView.Parent, _analysisHost);
+        if (editorIsInMainWorkspace)
+            _virtualInjectionView!.Visibility = Visibility.Collapsed;
 
         var columns = _analysisHost.ColumnDefinitions;
         switch (mode)
@@ -298,8 +305,8 @@ public partial class MainWindow
                 columns[0].Width = new GridLength(2.35, GridUnitType.Star);
                 columns[1].Width = new GridLength(9);
                 columns[2].Width = new GridLength(0.85, GridUnitType.Star);
-                if (_virtualInjectionView is not null)
-                    _virtualInjectionView.Visibility = Visibility.Visible;
+                if (editorIsInMainWorkspace)
+                    _virtualInjectionView!.Visibility = Visibility.Visible;
                 _phasorScope.Visibility = Visibility.Visible;
                 break;
 
