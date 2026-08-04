@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fundamental Signal Estimation — ARVREL Research Note AN-01</title>
+  <meta name="description" content="Understand ARVREL's one-cycle DC-removed single-bin DFT, RMS phasor scaling, sequence quantities, deterministic tests, and current signal-processing limitations.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/signal-processing.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ARVREL AN-01 — Fundamental signal estimation">
+  <meta property="og:description" content="A source-grounded explanation of ARVREL's one-cycle single-bin DFT and RMS phasor calculation.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/signal-processing.html">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Fundamental Signal Estimation in ARVREL","articleSection":"Research application note AN-01","about":{"@type":"SoftwareApplication","name":"ARVREL","softwareVersion":"0.1.0-beta.1"},"mainEntityOfPage":"https://masarray.github.io/arvrel/research/signal-processing.html"}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Research</a> / AN-01</div><p class="eyebrow">Application note AN-01</p><h1>Fundamental phasors without overstating FFT capability.</h1><p class="lede">ARVREL currently uses a complete one-cycle, mean-removed, single-bin discrete Fourier estimator at the nominal fundamental frequency. It does not compute or claim a full harmonic-spectrum FFT.</p><div class="actions"><a class="button primary" href="https://github.com/masarray/arvrel/blob/main/src/Arvrel.Protection/FeederProtection.cs#L606-L674">Inspect source</a><a class="button secondary" href="validation.html#sig-001">Open SIG-001 evidence</a></div></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Implementation sequence</p><h2>The estimator follows four explicit steps.</h2></div><div class="chain">
+<div class="chain-step"><span>01</span><strong>Require a complete one-cycle window</strong></div>
+<div class="chain-step"><span>02</span><strong>Remove the arithmetic mean</strong></div>
+<div class="chain-step"><span>03</span><strong>Correlate with cosine and sine at bin 1</strong></div>
+<div class="chain-step"><span>04</span><strong>Scale the complex result to RMS</strong></div>
+<div class="chain-step"><span>05</span><strong>Build phase and residual phasors</strong></div>
+<div class="chain-step"><span>06</span><strong>Derive sequence quantities</strong></div>
+<div class="chain-step"><span>07</span><strong>Evaluate protection under trust gates</strong></div>
+</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Mathematical form</p><h2>A DC-removed fundamental DFT bin produces a complex RMS phasor.</h2><p>For a window of <code>N</code> samples, ARVREL subtracts the sample mean and accumulates the real and imaginary correlations at the nominal fundamental bin.</p></div><pre class="code">mean = (1/N) Σ x[k]
+X1   = (√2/N) Σ (x[k] - mean) · (cos(-2πk/N) + j·sin(-2πk/N))
+
+Result: complex RMS phasor X1</pre><div class="grid-2" style="margin-top:18px">
+<article class="card"><h3>Why remove the mean?</h3><p>Mean removal suppresses a constant DC component inside the selected window before fundamental correlation. It is not a complete decaying-DC compensation algorithm.</p></article>
+<article class="card"><h3>Why a single bin?</h3><p>The implemented protection functions require the nominal fundamental phasor, not a complete frequency spectrum. A single-bin estimator is simpler to review and deterministic for the tested nominal-frequency fixtures.</p></article>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Derived quantities</p><h2>The phasor set supports residual and symmetrical-component calculations.</h2></div><div class="grid-3">
+<article class="card"><span class="label">Phase</span><h3>IA, IB, IC and VA, VB, VC</h3><p>Each available channel is converted into a complex RMS phasor using the same one-cycle estimator.</p></article>
+<article class="card"><span class="label">Residual</span><h3>IN/3I0 and VN/3V0 provenance</h3><p>An explicitly decoded fourth channel is preferred. When unavailable, residual quantities can be calculated from the three phase phasors and must retain fallback provenance.</p></article>
+<article class="card"><span class="label">Sequence</span><h3>Positive, negative, and zero sequence</h3><p>The conventional complex <code>a</code>-operator transformation derives sequence currents and voltages from the phase phasors.</p></article>
+</div></div></section>
+<section class="surface" id="validation"><div class="wrap"><div class="section-heading"><p class="section-kicker">Deterministic evidence</p><h2>SIG-001 checks magnitude and balanced positive sequence.</h2><p>The current test constructs 80 samples per cycle of balanced synthetic sine waves, evaluates current and voltage RMS, checks positive-sequence magnitude, and restrains negative sequence for the balanced fixture.</p></div><div class="matrix"><table><thead><tr><th>Input</th><th>Expected result</th><th>Automated anchor</th></tr></thead><tbody>
+<tr><td>80 samples/cycle, 2 A RMS balanced current</td><td>IA ≈ 2 A RMS; I1 ≈ 2 A; I2 near zero</td><td><code>FundamentalEstimator_ReturnsRmsMagnitudeAndBalancedPositiveSequence</code></td></tr>
+<tr><td>80 samples/cycle, 63.5 V RMS balanced voltage</td><td>VA ≈ 63.5 V RMS; V1 ≈ 63.5 V</td><td><code>FeederProtectionTests.cs</code></td></tr>
+</tbody></table></div><div class="actions"><a class="button light" href="https://github.com/masarray/arvrel/blob/main/tests/Arvrel.Protection.Tests/FeederProtectionTests.cs">Inspect deterministic test</a><a class="button light" href="../data/research-scenarios.json">Open scenario JSON</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Current limitations</p><h2>State the estimator boundary before interpreting results.</h2></div><div class="grid-2">
+<article class="card"><h3>Not currently claimed</h3><ul class="check-list"><li>Full FFT or harmonic spectrum</li><li>Adaptive frequency tracking</li><li>Off-nominal-frequency accuracy characterization</li><li>Decaying-DC removal beyond mean subtraction</li><li>Anti-aliasing or merging-unit analog performance</li><li>IEC 60255 measurement or timing type tests</li></ul></article>
+<article class="card"><h3>Future validation track</h3><ul class="check-list"><li>Frequency sweep around 50 and 60 Hz</li><li>Harmonic and interharmonic injection</li><li>Decaying-DC and CT-saturation fixtures</li><li>Noise and quantization sensitivity</li><li>Alternative windows and estimator comparison</li><li>Runtime and allocation benchmarks</li></ul></article>
+</div><div class="callout warn" style="margin-top:20px"><strong>Interpretation boundary:</strong> a synthetic nominal-frequency unit test verifies the implemented calculation for that fixture. It does not establish calibrated accuracy across all process-bus, merging-unit, operating, or timing conditions.</div><div class="pager"><a href="index.html"><span>Previous</span>Research hub</a><a href="smv-continuity.html" style="text-align:right"><span>Next</span>AN-02 SMV continuity and trust</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">AN-01</div><div class="small">Fundamental signal estimation</div></div><div class="small"><a href="validation.html">Validation</a> · <a href="../roadmap.html">Roadmap</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body>
+</html>
