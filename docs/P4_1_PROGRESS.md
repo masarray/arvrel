@@ -24,21 +24,24 @@ Make Internal virtual injection behave like a secondary-injection test source: v
 - [x] Relay operation remains governed by measured current, active pickup setting, element delay, and trust permission
 - [x] Default analysis workspace changed to DUAL
 - [x] Evidence schema records configured and effective profiles, fingerprints, output state, and state-change timestamp
-- [x] Deterministic runtime tests added for stopped zero output, start gating, stop behavior, threshold/delay trip, and trip-latch retention
+- [x] Deterministic runtime tests added for stopped zero output, start gating, stop behavior, exact pickup threshold, configured delay, and trip-latch retention
 
 ## Automated validation gates
 
-- [ ] Static public-site validation
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection run/stop tests
-- [ ] NuGet vulnerability audit
-- [ ] Changed-file scope review
+- [x] Static public-site validation
+- [x] Restore
+- [x] Windows application build
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection run/stop tests
+- [x] Exact pickup-current and configured-delay test
+- [x] NuGet vulnerability audit
+- [x] Changed-file scope review: nine expected P4.1 files; no live/replay/parser/protection-function implementation modification
 - [ ] Squash merge to `main`
 
 ## Manual Windows QA
+
+These checks require launching the WPF application on Windows and remain intentionally open.
 
 - [ ] Verify DUAL is selected on startup
 - [ ] Verify START enabled and STOP disabled at startup
