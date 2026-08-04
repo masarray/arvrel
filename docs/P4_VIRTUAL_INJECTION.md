@@ -13,7 +13,7 @@ Internal demo mode becomes a validated virtual secondary-injection source for th
 3. Select a visible preset or edit the 4I+4V table.
 4. Changes are validated and debounced.
 5. A complete profile is applied atomically; invalid partial edits never replace the last valid source.
-6. One coherent measurement cycle is rebuilt before pickup and trip permission return.
+6. One coherent nominal-frequency measurement cycle is rebuilt before pickup and trip permission return.
 7. Review the phasor, waveform, sequence quantities, relay LCD, protection timing, trip latch, event trace, and exported evidence.
 
 ## Table semantics
@@ -25,14 +25,28 @@ Internal demo mode becomes a validated virtual secondary-injection source for th
 | VN | `3V0 = VA + VB + VC` | independent virtual VN/3V0 channel |
 | IN | `3I0 = IA + IB + IC` | independent virtual IN/3I0 channel |
 
-All channels share one synchronous frequency in the public demo. Frequency validation is 40–70 Hz.
+All channels share one synchronous injected frequency. Frequency validation is 40–70 Hz.
+
+## Sampling and estimator contract
+
+The internal source uses a fixed nominal measurement grid:
+
+- nominal frequency: 50 Hz;
+- 80 samples per nominal cycle;
+- sample rate: 4,000 samples/s;
+- waveform evidence: two nominal cycles;
+- phasor estimator: current complete 80-sample, mean-removed, 50 Hz single-bin DFT.
+
+Changing the injected frequency does **not** silently change the sampling grid or estimator bin. An off-nominal 40–70 Hz waveform therefore exposes the measured magnitude and angle response of the current nominal-frequency estimator. The phasor instrument reflects the estimator output, not a direct copy of the entered values.
 
 ## Processing contract
 
 ```text
 VirtualInjectionProfile
         ↓
-synthetic 4I + 4V complete sample windows
+synthetic 4I + 4V samples on the fixed 4 kHz grid
+        ↓
+complete nominal-cycle window
         ↓
 mean removal + nominal-frequency single-bin DFT
         ↓
@@ -49,7 +63,7 @@ The editor does not construct a protection decision directly and does not bypass
 
 - **EDITING** — input changed and debounce is active.
 - **INVALID · LAST VALID ACTIVE** — at least one field is invalid; the previous coherent profile remains authoritative.
-- **APPLIED · REBUILDING** — the new immutable profile was accepted and one coherent cycle is rebuilding.
+- **APPLIED · REBUILDING** — the new immutable profile was accepted and one coherent nominal cycle is rebuilding.
 - **READY** — measurement, pickup, and virtual-trip evaluation may proceed.
 
 Changing or clearing the injection does not clear an existing trip latch. **Reset relay** clears timers and trip evidence while retaining the injection. **Reset all** returns the source, trust, relay state, and markers to balanced nominal defaults.
@@ -75,7 +89,7 @@ Internal evidence schema version 3 includes:
 - complete virtual injection profile;
 - injection SHA-256 fingerprint;
 - apply timestamp and coherent-window state;
-- common frequency and sample rate;
+- injected frequency, nominal frequency, fixed sample rate, and samples per nominal cycle;
 - explicit/calculated IN and VN provenance;
 - trust-degraded state;
 - measured phasors and protection snapshot;
@@ -87,6 +101,8 @@ Internal evidence schema version 3 includes:
 - [x] Immutable profile and per-channel validation
 - [x] Culture-invariant SHA-256 profile fingerprint
 - [x] Synthetic 4I+4V sample generator
+- [x] Fixed 4 kHz nominal sampling grid
+- [x] Off-nominal frequency response remains visible
 - [x] Single-bin DFT measurement path
 - [x] Explicit-neutral and calculated-residual provenance
 - [x] Atomic apply with coherent-cycle pickup/trip restraint
@@ -98,7 +114,7 @@ Internal evidence schema version 3 includes:
 - [x] Reset relay and reset-all separation
 - [x] Evidence schema v3
 - [x] Deterministic core tests
-- [ ] Windows CI confirmation
+- [ ] Final Windows CI confirmation
 - [ ] Visual smoke test on packaged application
 
 ## Safety boundary
