@@ -7,6 +7,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
+PUBLIC_BASE = "https://masarray.github.io/arvrel/"
 
 
 class PageParser(HTMLParser):
@@ -16,6 +17,9 @@ class PageParser(HTMLParser):
         self.title_depth = 0
         self.title_text: list[str] = []
         self.h1_count = 0
+        self.main_count = 0
+        self.missing_alt_count = 0
+        self.stylesheet_count = 0
         self.description = ""
         self.canonical = ""
         self.viewport = ""
@@ -24,22 +28,32 @@ class PageParser(HTMLParser):
         self.duplicate_ids: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attribute_names = {key.lower() for key, _ in attrs}
         data = {key.lower(): value or "" for key, value in attrs}
         tag = tag.lower()
+
         if tag == "html":
             self.html_lang = data.get("lang", "")
         elif tag == "title":
             self.title_depth += 1
         elif tag == "h1":
             self.h1_count += 1
+        elif tag == "main":
+            self.main_count += 1
+        elif tag == "img" and "alt" not in attribute_names:
+            self.missing_alt_count += 1
         elif tag == "meta":
             name = data.get("name", "").lower()
             if name == "description":
                 self.description = data.get("content", "").strip()
             elif name == "viewport":
                 self.viewport = data.get("content", "").strip()
-        elif tag == "link" and "canonical" in data.get("rel", "").lower().split():
-            self.canonical = data.get("href", "").strip()
+        elif tag == "link":
+            rel_tokens = data.get("rel", "").lower().split()
+            if "canonical" in rel_tokens:
+                self.canonical = data.get("href", "").strip()
+            if "stylesheet" in rel_tokens:
+                self.stylesheet_count += 1
 
         for attribute in ("href", "src"):
             value = data.get(attribute, "").strip()
@@ -59,6 +73,17 @@ class PageParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self.title_depth:
             self.title_text.append(data)
+
+
+def expected_canonical(page: Path) -> str:
+    relative = page.relative_to(SITE).as_posix()
+    if relative == "index.html":
+        public_path = ""
+    elif relative.endswith("/index.html"):
+        public_path = relative[: -len("index.html")]
+    else:
+        public_path = relative
+    return f"{PUBLIC_BASE}{public_path}"
 
 
 def resolve_local_reference(page: Path, value: str) -> tuple[Path | None, str]:
@@ -96,23 +121,42 @@ def main() -> int:
         failures.append("No HTML pages found under docs/.")
 
     parsed: dict[Path, PageParser] = {}
+    canonical_owners: dict[str, Path] = {}
+
     for page in pages:
         parser = parse_page(page)
-        parsed[page.resolve()] = parser
+        resolved_page = page.resolve()
+        parsed[resolved_page] = parser
         relative = page.relative_to(ROOT)
 
         if parser.html_lang.lower() != "en":
-            failures.append(f"{relative}: expected <html lang=\"en\">.")
+            failures.append(f'{relative}: expected <html lang="en">.')
         if not "".join(parser.title_text).strip():
             failures.append(f"{relative}: missing non-empty <title>.")
         if not parser.description:
             failures.append(f"{relative}: missing meta description.")
         if not parser.viewport:
             failures.append(f"{relative}: missing viewport meta.")
-        if not parser.canonical.startswith("https://masarray.github.io/arvrel/"):
-            failures.append(f"{relative}: canonical URL is missing or outside the public site.")
+
+        canonical_expected = expected_canonical(page)
+        if parser.canonical != canonical_expected:
+            failures.append(
+                f'{relative}: canonical URL must be "{canonical_expected}", found "{parser.canonical}".'
+            )
+        elif parser.canonical in canonical_owners:
+            owner = canonical_owners[parser.canonical].relative_to(ROOT)
+            failures.append(f"{relative}: canonical URL duplicates {owner}.")
+        else:
+            canonical_owners[parser.canonical] = page
+
         if parser.h1_count != 1:
             failures.append(f"{relative}: expected exactly one <h1>, found {parser.h1_count}.")
+        if parser.main_count != 1:
+            failures.append(f"{relative}: expected exactly one <main>, found {parser.main_count}.")
+        if parser.stylesheet_count < 1:
+            failures.append(f"{relative}: missing stylesheet link.")
+        if parser.missing_alt_count:
+            failures.append(f"{relative}: {parser.missing_alt_count} image(s) missing an alt attribute.")
         if parser.duplicate_ids:
             failures.append(f"{relative}: duplicate id values: {', '.join(sorted(parser.duplicate_ids))}.")
 
@@ -125,11 +169,11 @@ def main() -> int:
             try:
                 target.relative_to(site_root)
             except ValueError:
-                failures.append(f"{page.relative_to(ROOT)}: {attribute}=\"{value}\" escapes docs/.")
+                failures.append(f'{page.relative_to(ROOT)}: {attribute}="{value}" escapes docs/.')
                 continue
 
             if not target.exists():
-                failures.append(f"{page.relative_to(ROOT)}: broken local reference {attribute}=\"{value}\".")
+                failures.append(f'{page.relative_to(ROOT)}: broken local reference {attribute}="{value}".')
                 continue
 
             if fragment and target.suffix.lower() == ".html":
@@ -148,7 +192,9 @@ def main() -> int:
             print(f"- {failure}", file=sys.stderr)
         return 1
 
-    print(f"Validated {len(pages)} HTML pages and their local links under docs/.")
+    print(
+        f"Validated {len(pages)} HTML pages, canonical routes, accessibility basics, and local links under docs/."
+    )
     return 0
 
 
