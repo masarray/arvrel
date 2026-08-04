@@ -11,6 +11,7 @@ public partial class MainWindow
 {
     private enum AnalysisWorkspaceMode
     {
+        Injection,
         Waveform,
         Dual,
         Phasor
@@ -22,8 +23,10 @@ public partial class MainWindow
     private PhasorScope? _phasorScope;
     private ComboBox? _phasorQuantityCombo;
     private DispatcherTimer? _phasorRefreshTimer;
-    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Dual;
+    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Injection;
     private PhasorDisplayMode _phasorDisplayMode = PhasorDisplayMode.Current;
+    private TextBlock? _analysisTitleText;
+    private TextBlock? _analysisBadgeText;
 
     protected override void OnContentRendered(EventArgs e)
     {
@@ -68,8 +71,9 @@ public partial class MainWindow
         Grid.SetColumn(_phasorScope, 2);
         _analysisHost.Children.Add(_phasorScope);
 
+        InitializeVirtualInjectionEditor();
         InstallAnalysisHeaderControls();
-        ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce: false);
+        UpdateAnalysisSourceMode(announce: false);
 
         _phasorRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -88,21 +92,25 @@ public partial class MainWindow
             titleBlock.Parent is not Grid headerGrid)
             return;
 
+        _analysisTitleText = titleLine.Children.OfType<TextBlock>().FirstOrDefault();
+        _analysisBadgeText = titleLine.Children
+            .OfType<Border>()
+            .Select(border => border.Child)
+            .OfType<TextBlock>()
+            .FirstOrDefault();
+
         var measurementSummary = headerGrid.Children
             .OfType<StackPanel>()
             .FirstOrDefault(child => !ReferenceEquals(child, titleBlock));
         if (measurementSummary is null)
             return;
 
-        // Rebuild the header into three deliberate zones. The earlier implementation
-        // appended controls to the title line, which made the title, stream state,
-        // segmented buttons, combo box and measurements compete for one baseline.
         headerGrid.ColumnDefinitions.Clear();
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(232) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition
         {
             Width = new GridLength(1, GridUnitType.Star),
-            MinWidth = 238
+            MinWidth = 292
         });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -119,7 +127,7 @@ public partial class MainWindow
         StreamHealthText.TextTrimming = TextTrimming.CharacterEllipsis;
         StreamHealthText.VerticalAlignment = VerticalAlignment.Center;
 
-        var subtitle = titleBlock.Children.OfType<TextBlock>().FirstOrDefault();
+        var subtitle = titleBlock.Children.OfType<TextBlock>().Skip(1).FirstOrDefault();
         if (subtitle is not null)
         {
             subtitle.Width = 232;
@@ -179,6 +187,7 @@ public partial class MainWindow
         viewGroup.Child = viewPanel;
         controlsLine.Children.Add(viewGroup);
 
+        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Injection, "INJECT");
         AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Waveform, "WAVE");
         AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Dual, "DUAL");
         AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Phasor, "PHASOR");
@@ -220,7 +229,12 @@ public partial class MainWindow
         {
             Style = (Style)FindResource("CompactButton"),
             Content = label,
-            MinWidth = mode == AnalysisWorkspaceMode.Phasor ? 54 : 42,
+            MinWidth = mode switch
+            {
+                AnalysisWorkspaceMode.Injection => 54,
+                AnalysisWorkspaceMode.Phasor => 54,
+                _ => 42
+            },
             Height = 26,
             MinHeight = 26,
             MaxHeight = 26,
@@ -235,6 +249,7 @@ public partial class MainWindow
             Cursor = System.Windows.Input.Cursors.Hand,
             ToolTip = mode switch
             {
+                AnalysisWorkspaceMode.Injection => "Edit the internal 4I+4V source while keeping the phasor visible",
                 AnalysisWorkspaceMode.Waveform => "Use the full analysis area for the stationary waveform",
                 AnalysisWorkspaceMode.Dual => "Show waveform and compact phasor together",
                 _ => "Use the full analysis area for the phasor diagram"
@@ -245,28 +260,60 @@ public partial class MainWindow
         _analysisModeButtons[mode] = button;
     }
 
+    private void UpdateAnalysisSourceMode(bool announce)
+    {
+        if (!_phasorWorkspaceInitialized)
+            return;
+
+        var internalMode = SourceCombo.SelectedIndex == 0;
+        if (_analysisModeButtons.TryGetValue(AnalysisWorkspaceMode.Injection, out var injectionButton))
+            injectionButton.Visibility = internalMode ? Visibility.Visible : Visibility.Collapsed;
+
+        if (internalMode)
+            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Injection, announce);
+        else if (_analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
+            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
+        else
+            ApplyAnalysisWorkspaceMode(_analysisWorkspaceMode, announce: false);
+    }
+
     private void ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode mode, bool announce)
     {
         if (_analysisHost is null || _phasorScope is null)
             return;
 
+        if (mode == AnalysisWorkspaceMode.Injection && SourceCombo.SelectedIndex != 0)
+            mode = AnalysisWorkspaceMode.Dual;
+
         _analysisWorkspaceMode = mode;
+        SmvScope.Visibility = Visibility.Collapsed;
+        _phasorScope.Visibility = Visibility.Collapsed;
+        if (_virtualInjectionView is not null)
+            _virtualInjectionView.Visibility = Visibility.Collapsed;
+
         var columns = _analysisHost.ColumnDefinitions;
         switch (mode)
         {
+            case AnalysisWorkspaceMode.Injection:
+                columns[0].Width = new GridLength(2.35, GridUnitType.Star);
+                columns[1].Width = new GridLength(9);
+                columns[2].Width = new GridLength(0.85, GridUnitType.Star);
+                if (_virtualInjectionView is not null)
+                    _virtualInjectionView.Visibility = Visibility.Visible;
+                _phasorScope.Visibility = Visibility.Visible;
+                break;
+
             case AnalysisWorkspaceMode.Waveform:
                 columns[0].Width = new GridLength(1, GridUnitType.Star);
                 columns[1].Width = new GridLength(0);
                 columns[2].Width = new GridLength(0);
                 SmvScope.Visibility = Visibility.Visible;
-                _phasorScope.Visibility = Visibility.Collapsed;
                 break;
 
             case AnalysisWorkspaceMode.Phasor:
                 columns[0].Width = new GridLength(0);
                 columns[1].Width = new GridLength(0);
                 columns[2].Width = new GridLength(1, GridUnitType.Star);
-                SmvScope.Visibility = Visibility.Collapsed;
                 _phasorScope.Visibility = Visibility.Visible;
                 break;
 
@@ -289,16 +336,36 @@ public partial class MainWindow
             pair.Value.Foreground = selected ? accent : inactiveText;
         }
 
+        UpdateAnalysisHeader(mode);
         if (announce)
         {
             var description = mode switch
             {
+                AnalysisWorkspaceMode.Injection => "Virtual injection + live phasor",
                 AnalysisWorkspaceMode.Waveform => "Waveform focus",
                 AnalysisWorkspaceMode.Phasor => "Phasor focus",
                 _ => "Waveform + compact phasor"
             };
             StatusText.Text = $"Analysis view · {description}. Phasor reference follows VA = 0° when voltage is available.";
         }
+    }
+
+    private void UpdateAnalysisHeader(AnalysisWorkspaceMode mode)
+    {
+        if (_analysisTitleText is not null)
+            _analysisTitleText.Text = mode switch
+            {
+                AnalysisWorkspaceMode.Injection => "Virtual injection",
+                AnalysisWorkspaceMode.Phasor => "Phasor analysis",
+                _ => "SMV waveform"
+            };
+        if (_analysisBadgeText is not null)
+            _analysisBadgeText.Text = mode switch
+            {
+                AnalysisWorkspaceMode.Injection => "AUTO APPLY",
+                AnalysisWorkspaceMode.Phasor => "1 CYCLE",
+                _ => "2 CYCLES"
+            };
     }
 
     private void RefreshPhasorFrame()
