@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Evidence and Trust — ARVREL</title><meta name="description" content="Understand ARVREL measurement, pickup, and virtual-trip permissions; continuity, quality, SCL, mapping, scaling, and operation evidence."><link rel="canonical" href="https://masarray.github.io/arvrel/evidence-and-trust.html"><link rel="stylesheet" href="assets/site.css"><link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml"></head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="index.html"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html" aria-current="page">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">Home</a> / Evidence and trust</div><p class="eyebrow">Trust before trip</p><h1>Visibility does not automatically grant operation permission.</h1><p class="lede">ARVREL separates diagnostic visibility, measurement admission, pickup evaluation, and virtual-trip authority so unhealthy communication or configuration evidence remains explicit.</p></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Permission model</p><h2>Three gates describe what the current evidence allows.</h2></div><div class="permission-list">
+<div class="permission"><code>AllowsMeasurement</code><p>Decoded quantities may enter the measurement pipeline and contribute to complete RMS, waveform, and phasor windows.</p></div>
+<div class="permission"><code>AllowsPickup</code><p>Protection pickup and timer behavior may be evaluated and presented for engineering diagnosis.</p></div>
+<div class="permission"><code>AllowsTrip</code><p>An operated element may assert the virtual trip latch and create a new operation record.</p></div>
+</div><div class="callout safe" style="margin-top:20px"><strong>Important:</strong> a stream may remain visible for diagnosis while recent continuity, quality, SCL, or scaling evidence prevents a new virtual trip.</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Evidence inputs</p><h2>Trust is built from transport, configuration, and measurement context.</h2></div><div class="grid-3">
+<article class="card"><h3>Transport health</h3><p>Live freshness, payload decode, complete ASDU handling, <code>smpCnt</code> continuity, duplicates, out-of-order frames, and stream recovery.</p></article>
+<article class="card"><h3>Configuration identity</h3><p>Destination address, APPID, VLAN, <code>svID</code>, dataset, <code>confRev</code>, SCL binding, channel mapping, and engineering scaling provenance.</p></article>
+<article class="card"><h3>Measurement readiness</h3><p>Complete one-cycle protection windows, complete two-cycle evidence windows, available current/voltage channels, and directional polarizing quantities.</p></article>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Failure handling</p><h2>Unhealthy frames are evidence, not automatically usable samples.</h2></div><div class="matrix"><table><thead><tr><th>Condition</th><th>Recorded evidence</th><th>Protection consequence</th></tr></thead><tbody>
+<tr><td>Duplicate frame</td><td>Duplicate telemetry counter and stream state</td><td>Payload sample rejected before measurement</td></tr>
+<tr><td>Out-of-order frame</td><td>Ordering telemetry and affected stream identity</td><td>Payload sample rejected before measurement</td></tr>
+<tr><td>Recent <code>smpCnt</code> discontinuity</td><td>Gap and recovery state</td><td>New virtual trip restrained until trust recovers</td></tr>
+<tr><td>Non-zero IEC 61850 quality</td><td>Channel quality evidence</td><td>Trip permission removed</td></tr>
+<tr><td>SCL mismatch</td><td>Observed versus intended identity</td><td>Trip permission removed</td></tr>
+<tr><td>Unresolved scaling</td><td>Missing engineering-value provenance</td><td>Trip permission removed</td></tr>
+<tr><td>Stale stream or incomplete window</td><td>Freshness/window readiness state</td><td>Measurement blocked or held according to current state</td></tr>
+</tbody></table></div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Operation evidence</p><h2>Preserve the decision context, not only the trip label.</h2></div><div class="grid-2">
+<div class="card"><h3>What the engine records</h3><ul class="check-list"><li>Pickup and trip timestamps</li><li>Operated element and phase/earth cause</li><li>Operating quantity and unit</li><li>Directional angle and polarizing magnitude where applicable</li><li>Active settings group, revision, and fingerprint</li><li>SMV trust state at operation</li></ul></div>
+<div class="card"><h3>What the reviewer should add</h3><ul class="check-list"><li>ARVREL version and package type</li><li>Input-source description and ownership</li><li>SCL and CT/VT context</li><li>Scenario purpose and expected result</li><li>Known platform and validation limitations</li><li>Exported event or JSON evidence</li></ul></div>
+</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Evidence boundary</p><h2>Software evidence is not certification evidence.</h2></div><div class="callout warn"><strong>ARVREL evidence supports review and reproducibility inside a controlled laboratory context.</strong> It is not calibrated relay-test evidence, IEC 60255 type-test evidence, IEC 61850 conformance certification, commissioning approval, or switching authority.</div><div class="pager"><a href="architecture.html"><span>Previous</span>Architecture</a><a href="safety-and-limitations.html" style="text-align:right"><span>Next</span>Safety and limitations</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Virtual Protection Relay Laboratory</div></div><div class="small"><a href="safety-and-limitations.html">Safety</a> · <a href="quick-start.html">Quick start</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body></html>
