@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deterministic Validation Matrix — ARVREL</title>
+  <meta name="description" content="Trace ARVREL measurement, protection, directional, and trust claims to deterministic scenarios, exact test methods, source files, expected outcomes, and evidence boundaries.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/validation.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <link rel="alternate" href="../data/research-scenarios.json" type="application/json" title="ARVREL deterministic research scenarios">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ARVREL deterministic validation matrix">
+  <meta property="og:description" content="Source-to-test traceability for public ARVREL engineering claims.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/validation.html">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Research</a> / Validation</div><p class="eyebrow">Reproducibility matrix</p><h1>Trace every scenario to an exact automated test.</h1><p class="lede">The catalog below separates measurement checks, operate cases, secure or restrained cases, and trust-blocked cases. Each scenario has a stable identifier, expected outcome, source implementation, test file, and test method.</p><div class="actions"><a class="button primary" href="../data/research-scenarios.json">Open machine-readable catalog</a><a class="button secondary" href="../laboratory-exercises.html">Run laboratory exercises</a></div></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Evidence levels</p><h2>Not all green tests support the same claim.</h2></div><div class="grid-4">
+<article class="card"><span class="label">Measure</span><h3>Numerical result</h3><p>A deterministic fixture checks a calculated RMS, phase, sequence, or residual quantity.</p></article>
+<article class="card"><span class="label">Operate</span><h3>Expected virtual operation</h3><p>Pickup, delay, trust permission, and operation conditions produce a virtual trip.</p></article>
+<article class="card"><span class="label">Restrain</span><h3>Expected security</h3><p>Normal load, reverse direction, unavailable evidence, or another non-operate condition remains secure.</p></article>
+<article class="card"><span class="label">Block</span><h3>Trust-based restraint</h3><p>Protection activity can remain visible while the current evidence prevents a new virtual trip.</p></article>
+</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Scenario catalog</p><h2>Current P3 traceability set.</h2></div><div class="matrix"><table><thead><tr><th>ID</th><th>Claim</th><th>Expected outcome</th><th>Automated anchor</th></tr></thead><tbody>
+<tr id="sig-001"><td><code>SIG-001</code></td><td>Balanced one-cycle fundamental estimator returns RMS and positive sequence</td><td>Measure</td><td><code>FundamentalEstimator_ReturnsRmsMagnitudeAndBalancedPositiveSequence</code></td></tr>
+<tr id="p50-001"><td><code>P50-001</code></td><td>Normal load remains secure</td><td>Restrain</td><td><code>NormalLoad_RemainsSecure</code></td></tr>
+<tr id="p50-002"><td><code>P50-002</code></td><td>50P definite-delay phase operation</td><td>Operate</td><td><code>PhaseInstantaneous_TripsAfterDefiniteDelay</code></td></tr>
+<tr id="trust-001"><td><code>TRUST-001</code></td><td>Pickup remains visible while SMV trust blocks trip</td><td>Block trip</td><td><code>SmvTrustGate_BlocksOperationWithoutHidingPickup</code></td></tr>
+<tr id="v27-001"><td><code>V27-001</code></td><td>27 two-of-three undervoltage operation</td><td>Operate</td><td><code>Undervoltage27_OperatesAfterConfiguredDelay</code></td></tr>
+<tr id="v59-001"><td><code>V59-001</code></td><td>59 one-of-three overvoltage operation</td><td>Operate</td><td><code>Overvoltage59_OperatesAfterConfiguredDelay</code></td></tr>
+<tr id="v59n-001"><td><code>V59N-001</code></td><td>59N residual overvoltage operation</td><td>Operate</td><td><code>ResidualOvervoltage59N_OperatesFromThreeVZero</code></td></tr>
+<tr id="dir-001"><td><code>DIR-001</code></td><td>67P forward-region operation</td><td>Operate</td><td><code>DirectionalPhase67_TripsForwardAndRestrainsReverse</code></td></tr>
+<tr id="dir-002"><td><code>DIR-002</code></td><td>67P reverse-region security</td><td>Restrain</td><td><code>DirectionalPhase67_TripsForwardAndRestrainsReverse</code></td></tr>
+<tr id="dir-003"><td><code>DIR-003</code></td><td>67N explicit residual-channel preference</td><td>Operate</td><td><code>DirectionalEarth67N_PrefersIndependentResidualChannelOverBalancedPhaseSum</code></td></tr>
+</tbody></table></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Run locally</p><h2>Use exact project and test filters.</h2><p>The protection tests do not require a live adapter or customer data. Use a clean source checkout and record the ARVREL commit, .NET SDK, operating system, and test output.</p></div><pre class="code">dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Release
+
+dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Release `
+  --filter "FullyQualifiedName~FundamentalEstimator_ReturnsRmsMagnitudeAndBalancedPositiveSequence"
+
+dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Release `
+  --filter "FullyQualifiedName~SmvTrustGate_BlocksOperationWithoutHidingPickup"
+
+dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Release `
+  --filter "FullyQualifiedName~DirectionalPhase67_TripsForwardAndRestrainsReverse"</pre></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Traceability rule</p><h2>The public catalog is checked in CI.</h2><p>The public-site validator verifies the scenario schema, unique identifiers, current version, allowed outcomes, referenced source and test files, and presence of every named test method. A broken source-to-test link fails the public-site gate.</p></div><div class="actions"><a class="button light" href="https://github.com/masarray/arvrel/blob/main/scripts/validate-public-site.py">Inspect validator</a><a class="button light" href="https://github.com/masarray/arvrel/actions/workflows/pages.yml">Inspect site CI</a></div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Interpretation boundary</p><h2>This matrix is not a product certification report.</h2><p>It documents deterministic software fixtures and source traceability. It does not replace independent model validation, calibrated injection, timing instrumentation, communication-stress testing, hardware-in-the-loop testing, IEC 60255 type testing, IEC 61850 conformance testing, cybersecurity assessment, or site acceptance.</p></div><div class="pager"><a href="directional-protection.html"><span>Previous</span>AN-03 Directional protection</a><a href="related-work.html" style="text-align:right"><span>Next</span>Related work</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">Validation matrix</div><div class="small">Deterministic software evidence</div></div><div class="small"><a href="../data/research-scenarios.json">Scenario JSON</a> · <a href="../laboratory-exercises.html">Laboratories</a> · <a href="../roadmap.html">Roadmap</a></div></div></footer>
+</body>
+</html>

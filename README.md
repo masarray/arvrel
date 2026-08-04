@@ -12,7 +12,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-2563eb)](#current-public-status)
 [![Safety boundary](https://img.shields.io/badge/output-virtual%20only-b45309)](#engineering-and-safety-boundary)
 
-[Product site](https://masarray.github.io/arvrel/) · [Download and verify](https://masarray.github.io/arvrel/download.html) · [Evaluate in five minutes](https://masarray.github.io/arvrel/quick-start.html) · [Documentation](#documentation) · [Release notes](RELEASE-NOTES.md)
+[Product site](https://masarray.github.io/arvrel/) · [Research and validation](https://masarray.github.io/arvrel/research/) · [Download and verify](https://masarray.github.io/arvrel/download.html) · [Evaluate in five minutes](https://masarray.github.io/arvrel/quick-start.html) · [Documentation](#documentation) · [Release notes](RELEASE-NOTES.md)
 
 </div>
 
@@ -51,7 +51,8 @@ The beta is not presented as a certified protection IED, calibrated relay test s
 - evaluate virtual 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N elements;
 - review pickup timing, operated-element attribution, latched phase/earth causes, operating quantities, and exported evidence;
 - inspect the exact active standard algorithm source while keeping editable research source shadow-only;
-- hold the last coherent waveform and phasor evidence while an unhealthy live stream recovers.
+- hold the last coherent waveform and phasor evidence while an unhealthy live stream recovers;
+- trace public research claims through stable scenario IDs, exact automated test methods, and source files.
 
 ## Protection coverage
 
@@ -151,15 +152,38 @@ Protection evaluation occurs when decoded measurements arrive, not when WPF rend
 
 See [Architecture](docs/ARCHITECTURE.md) and [P2 multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md).
 
+## Research and validation
+
+The current fundamental estimator is a complete one-cycle, arithmetic-mean-removed, nominal-frequency **single-bin DFT** scaled to a complex RMS phasor. ARVREL does not claim a full harmonic-spectrum FFT, adaptive frequency tracking, calibrated phasor accuracy, or IEC 60255 type-test performance.
+
+P3 adds a source-to-test research layer:
+
+- [Research and validation hub](https://masarray.github.io/arvrel/research/)
+- [AN-01: fundamental signal estimation](https://masarray.github.io/arvrel/research/signal-processing.html)
+- [AN-02: SMV continuity and trust](https://masarray.github.io/arvrel/research/smv-continuity.html)
+- [AN-03: directional 67P and 67N](https://masarray.github.io/arvrel/research/directional-protection.html)
+- [Deterministic validation matrix](https://masarray.github.io/arvrel/research/validation.html)
+- [Machine-readable scenario catalog](docs/data/research-scenarios.json)
+- [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html)
+- [Related work and virtual-relay positioning](https://masarray.github.io/arvrel/research/related-work.html)
+- [Public maturity roadmap](https://masarray.github.io/arvrel/roadmap.html)
+- [Repository research guide](RESEARCH.md)
+
+The site quality gate checks scenario version, stable IDs, allowed outcomes, source/test paths, and every named test method. It also verifies the source anchors behind the public signal-processing, continuity, and directional-protection statements.
+
+ARVREL currently covers the IEC 61850 SV → fundamental quantities → feeder protection → trust-gated virtual operation → reviewable evidence chain. It does **not** currently implement 87T or claim CPU-isolated, hard-real-time, deployment-grade virtual-relay performance.
+
 ## Documentation
 
-| Public product routes | Engineering detail | Project governance |
+| Public product routes | Engineering and research detail | Project governance |
 |---|---|---|
 | [Capabilities](https://masarray.github.io/arvrel/capabilities.html) | [Architecture notes](docs/ARCHITECTURE.md) | [Contributing](CONTRIBUTING.md) |
 | [Engineering workflows](https://masarray.github.io/arvrel/workflows/) | [Multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md) | [Security](SECURITY.md) |
-| [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Support](SUPPORT.md) |
-| [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Code of conduct](CODE_OF_CONDUCT.md) |
-| [Download and verify](https://masarray.github.io/arvrel/download.html) | [Product requirements](docs/PRD.md) | [Third-party notices](THIRD-PARTY-NOTICES.md) |
+| [Research and validation](https://masarray.github.io/arvrel/research/) | [Research guide](RESEARCH.md) | [Support](SUPPORT.md) |
+| [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html) | [Deterministic scenario catalog](docs/data/research-scenarios.json) | [Code of conduct](CODE_OF_CONDUCT.md) |
+| [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Third-party notices](THIRD-PARTY-NOTICES.md) |
+| [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Commercial licensing](COMMERCIAL-LICENSING.md) |
+| [Download and verify](https://masarray.github.io/arvrel/download.html) | [Product requirements](docs/PRD.md) | [Public roadmap](https://masarray.github.io/arvrel/roadmap.html) |
 
 ## Engineering and safety boundary
 
@@ -180,8 +204,9 @@ Use live capture only on isolated, authorized laboratory networks. Do not use AR
 
 - unsigned community binaries may trigger Windows reputation warnings;
 - live behavior depends on Windows scheduling, Npcap, adapter drivers, publisher behavior, adapter quality, and host load;
-- 46, 47, 49, 81U/O, 32, 37, 50BF, 79, 25, 86, 74TCS, and 60 are not implemented;
+- 46, 47, 49, 81U/O, 32, 37, 50BF, 79, 25, 86, 74TCS, 60, and 87T are not implemented;
 - negative-sequence and memory polarization for 67N are deferred;
+- CPU-isolated execution, real-time scheduling benchmarks, HIL timing characterization, and deployment-grade virtual-IED availability are not current claims;
 - broad clean-machine, multi-adapter, long-duration, and field-environment validation continues.
 
 ## Evidence, privacy, and release integrity
@@ -208,7 +233,7 @@ Third-party components retain their own licenses. See [Third-party notices](THIR
 
 ## Citation
 
-Research and teaching publications may cite the versioned software metadata in [CITATION.cff](CITATION.cff).
+Research and teaching publications may cite the versioned software metadata in [CITATION.cff](CITATION.cff) and should preserve the scenario identifiers and limitations described in [RESEARCH.md](RESEARCH.md).
 
 ---
 

@@ -273,6 +273,182 @@ def validate_trust_manifest(failures: list[str]) -> None:
         failures.append("docs/trust-manifest.json: required release assets do not match VERSION.")
 
 
+def validate_citation_metadata(failures: list[str]) -> None:
+    path = ROOT / "CITATION.cff"
+    if not path.exists():
+        failures.append("CITATION.cff: missing citation metadata.")
+        return
+
+    text = path.read_text(encoding="utf-8")
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    match = re.search(r'^version:\s*["\']?([^"\'\s]+)', text, flags=re.MULTILINE)
+    if not match or match.group(1) != version:
+        found = match.group(1) if match else "<missing>"
+        failures.append(f"CITATION.cff: version must be {version!r}, found {found!r}.")
+    required_tokens = [
+        'repository-code: "https://github.com/masarray/arvrel"',
+        'license: "GPL-3.0-or-later"',
+        'title: "ARVREL — Virtual Protection Relay Laboratory"',
+    ]
+    for token in required_tokens:
+        if token not in text:
+            failures.append(f"CITATION.cff: missing required metadata token {token!r}.")
+
+
+def validate_research_source_claims(failures: list[str]) -> None:
+    feeder_path = ROOT / "src" / "Arvrel.Protection" / "FeederProtection.cs"
+    controller_path = ROOT / "src" / "Arvrel.ProcessBus" / "SmvProcessBusController.cs"
+    continuity_path = ROOT / "src" / "Arvrel.ProcessBus" / "SmvIngressContinuityGate.cs"
+    for path in (feeder_path, controller_path, continuity_path):
+        if not path.exists():
+            failures.append(f"{path.relative_to(ROOT)}: required P3 source anchor is missing.")
+            return
+
+    feeder = feeder_path.read_text(encoding="utf-8")
+    controller = controller_path.read_text(encoding="utf-8")
+    continuity = continuity_path.read_text(encoding="utf-8")
+
+    feeder_tokens = [
+        "public static class FundamentalPhasorEstimator",
+        "mean += samples[start + index]",
+        "real += value * Math.Cos(angle)",
+        "imaginary += value * Math.Sin(angle)",
+        "var scale = Math.Sqrt(2) / samplesPerCycle",
+        "phasors.PositiveSequenceCurrent",
+        "phasors.PositiveSequenceVoltage",
+        "phasors.ResidualCurrent",
+        "phasors.ResidualVoltage",
+        "var torque = Math.Cos(ToRadians(operatingAngle - characteristicAngleDegrees))",
+    ]
+    for token in feeder_tokens:
+        if token not in feeder:
+            failures.append(f"src/Arvrel.Protection/FeederProtection.cs: P3 claim anchor missing {token!r}.")
+
+    continuity_tokens = [
+        "SmvIngressDecision.DropDuplicate",
+        "SmvIngressDecision.DropOutOfOrder",
+        "SmvIngressDecision.RestartWindow",
+        "forward < wrap / 2",
+    ]
+    for token in continuity_tokens:
+        if token not in continuity:
+            failures.append(f"src/Arvrel.ProcessBus/SmvIngressContinuityGate.cs: P3 claim anchor missing {token!r}.")
+
+    controller_tokens = [
+        "discarded before measurement",
+        "holding coherent display during trust recovery",
+        "clear protection timers or a latched trip",
+    ]
+    for token in controller_tokens:
+        if token not in controller:
+            failures.append(f"src/Arvrel.ProcessBus/SmvProcessBusController.cs: P3 claim anchor missing {token!r}.")
+
+    research_pages = [
+        SITE / "research" / "index.html",
+        SITE / "research" / "signal-processing.html",
+        SITE / "research" / "smv-continuity.html",
+        SITE / "research" / "directional-protection.html",
+        SITE / "research" / "validation.html",
+        SITE / "research" / "related-work.html",
+        SITE / "laboratory-exercises.html",
+        SITE / "roadmap.html",
+    ]
+    for path in research_pages:
+        if not path.exists():
+            failures.append(f"{path.relative_to(ROOT)}: required P3 public route is missing.")
+
+    signal_page = SITE / "research" / "signal-processing.html"
+    if signal_page.exists():
+        text = signal_page.read_text(encoding="utf-8").lower()
+        for phrase in ("single-bin", "not compute or claim a full harmonic-spectrum fft", "complete one-cycle"):
+            if phrase not in text:
+                failures.append(f"docs/research/signal-processing.html: missing precise claim phrase {phrase!r}.")
+
+
+def validate_research_scenarios(failures: list[str]) -> None:
+    path = SITE / "data" / "research-scenarios.json"
+    if not path.exists():
+        failures.append("docs/data/research-scenarios.json: missing deterministic scenario catalog.")
+        return
+
+    try:
+        catalog = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        failures.append(f"docs/data/research-scenarios.json: invalid JSON: {exc}.")
+        return
+
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    if catalog.get("schemaVersion") != 1:
+        failures.append("docs/data/research-scenarios.json: schemaVersion must be 1.")
+    if catalog.get("product") != "ARVREL":
+        failures.append("docs/data/research-scenarios.json: product must be ARVREL.")
+    if catalog.get("version") != version:
+        failures.append("docs/data/research-scenarios.json: version does not match VERSION.")
+    if catalog.get("evidenceClass") != "deterministic-software-tests":
+        failures.append("docs/data/research-scenarios.json: unexpected evidenceClass.")
+    if not str(catalog.get("boundary", "")).strip():
+        failures.append("docs/data/research-scenarios.json: boundary statement is required.")
+
+    scenarios = catalog.get("scenarios")
+    if not isinstance(scenarios, list) or not scenarios:
+        failures.append("docs/data/research-scenarios.json: scenarios must be a non-empty list.")
+        return
+
+    allowed_outcomes = {"measure", "operate", "restrain", "block-trip"}
+    seen: set[str] = set()
+    validation_page = SITE / "research" / "validation.html"
+    validation_text = validation_page.read_text(encoding="utf-8") if validation_page.exists() else ""
+
+    for index, scenario in enumerate(scenarios, start=1):
+        prefix = f"docs/data/research-scenarios.json: scenario {index}"
+        if not isinstance(scenario, dict):
+            failures.append(f"{prefix} must be an object.")
+            continue
+
+        scenario_id = str(scenario.get("id", "")).strip()
+        if not re.fullmatch(r"[A-Z0-9]+(?:-[A-Z0-9]+)+", scenario_id):
+            failures.append(f"{prefix} has invalid id {scenario_id!r}.")
+        elif scenario_id in seen:
+            failures.append(f"{prefix} duplicates id {scenario_id!r}.")
+        else:
+            seen.add(scenario_id)
+
+        for key in ("title", "category", "input", "expected", "sourceFile", "testFile", "testMethod"):
+            if not str(scenario.get(key, "")).strip():
+                failures.append(f"{prefix} missing non-empty {key!r}.")
+
+        outcome = scenario.get("outcome")
+        if outcome not in allowed_outcomes:
+            failures.append(f"{prefix} outcome must be one of {sorted(allowed_outcomes)}, found {outcome!r}.")
+
+        source_relative = Path(str(scenario.get("sourceFile", "")))
+        test_relative = Path(str(scenario.get("testFile", "")))
+        source_path = (ROOT / source_relative).resolve()
+        test_path = (ROOT / test_relative).resolve()
+        try:
+            source_path.relative_to(ROOT.resolve())
+            test_path.relative_to(ROOT.resolve())
+        except ValueError:
+            failures.append(f"{prefix} source or test path escapes the repository.")
+            continue
+
+        if not source_relative.as_posix().startswith("src/"):
+            failures.append(f"{prefix} sourceFile must be under src/.")
+        if not test_relative.as_posix().startswith("tests/"):
+            failures.append(f"{prefix} testFile must be under tests/.")
+        if not source_path.exists():
+            failures.append(f"{prefix} sourceFile does not exist: {source_relative}.")
+        if not test_path.exists():
+            failures.append(f"{prefix} testFile does not exist: {test_relative}.")
+        elif str(scenario.get("testMethod", "")) not in test_path.read_text(encoding="utf-8"):
+            failures.append(
+                f"{prefix} testMethod {scenario.get('testMethod')!r} was not found in {test_relative}."
+            )
+
+        if scenario_id and scenario_id not in validation_text:
+            failures.append(f"{prefix} id {scenario_id!r} is not published in docs/research/validation.html.")
+
+
 def main() -> int:
     failures: list[str] = []
     pages = sorted(SITE.rglob("*.html"))
@@ -374,6 +550,9 @@ def main() -> int:
     validate_sitemap(set(canonical_owners), failures)
     validate_robots(failures)
     validate_trust_manifest(failures)
+    validate_citation_metadata(failures)
+    validate_research_source_claims(failures)
+    validate_research_scenarios(failures)
 
     if failures:
         print("Public-site validation failed:", file=sys.stderr)
@@ -382,7 +561,7 @@ def main() -> int:
         return 1
 
     print(
-        f"Validated {len(pages)} HTML pages, native image geometry, canonical routes, sitemap, trust manifest, accessibility basics, and local links."
+        f"Validated {len(pages)} HTML pages, native image geometry, canonical routes, sitemap, trust manifest, citation metadata, research source anchors, deterministic scenarios, accessibility basics, and local links."
     )
     return 0
 

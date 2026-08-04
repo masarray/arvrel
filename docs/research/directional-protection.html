@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Directional 67P and 67N — ARVREL Research Note AN-03</title>
+  <meta name="description" content="Review ARVREL 67P positive-sequence V1/I1 polarization, 67N residual 3V0/3I0 polarization, torque calculation, voltage supervision, deterministic operate and restraint tests, and limitations.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/directional-protection.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ARVREL AN-03 — Directional 67P and 67N">
+  <meta property="og:description" content="Source-grounded directional quantities, characteristic angle, torque, supervision, operate, and restraint behavior.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/directional-protection.html">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Directional 67P and 67N in ARVREL","articleSection":"Research application note AN-03","about":{"@type":"SoftwareApplication","name":"ARVREL","softwareVersion":"0.1.0-beta.1"},"mainEntityOfPage":"https://masarray.github.io/arvrel/research/directional-protection.html"}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Research</a> / AN-03</div><p class="eyebrow">Application note AN-03</p><h1>Direction is evaluated from explicit operating and polarizing phasors.</h1><p class="lede">ARVREL uses positive-sequence V1/I1 quantities for 67P and residual 3V0/3I0 quantities for 67N. Direction is supervised by minimum polarizing voltage and selected from the sign of a cosine torque expression relative to the configured characteristic angle.</p><div class="actions"><a class="button primary" href="https://github.com/masarray/arvrel/blob/main/src/Arvrel.Protection/FeederProtection.cs">Inspect source</a><a class="button secondary" href="validation.html#dir-001">Open directional evidence</a></div></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Quantity selection</p><h2>67P and 67N use different measurement domains.</h2></div><div class="grid-2">
+<article class="card"><span class="label">67P</span><h3>Positive-sequence V1/I1</h3><p>The operating phasor is positive-sequence current and the polarizing phasor is positive-sequence voltage. Pickup also requires the maximum phase current to reach the configured threshold.</p></article>
+<article class="card"><span class="label">67N</span><h3>Residual 3V0/3I0</h3><p>The operating phasor is residual current and the polarizing phasor is residual voltage. Explicit decoded neutral/residual channels are preferred over calculated phase-sum fallback.</p></article>
+</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Directional equation</p><h2>The selected region is derived from operating angle and MTA.</h2></div><pre class="code">operatingAngle = normalize(angle(Iop) - angle(Vpol))
+torque         = cos(operatingAngle - characteristicAngle)
+forwardRegion  = torque > 0
+selected       = forwardRegion          when sense = Forward
+                 not forwardRegion      when sense = Reverse</pre><p>A directional decision becomes unavailable when the polarizing-voltage magnitude is below the configured minimum. Current pickup, selected direction, elapsed delay, SMV pickup permission, and SMV trip permission remain separate conditions.</p></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Operate chain</p><h2>A directional trip requires more than positive torque.</h2></div><div class="chain">
+<div class="chain-step"><span>01</span><strong>Complete trusted phasor set</strong></div>
+<div class="chain-step"><span>02</span><strong>Current above pickup</strong></div>
+<div class="chain-step"><span>03</span><strong>Polarizing voltage available</strong></div>
+<div class="chain-step"><span>04</span><strong>Selected direction true</strong></div>
+<div class="chain-step"><span>05</span><strong>Pickup permission granted</strong></div>
+<div class="chain-step"><span>06</span><strong>Configured delay elapsed</strong></div>
+<div class="chain-step"><span>07</span><strong>Trip permission granted</strong></div>
+</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Deterministic evidence</p><h2>Forward operate is paired with reverse restraint.</h2></div><div class="matrix"><table><thead><tr><th>Scenario</th><th>Input relationship</th><th>Expected behavior</th><th>Automated anchor</th></tr></thead><tbody>
+<tr id="dir-001"><td><code>DIR-001</code></td><td>67P current aligned with configured forward characteristic</td><td>Directional pickup, delay, virtual trip</td><td><code>DirectionalPhase67_TripsForwardAndRestrainsReverse</code></td></tr>
+<tr id="dir-002"><td><code>DIR-002</code></td><td>67P reverse-region current</td><td>No pickup and no trip</td><td>Same paired test method</td></tr>
+<tr id="dir-003"><td><code>DIR-003</code></td><td>Balanced phase sum with independent residual channels</td><td>67N uses explicit 3I0/3V0 and operates</td><td><code>DirectionalEarth67N_PrefersIndependentResidualChannelOverBalancedPhaseSum</code></td></tr>
+</tbody></table></div><div class="actions"><a class="button light" href="https://github.com/masarray/arvrel/blob/main/tests/Arvrel.Protection.Tests/FeederProtectionTests.cs">Inspect tests</a><a class="button light" href="../data/research-scenarios.json">Open scenario JSON</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Evidence output</p><h2>Direction is preserved as review context.</h2><p>The directional decision records polarizing availability, selected direction, operating angle, torque, operating magnitude, polarizing magnitude, and a readable reason string. The protection operation record also preserves operated element, phase or earth attribution, timestamps, quantity, settings identity, and trust state.</p></div><div class="callout safe"><strong>Engineering value:</strong> reviewers can see why the element considered a case forward or reverse rather than receiving only a binary trip indication.</div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Current boundary</p><h2>This is a transparent beta implementation, not a complete vendor relay characteristic.</h2></div><div class="grid-2">
+<article class="card"><h3>Not currently implemented</h3><ul class="check-list"><li>Memory polarization</li><li>Negative-sequence polarization for 67N</li><li>Phase-specific cross polarization</li><li>Load encroachment or power-swing supervision</li><li>Directional comparison schemes</li><li>Type-tested relay characteristic tolerances</li></ul></article>
+<article class="card"><h3>Future validation track</h3><ul class="check-list"><li>Angle sweep across forward/reverse boundaries</li><li>Minimum-voltage supervision sweep</li><li>Residual-channel provenance cases</li><li>Noise and unbalance sensitivity</li><li>Off-nominal frequency effects</li><li>Hardware-in-the-loop timing comparison</li></ul></article>
+</div><div class="pager"><a href="smv-continuity.html"><span>Previous</span>AN-02 SMV continuity</a><a href="validation.html" style="text-align:right"><span>Next</span>Validation matrix</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">AN-03</div><div class="small">Directional 67P and 67N</div></div><div class="small"><a href="validation.html">Validation</a> · <a href="../roadmap.html">Roadmap</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
+</body>
+</html>

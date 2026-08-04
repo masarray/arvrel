@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Related Work and Virtual-Relay Positioning — ARVREL</title>
+  <meta name="description" content="Position ARVREL against lightweight and virtual protective-relay research without overstating 87T, CPU isolation, real-time performance, certification, or operational deployment claims.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://masarray.github.io/arvrel/research/related-work.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="icon" href="../assets/icon/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ARVREL related work and virtual-relay positioning">
+  <meta property="og:description" content="A precise comparison boundary for Sampled Values protection processing, virtual relay laboratories, and deployment-oriented virtualization research.">
+  <meta property="og:url" content="https://masarray.github.io/arvrel/research/related-work.html">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Related Work and Virtual-Relay Positioning for ARVREL","about":{"@type":"SoftwareApplication","name":"ARVREL","softwareVersion":"0.1.0-beta.1"},"mainEntityOfPage":"https://masarray.github.io/arvrel/research/related-work.html"}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="wrap nav"><a class="brand" href="../index.html"><img src="../assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="../capabilities.html">Capabilities</a><a href="../workflows/index.html">Workflows</a><a href="index.html" aria-current="page">Research</a><a href="../architecture.html">Architecture</a><a href="../evidence-and-trust.html">Trust</a><a href="../safety-and-limitations.html">Safety</a><a class="nav-cta" href="../download.html">Download</a></nav></div></header>
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Research</a> / Related work</div><p class="eyebrow">Research positioning</p><h1>Compare overlapping functions without collapsing different claims.</h1><p class="lede">ARVREL belongs to the broad field of software-defined and virtual protection, but its current public claim is narrower: a transparent Windows engineering laboratory that subscribes to Sampled Values, estimates fundamental quantities, evaluates virtual protection functions, applies trust gates, and preserves reviewable evidence.</p></div></section>
+<main id="main-content">
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Reference challenge</p><h2>Lightweight Virtual Protective Relay</h2><p>Public bibliographic metadata identifies Abdulmueen Alrashide's paper <em>Lightweight Virtual Protective Relay</em>, presented at the 2024 IEEE Industry Applications Society Annual Meeting. The associated public dissertation abstract describes a virtualization approach that abstracts hardware and uses CPU isolation for application-based execution requiring security, speed, and reliability.</p></div><div class="card"><h3>Bibliographic record</h3><p>Abdulmueen Alrashide, “Lightweight Virtual Protective Relay,” <em>2024 IEEE Industry Applications Society Annual Meeting (IAS)</em>, pp. 1–6, 2024. DOI: <a href="https://doi.org/10.1109/IAS55788.2024.11023755">10.1109/IAS55788.2024.11023755</a>.</p><p class="small">The comparison below uses public bibliographic and dissertation-summary information plus the current ARVREL source. It does not claim equivalence with unpublished implementation details or unreviewed full-paper results.</p></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Overlap</p><h2>ARVREL now covers the core SV-to-protection processing chain.</h2></div><div class="matrix"><table><thead><tr><th>Research question</th><th>ARVREL current answer</th><th>Evidence route</th></tr></thead><tbody>
+<tr><td>Can software subscribe to IEC 61850 Sampled Values?</td><td>Yes: authorized live Npcap capture and PCAP/PCAPNG replay through the pinned ARIEC61850 engine.</td><td><a href="../capabilities.html">Capabilities</a></td></tr>
+<tr><td>Can samples become protection quantities?</td><td>Yes: complete one-cycle, mean-removed, single-bin DFT fundamental RMS phasors plus residual and sequence quantities.</td><td><a href="signal-processing.html">AN-01</a></td></tr>
+<tr><td>Can software implement protection functions?</td><td>Yes: 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N in the public beta.</td><td><a href="../capabilities.html">Protection coverage</a></td></tr>
+<tr><td>Can operation remain reviewable?</td><td>Yes: pickup, timing, direction, trust state, operated element, quantity, settings identity, timestamps, latch, and exportable evidence.</td><td><a href="../evidence-and-trust.html">Evidence and trust</a></td></tr>
+<tr><td>Can communication defects be separated from usable samples?</td><td>Yes: duplicate/out-of-order payload rejection, forward-gap recovery, coherent-window rebuilding, and separate measurement/pickup/trip permissions.</td><td><a href="smv-continuity.html">AN-02</a></td></tr>
+</tbody></table></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Non-equivalence</p><h2>ARVREL does not claim deployment-oriented LVPR properties.</h2></div><div class="grid-2">
+<article class="card"><span class="label">ARVREL public beta</span><h3>Engineering laboratory</h3><ul class="check-list"><li>Windows desktop application</li><li>Human-reviewable UI and evidence</li><li>Source-visible deterministic logic</li><li>Virtual output only</li><li>No hard-real-time guarantee</li><li>No production IED claim</li></ul></article>
+<article class="card"><span class="label">Deployment research track</span><h3>Not yet claimed by ARVREL</h3><ul class="check-list"><li>CPU-isolated execution</li><li>Real-time kernel or deterministic scheduler</li><li>Bounded end-to-end latency proof</li><li>Redundant virtualized service deployment</li><li>Operational GOOSE or physical trip output</li><li>Certified platform availability</li></ul></article>
+</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">87T boundary</p><h2>Transformer differential protection is not a label-only addition.</h2><p>ARVREL does not currently implement 87T. A credible research implementation requires multi-stream time alignment, winding and vector-group compensation, CT ratio and polarity normalization, differential and restraint quantities, percentage-bias characteristics, zero-sequence treatment, inrush restraint or blocking, CT-saturation behavior, communication-failure policy, and paired operate/secure validation.</p></div><div class="chain">
+<div class="chain-step"><span>01</span><strong>Multiple synchronized SV sources</strong></div>
+<div class="chain-step"><span>02</span><strong>Winding and CT normalization</strong></div>
+<div class="chain-step"><span>03</span><strong>Vector-group compensation</strong></div>
+<div class="chain-step"><span>04</span><strong>Differential and restraint quantities</strong></div>
+<div class="chain-step"><span>05</span><strong>Bias characteristic</strong></div>
+<div class="chain-step"><span>06</span><strong>Inrush and CT-saturation security</strong></div>
+<div class="chain-step"><span>07</span><strong>Trust-gated operation evidence</strong></div>
+</div><div class="actions"><a class="button light" href="../roadmap.html#track-87t">Review 87T entry criteria</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Additional references</p><h2>Context for SV testing, corrupted frames, and digital-substation validation.</h2></div><ol class="steps">
+<li>D. R. Gurusinghe, S. Kariyawasam, and D. S. Ouellette, “Testing of IEC 61850 sampled values based digital substation automation systems,” <em>The Journal of Engineering</em>, 2018. DOI: <a href="https://doi.org/10.1049/joe.2018.0165">10.1049/joe.2018.0165</a>.</li>
+<li>Â. F. Sartori et al., “Performance Analysis of Overcurrent Protection under Corrupted Sampled Value Frames: A Hardware-in-the-Loop Approach,” <em>Energies</em>, vol. 16, no. 8, 3386, 2023. DOI: <a href="https://doi.org/10.3390/en16083386">10.3390/en16083386</a>.</li>
+<li>A. Alrashide, <em>Digital Transformation for Power Substation Network Security and Space Efficiency Through Virtual Protective Relay</em>, doctoral dissertation, 2024. Public record: <a href="https://hdl.handle.net/20.500.14154/75514">hdl:20.500.14154/75514</a>.</li>
+</ol><div class="callout warn" style="margin-top:20px"><strong>Citation boundary:</strong> inclusion identifies related subject matter; it does not imply endorsement, validated interoperability, reproduced results, or equivalence between ARVREL and the referenced systems.</div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Accurate public statement</p><h2>What ARVREL can say today.</h2></div><blockquote class="callout"><strong>ARVREL implements a transparent IEC 61850 SV-to-virtual-protection chain with source-visible fundamental phasor estimation, multiple feeder protection functions, trust-gated operation, and deterministic software evidence. It does not yet implement 87T or claim CPU-isolated, hard-real-time, deployment-grade virtual relay performance.</strong></blockquote><div class="pager"><a href="validation.html"><span>Previous</span>Validation matrix</a><a href="../roadmap.html" style="text-align:right"><span>Next</span>Public roadmap</a></div></div></section>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">Related work</div><div class="small">Precise comparison without claim inflation</div></div><div class="small"><a href="index.html">Research hub</a> · <a href="../roadmap.html">Roadmap</a> · <a href="https://github.com/masarray/arvrel/blob/main/CITATION.cff">Cite ARVREL</a></div></div></footer>
+</body>
+</html>
