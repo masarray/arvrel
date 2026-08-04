@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
 
@@ -11,8 +10,6 @@ public partial class MainWindow
 {
     private bool _virtualInjectionRunStopInitialized;
     private DispatcherTimer? _virtualInjectionRunStopTimer;
-    private Button? _virtualInjectionStartButton;
-    private Button? _virtualInjectionStopButton;
 
     internal void InitializeVirtualInjectionRunStop()
     {
@@ -28,29 +25,23 @@ public partial class MainWindow
 
         _virtualInjectionRunStopInitialized = true;
 
-        // Replace the legacy internal Run/Pause behavior while preserving the
-        // existing handlers for live capture and replay modes.
+        // The top-right toolbar is the single START/STOP authority. Keeping a
+        // second pair of controls inside the editor created visual duplication
+        // and made the source state less obvious to the operator.
         RunButton.Click -= RunButton_Click;
         RunButton.Click += VirtualInjectionRunButton_Click;
         InjectFaultButton.Click -= InjectFault_Click;
         InjectFaultButton.Click += VirtualInjectionFaultPreset_Click;
         SourceCombo.SelectionChanged += VirtualInjectionRunStopSourceChanged;
 
-        InstallVirtualInjectionRunStopButtons();
-
-        // This timer only observes the short STARTING -> RUNNING transition.
-        // Presentation properties are written only when their values change, so
-        // the timer does not continuously invalidate text and brushes.
         _virtualInjectionRunStopTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(200)
+            Interval = TimeSpan.FromMilliseconds(250)
         };
         _virtualInjectionRunStopTimer.Tick += (_, _) => RefreshVirtualInjectionRunStopPresentation();
         _virtualInjectionRunStopTimer.Start();
         Closed += (_, _) => _virtualInjectionRunStopTimer?.Stop();
 
-        // DUAL is the operator default. INJECT remains an explicit workspace for
-        // editing and arming values, not the first view shown at startup.
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
             new Action(() => ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce: false)));
@@ -62,55 +53,6 @@ public partial class MainWindow
         _virtualInjectionRunStopTimer?.Stop();
         _virtualInjectionRunStopTimer = null;
     }
-
-    private void InstallVirtualInjectionRunStopButtons()
-    {
-        if (_virtualInjectionView is null)
-            return;
-
-        var footer = _virtualInjectionView.Children
-            .OfType<Grid>()
-            .FirstOrDefault(child => Grid.GetRow(child) == 2);
-        var actions = footer?.Children
-            .OfType<StackPanel>()
-            .FirstOrDefault(child => Grid.GetColumn(child) == 1);
-        if (actions is null)
-            return;
-
-        _virtualInjectionStartButton = CreateOutputButton(
-            "START",
-            "Energize the configured virtual 4I+4V source after validation.",
-            "#2563EB",
-            "#1D4ED8");
-        _virtualInjectionStartButton.Click += (_, _) => StartVirtualInjectionSource(announce: true);
-
-        _virtualInjectionStopButton = CreateOutputButton(
-            "STOP",
-            "De-energize the virtual source. Output becomes 0 V / 0 A while configured values remain armed.",
-            "#D84B48",
-            "#B93633");
-        _virtualInjectionStopButton.Click += (_, _) => StopVirtualInjectionSource(announce: true);
-
-        actions.Children.Insert(0, _virtualInjectionStopButton);
-        actions.Children.Insert(0, _virtualInjectionStartButton);
-    }
-
-    private Button CreateOutputButton(string text, string toolTip, string background, string border)
-        => new()
-        {
-            Style = FindResource("CompactButton") as Style,
-            Content = text,
-            MinWidth = 62,
-            Height = 28,
-            Margin = new Thickness(0, 0, 5, 0),
-            Padding = new Thickness(10, 0, 10, 0),
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brushes.White,
-            Background = BrushFrom(background),
-            BorderBrush = BrushFrom(border),
-            BorderThickness = new Thickness(1),
-            ToolTip = toolTip
-        };
 
     private async void VirtualInjectionRunButton_Click(object sender, RoutedEventArgs e)
     {
@@ -143,9 +85,6 @@ public partial class MainWindow
         if (SourceCombo.SelectedIndex != 0)
             return;
 
-        // One-click secondary-injection behavior: load the A-G values and
-        // energize them immediately. The command no longer toggles back to a
-        // normal profile or leaves the fault merely armed while stopped.
         ApplyVirtualInjectionPreset("A-G fault", announce: false);
         if (!_scenario.IsRunning)
             StartVirtualInjectionSource(announce: false);
@@ -181,8 +120,6 @@ public partial class MainWindow
         if (SourceCombo.SelectedIndex != 0)
             return false;
 
-        // START is also the final validation barrier. Invalid partial edits never
-        // energize and the previous configured profile remains stopped.
         if (!TryApplyVirtualInjectionEditor())
         {
             _internalRunning = false;
@@ -200,6 +137,7 @@ public partial class MainWindow
 
         UpdateRunButton();
         RefreshPhasorFrame();
+        RefreshVirtualInjectionRunStopPresentation();
         if (announce)
         {
             StatusText.Text = changed
@@ -222,6 +160,7 @@ public partial class MainWindow
 
         UpdateRunButton();
         RefreshPhasorFrame();
+        RefreshVirtualInjectionRunStopPresentation();
         if (announce)
         {
             StatusText.Text = changed
@@ -242,7 +181,10 @@ public partial class MainWindow
         }
 
         if (last is not null)
+        {
             RenderInternal(last, _snapshot);
+            RefreshVirtualInjectionRunStopPresentation();
+        }
     }
 
     private void RefreshVirtualInjectionRunStopPresentation()
@@ -251,9 +193,6 @@ public partial class MainWindow
             return;
 
         var running = _scenario.IsRunning;
-        SetEnabledIfChanged(_virtualInjectionStartButton, !running);
-        SetEnabledIfChanged(_virtualInjectionStopButton, running);
-
         SetTextIfChanged(RunButtonText, running ? "Stop injection" : "Start injection");
         var desiredIcon = running ? LucideIconKind.CircleStop : LucideIconKind.Play;
         if (RunButtonIcon.Kind != desiredIcon)
@@ -317,15 +256,18 @@ public partial class MainWindow
         if (!Equals(WaveformSubtitleText.ToolTip, tooltip))
             WaveformSubtitleText.ToolTip = tooltip;
 
-        SetTextIfChanged(
-            RelayFooterText,
-            $"{_settings.GroupName} · REV {_settings.Revision} · VIRTUAL INJECTION");
-    }
+        // Internal injection is not an Ethernet SV publisher. Present only
+        // stable engineering facts and avoid a constantly changing synthetic
+        // smpCnt that adds visual noise without helping the operator.
+        SetTextIfChanged(FrequencyText, $"{_scenario.ActiveProfile.FrequencyHz:0.000} Hz");
+        SetTextIfChanged(SamplesPerCycleText, "  ·  80 samples/cycle");
+        SetTextIfChanged(SampleCounterText, "  ·  4 kHz");
+        SetTextIfChanged(SyncText, "  ·  VIRTUAL");
+        SetTextIfChanged(FpsText, string.Empty);
+        if (!Equals(SyncText.Foreground, HealthyBrush))
+            SyncText.Foreground = HealthyBrush;
 
-    private static void SetEnabledIfChanged(Control? control, bool enabled)
-    {
-        if (control is not null && control.IsEnabled != enabled)
-            control.IsEnabled = enabled;
+        SetTextIfChanged(RelayFooterText, $"{_settings.GroupName} · REV {_settings.Revision}");
     }
 
     private static void SetTextIfChanged(TextBlock? textBlock, string text)
