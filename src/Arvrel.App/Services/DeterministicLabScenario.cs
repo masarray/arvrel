@@ -9,6 +9,7 @@ public sealed class DeterministicLabScenario
     public const int SamplesPerCycle = 80;
     public const int WindowSamples = SamplesPerCycle * 2;
     public const double NominalPhaseVoltage = 63.5;
+    public const double SampleRateHz = Frequency * SamplesPerCycle;
 
     private DateTimeOffset _timestamp = DateTimeOffset.UtcNow;
     private long _sampleCounter;
@@ -43,7 +44,7 @@ public sealed class DeterministicLabScenario
 
         _activeProfile = normalized;
         AppliedAt = _timestamp;
-        _coherenceRemaining = TimeSpan.FromSeconds(1 / normalized.FrequencyHz);
+        _coherenceRemaining = TimeSpan.FromSeconds(1 / Frequency);
         return true;
     }
 
@@ -56,8 +57,7 @@ public sealed class DeterministicLabScenario
             throw new ArgumentOutOfRangeException(nameof(delta));
 
         _timestamp += delta;
-        _sampleCounter = (_sampleCounter + (long)Math.Round(
-            delta.TotalSeconds * _activeProfile.FrequencyHz * SamplesPerCycle)) % 4000;
+        _sampleCounter = (_sampleCounter + (long)Math.Round(delta.TotalSeconds * SampleRateHz)) % 4000;
 
         if (delta > TimeSpan.Zero && _coherenceRemaining > TimeSpan.Zero)
         {
@@ -76,7 +76,7 @@ public sealed class DeterministicLabScenario
                     false,
                     false,
                     "INJECTION_REBUILD",
-                    "A new virtual injection profile is rebuilding a complete coherent one-cycle measurement window.")
+                    "A new virtual injection profile is rebuilding a complete coherent nominal one-cycle measurement window.")
                 : SmvTrustState.Healthy;
 
         var injection = VirtualInjectionGenerator.Generate(
@@ -84,7 +84,8 @@ public sealed class DeterministicLabScenario
             _timestamp,
             trust,
             SamplesPerCycle,
-            cycles: 2);
+            cycles: 2,
+            nominalFrequencyHz: Frequency);
         var waveform = new WaveformFrame(
             injection.PhaseACurrentSamples,
             injection.PhaseBCurrentSamples,
