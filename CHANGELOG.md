@@ -13,7 +13,8 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - IN/VN explicit virtual channels with calculated `IA+IB+IC` and `VA+VB+VC` residual fallback;
 - interlocked **START** and **STOP** controls aligned with the ARSVIN publisher operating pattern;
 - configured-versus-effective output identity, state timestamps, and internal evidence schema version 4;
-- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, stopped-zero output, protection operation/restraint, exact pickup threshold, configured delay, and trip-latch retention.
+- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, stopped-zero output, protection operation/restraint, exact pickup threshold, configured delay, and trip-latch retention;
+- modeless P4.2 **Advanced Injection Laboratory** foundation with single-window editor authority, an active Direct view, and clearly reserved future Symmetrical, Impedance, Ramp, Sequencer, and advanced Waveform stages.
 
 ### Changed
 
@@ -23,7 +24,10 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table;
 - the main Run control mirrors the same Start injection / Stop injection interlock;
 - changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions;
-- relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission.
+- relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission;
+- opening Advanced Injection transfers the existing Direct editor out of Main Window, hides the Main `INJECT` tab, and leaves Main Window in DUAL monitoring mode;
+- closing Advanced Injection restores the same editor and `INJECT` tab without replacing the configured source, output state, or trip latch;
+- leaving Internal demo closes the Advanced Injection Window safely so Live Npcap and PCAP replay retain exclusive source context.
 
 ## [0.1.0-beta.1] — 2026-08-03
 
