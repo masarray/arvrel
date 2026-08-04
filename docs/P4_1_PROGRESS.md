@@ -37,7 +37,8 @@ Make Internal virtual injection behave like a secondary-injection test source: v
 - [x] Exact pickup-current and configured-delay test
 - [x] NuGet vulnerability audit
 - [x] Changed-file scope review: nine expected P4.1 files; no live/replay/parser/protection-function implementation modification
-- [ ] Squash merge to `main`
+- [x] Squash merge PR #36 to `main`
+- [x] Merge commit `00f73e34b403ef3c939088f2256ce62064b6f275`
 
 ## Manual Windows QA
 
