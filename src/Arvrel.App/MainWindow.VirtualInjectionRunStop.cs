@@ -28,8 +28,8 @@ public partial class MainWindow
 
         _virtualInjectionRunStopInitialized = true;
 
-        // Replace the legacy internal Run/Pause and one-click fault behavior while
-        // preserving the existing handlers for live capture and replay modes.
+        // Replace the legacy internal Run/Pause behavior while preserving the
+        // existing handlers for live capture and replay modes.
         RunButton.Click -= RunButton_Click;
         RunButton.Click += VirtualInjectionRunButton_Click;
         InjectFaultButton.Click -= InjectFault_Click;
@@ -38,9 +38,12 @@ public partial class MainWindow
 
         InstallVirtualInjectionRunStopButtons();
 
+        // This timer only observes the short STARTING -> RUNNING transition.
+        // Presentation properties are written only when their values change, so
+        // the timer does not continuously invalidate text and brushes.
         _virtualInjectionRunStopTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(80)
+            Interval = TimeSpan.FromMilliseconds(200)
         };
         _virtualInjectionRunStopTimer.Tick += (_, _) => RefreshVirtualInjectionRunStopPresentation();
         _virtualInjectionRunStopTimer.Start();
@@ -140,11 +143,16 @@ public partial class MainWindow
         if (SourceCombo.SelectedIndex != 0)
             return;
 
-        var preset = _scenario.FaultActive ? "Normal balanced" : "A-G fault";
-        ApplyVirtualInjectionPreset(preset, announce: false);
+        // One-click secondary-injection behavior: load the A-G values and
+        // energize them immediately. The command no longer toggles back to a
+        // normal profile or leaves the fault merely armed while stopped.
+        ApplyVirtualInjectionPreset("A-G fault", announce: false);
+        if (!_scenario.IsRunning)
+            StartVirtualInjectionSource(announce: false);
+
         StatusText.Text = _scenario.IsRunning
-            ? $"Preset '{preset}' applied to the energized virtual source. Protection follows the measured current and active settings."
-            : $"Preset '{preset}' armed. Output remains 0 V / 0 A until START is pressed.";
+            ? "A-G fault injection started. Relay operation follows the measured current, active pickup, delay, and trust state."
+            : "A-G fault values were loaded, but injection could not start because the editor contains invalid data.";
         RefreshVirtualInjectionRunStopPresentation();
     }
 
@@ -187,7 +195,7 @@ public partial class MainWindow
         if (changed)
         {
             AddEvent("INJ START", $"{_scenario.ActiveProfile.Name} · {_scenario.InjectionFingerprint[..12]}");
-            SetVirtualInjectionStatus("STARTING · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
+            SetVirtualInjectionStatus("STARTING", WarningBrush, "#FBF2E3", "#E2C58F");
         }
 
         UpdateRunButton();
@@ -195,7 +203,7 @@ public partial class MainWindow
         if (announce)
         {
             StatusText.Text = changed
-                ? "Virtual output energized. Measurement is visible immediately; pickup and trip are enabled after one coherent nominal cycle."
+                ? "Virtual output energized. Pickup and trip are enabled after one coherent nominal cycle."
                 : "Virtual output is already running.";
         }
         return changed;
@@ -217,8 +225,8 @@ public partial class MainWindow
         if (announce)
         {
             StatusText.Text = changed
-                ? "Virtual output stopped: all generated voltage and current are zero. Configured values remain armed."
-                : "Virtual output is already stopped at 0 V / 0 A.";
+                ? "Virtual output stopped at 0 V / 0 A. Configured values remain armed."
+                : "Virtual output is already stopped.";
         }
         return changed;
     }
@@ -243,60 +251,87 @@ public partial class MainWindow
             return;
 
         var running = _scenario.IsRunning;
-        if (_virtualInjectionStartButton is not null)
-            _virtualInjectionStartButton.IsEnabled = !running;
-        if (_virtualInjectionStopButton is not null)
-            _virtualInjectionStopButton.IsEnabled = running;
+        SetEnabledIfChanged(_virtualInjectionStartButton, !running);
+        SetEnabledIfChanged(_virtualInjectionStopButton, running);
 
-        RunButtonText.Text = running ? "Stop injection" : "Start injection";
-        RunButtonIcon.Kind = running ? LucideIconKind.CircleStop : LucideIconKind.Play;
-        RunButtonIcon.Filled = running;
+        SetTextIfChanged(RunButtonText, running ? "Stop injection" : "Start injection");
+        var desiredIcon = running ? LucideIconKind.CircleStop : LucideIconKind.Play;
+        if (RunButtonIcon.Kind != desiredIcon)
+            RunButtonIcon.Kind = desiredIcon;
+        if (RunButtonIcon.Filled != running)
+            RunButtonIcon.Filled = running;
 
         var currentStatus = _virtualInjectionStatusText?.Text ?? string.Empty;
         var preserveValidationStatus = currentStatus.StartsWith("INVALID", StringComparison.Ordinal) ||
                                        currentStatus.StartsWith("EDITING", StringComparison.Ordinal);
         if (!preserveValidationStatus)
         {
-            if (!running)
+            var desiredStatus = !running
+                ? "STOPPED"
+                : _scenario.WindowStatus == "rebuilding"
+                    ? "STARTING"
+                    : "RUNNING";
+            if (!string.Equals(currentStatus, desiredStatus, StringComparison.Ordinal))
             {
-                SetVirtualInjectionStatus("STOPPED · OUTPUT ZERO", BrushFrom("#657586"), "#F2F5F7", "#CBD3DA");
-            }
-            else if (_scenario.WindowStatus == "rebuilding")
-            {
-                SetVirtualInjectionStatus("STARTING · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
-            }
-            else
-            {
-                SetVirtualInjectionStatus("RUNNING · OUTPUT ACTIVE", HealthyBrush, "#EAF5EC", "#B9D8BF");
+                if (!running)
+                    SetVirtualInjectionStatus(desiredStatus, BrushFrom("#657586"), "#F2F5F7", "#CBD3DA");
+                else if (_scenario.WindowStatus == "rebuilding")
+                    SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
+                else
+                    SetVirtualInjectionStatus(desiredStatus, HealthyBrush, "#EAF5EC", "#B9D8BF");
             }
         }
 
-        StreamHealthText.Text = _scenario.SmvDegraded
-            ? "  ·  INTERNAL · WARN"
+        var streamText = _scenario.SmvDegraded
+            ? "  ·  WARN"
             : !running
-                ? "  ·  INTERNAL · STOPPED"
+                ? "  ·  STOPPED"
                 : _scenario.WindowStatus == "coherent"
-                    ? "  ·  INTERNAL · RUNNING"
-                    : "  ·  INTERNAL · STARTING";
-        StreamHealthText.Foreground = _scenario.SmvDegraded
+                    ? "  ·  RUNNING"
+                    : "  ·  STARTING";
+        SetTextIfChanged(StreamHealthText, streamText);
+
+        var streamBrush = _scenario.SmvDegraded
             ? WarningBrush
             : running
                 ? HealthyBrush
                 : BrushFrom("#657586");
+        if (!Equals(StreamHealthText.Foreground, streamBrush))
+            StreamHealthText.Foreground = streamBrush;
 
-        var shortFingerprint = _scenario.InjectionFingerprint[..12];
-        var outputText = running
-            ? $"OUTPUT ACTIVE · {_scenario.ActiveProfile.Name}"
-            : $"OUTPUT ZERO · armed {_scenario.ActiveProfile.Name}";
-        WaveformSubtitleText.Text = $"{outputText} · {_scenario.NeutralCurrentProvenance} · {_scenario.NeutralVoltageProvenance}";
-        WaveformSubtitleText.ToolTip =
+        var stateText = !running
+            ? "STOPPED"
+            : _scenario.WindowStatus == "coherent"
+                ? "RUNNING"
+                : "STARTING";
+        SetTextIfChanged(WaveformSubtitleText, $"{_scenario.ActiveProfile.Name} · {stateText}");
+
+        var tooltip =
             $"Configured profile {_scenario.ActiveProfile.Name}\n" +
             $"Configured fingerprint {_scenario.InjectionFingerprint}\n" +
             $"Output state {_scenario.OutputState}\n" +
             $"Effective output fingerprint {_scenario.OutputFingerprint}\n" +
             $"Injected frequency {_scenario.ActiveProfile.FrequencyHz:0.###} Hz\n" +
-            $"STOP forces 0 V / 0 A; START energizes after validation.";
-        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · injection {shortFingerprint} · {_scenario.OutputState}";
+            $"IN {_scenario.NeutralCurrentProvenance}\n" +
+            $"VN {_scenario.NeutralVoltageProvenance}";
+        if (!Equals(WaveformSubtitleText.ToolTip, tooltip))
+            WaveformSubtitleText.ToolTip = tooltip;
+
+        SetTextIfChanged(
+            RelayFooterText,
+            $"{_settings.GroupName} · REV {_settings.Revision} · VIRTUAL INJECTION");
+    }
+
+    private static void SetEnabledIfChanged(Control? control, bool enabled)
+    {
+        if (control is not null && control.IsEnabled != enabled)
+            control.IsEnabled = enabled;
+    }
+
+    private static void SetTextIfChanged(TextBlock? textBlock, string text)
+    {
+        if (textBlock is not null && !string.Equals(textBlock.Text, text, StringComparison.Ordinal))
+            textBlock.Text = text;
     }
 }
 

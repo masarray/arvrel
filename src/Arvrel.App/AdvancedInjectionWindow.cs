@@ -6,10 +6,17 @@ namespace Arvrel.App;
 
 public sealed class AdvancedInjectionWindow : Window
 {
+    private static readonly SolidColorBrush RunningBrush = CreateBrush("#469A58");
+    private static readonly SolidColorBrush StartingBrush = CreateBrush("#C48B2B");
+    private static readonly SolidColorBrush StoppedBrush = CreateBrush("#657586");
+
     private readonly ContentControl _directHost;
     private readonly TextBlock _statusText;
     private readonly TextBlock _profileText;
     private readonly TabControl _tabs;
+    private string? _lastProfileName;
+    private string? _lastFingerprint;
+    private string? _lastOutputState;
 
     public AdvancedInjectionWindow()
     {
@@ -20,7 +27,7 @@ public sealed class AdvancedInjectionWindow : Window
         MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
-        Background = Brush("#F3F6F9");
+        Background = CreateBrush("#F3F6F9");
         FontFamily = new FontFamily("Segoe UI Variable, Segoe UI");
 
         var root = new Grid();
@@ -43,14 +50,14 @@ public sealed class AdvancedInjectionWindow : Window
             Text = "ADVANCED INJECTION LABORATORY",
             FontSize = 18,
             FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#172033")
+            Foreground = CreateBrush("#172033")
         });
         titleBlock.Children.Add(new TextBlock
         {
-            Text = "Modeless virtual secondary-injection workspace · one shared source authority",
+            Text = "Virtual secondary-injection workspace",
             Margin = new Thickness(0, 3, 0, 0),
             FontSize = 11,
-            Foreground = Brush("#64748B")
+            Foreground = CreateBrush("#64748B")
         });
         header.Children.Add(titleBlock);
 
@@ -58,16 +65,16 @@ public sealed class AdvancedInjectionWindow : Window
         {
             Padding = new Thickness(10, 6, 10, 6),
             CornerRadius = new CornerRadius(5),
-            Background = Brush("#E8F1F8"),
-            BorderBrush = Brush("#B9D2E5"),
+            Background = CreateBrush("#E8F1F8"),
+            BorderBrush = CreateBrush("#B9D2E5"),
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
-                Text = "EDITOR AUTHORITY ACTIVE",
+                Text = "EDITOR ACTIVE",
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = Brush("#2E6F9E")
+                Foreground = CreateBrush("#2E6F9E")
             }
         };
         Grid.SetColumn(authorityBadge, 1);
@@ -84,7 +91,7 @@ public sealed class AdvancedInjectionWindow : Window
         {
             Margin = new Thickness(18, 0, 18, 12),
             Background = Brushes.White,
-            BorderBrush = Brush("#D6E0E8"),
+            BorderBrush = CreateBrush("#D6E0E8"),
             BorderThickness = new Thickness(1)
         };
         _tabs.Items.Add(CreateTab("DIRECT", _directHost, true));
@@ -108,9 +115,9 @@ public sealed class AdvancedInjectionWindow : Window
 
         _profileText = new TextBlock
         {
-            Text = "Configured profile waiting",
+            Text = "No configured profile",
             FontSize = 10.5,
-            Foreground = Brush("#64748B"),
+            Foreground = CreateBrush("#64748B"),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
@@ -118,10 +125,10 @@ public sealed class AdvancedInjectionWindow : Window
 
         _statusText = new TextBlock
         {
-            Text = "STOPPED · OUTPUT ZERO",
+            Text = "STOPPED",
             FontSize = 10.5,
             FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#657586"),
+            Foreground = StoppedBrush,
             VerticalAlignment = VerticalAlignment.Center
         };
         Grid.SetColumn(_statusText, 1);
@@ -158,19 +165,34 @@ public sealed class AdvancedInjectionWindow : Window
 
     public void UpdateRuntimeStatus(string profileName, string outputState, string fingerprint)
     {
-        _profileText.Text = $"Configured: {profileName} · {fingerprint}";
+        if (!string.Equals(_lastProfileName, profileName, StringComparison.Ordinal))
+        {
+            _profileText.Text = profileName;
+            _lastProfileName = profileName;
+        }
+
+        if (!string.Equals(_lastFingerprint, fingerprint, StringComparison.Ordinal))
+        {
+            _profileText.ToolTip = $"Injection fingerprint {fingerprint}";
+            _lastFingerprint = fingerprint;
+        }
+
+        if (string.Equals(_lastOutputState, outputState, StringComparison.Ordinal))
+            return;
+
         _statusText.Text = outputState switch
         {
-            "running" => "RUNNING · OUTPUT ACTIVE",
-            "starting" => "STARTING · REBUILDING",
-            _ => "STOPPED · OUTPUT ZERO"
+            "running" => "RUNNING",
+            "starting" => "STARTING",
+            _ => "STOPPED"
         };
         _statusText.Foreground = outputState switch
         {
-            "running" => Brush("#469A58"),
-            "starting" => Brush("#C48B2B"),
-            _ => Brush("#657586")
+            "running" => RunningBrush,
+            "starting" => StartingBrush,
+            _ => StoppedBrush
         };
+        _lastOutputState = outputState;
     }
 
     private static TabItem CreateTab(string header, object content, bool enabled)
@@ -187,8 +209,8 @@ public sealed class AdvancedInjectionWindow : Window
         {
             Margin = new Thickness(18),
             Padding = new Thickness(24),
-            Background = Brush("#F8FAFC"),
-            BorderBrush = Brush("#D9E3EA"),
+            Background = CreateBrush("#F8FAFC"),
+            BorderBrush = CreateBrush("#D9E3EA"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Child = new TextBlock
@@ -198,12 +220,12 @@ public sealed class AdvancedInjectionWindow : Window
                 VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Center,
                 FontSize = 13,
-                Foreground = Brush("#64748B"),
+                Foreground = CreateBrush("#64748B"),
                 TextWrapping = TextWrapping.Wrap
             }
         };
 
-    private static SolidColorBrush Brush(string value)
+    private static SolidColorBrush CreateBrush(string value)
     {
         var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(value)!;
         brush.Freeze();

@@ -27,6 +27,7 @@ public partial class MainWindow
     private PhasorDisplayMode _phasorDisplayMode = PhasorDisplayMode.Current;
     private TextBlock? _analysisTitleText;
     private TextBlock? _analysisBadgeText;
+    private string? _lastPhasorPresentationSignature;
 
     protected override void OnContentRendered(EventArgs e)
     {
@@ -75,9 +76,12 @@ public partial class MainWindow
         InstallAnalysisHeaderControls();
         UpdateAnalysisSourceMode(announce: false);
 
+        // Ten frames per second is sufficient for an engineering instrument.
+        // More importantly, RefreshPhasorFrame only assigns a new frame when
+        // the projected vectors or status actually change.
         _phasorRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(80)
+            Interval = TimeSpan.FromMilliseconds(100)
         };
         _phasorRefreshTimer.Tick += (_, _) => RefreshPhasorFrame();
         _phasorRefreshTimer.Start();
@@ -123,7 +127,7 @@ public partial class MainWindow
         foreach (var child in titleLine.Children.OfType<FrameworkElement>())
             child.VerticalAlignment = VerticalAlignment.Center;
 
-        StreamHealthText.MaxWidth = 92;
+        StreamHealthText.MaxWidth = 76;
         StreamHealthText.TextTrimming = TextTrimming.CharacterEllipsis;
         StreamHealthText.VerticalAlignment = VerticalAlignment.Center;
 
@@ -218,6 +222,7 @@ public partial class MainWindow
                 2 => PhasorDisplayMode.Sequence,
                 _ => PhasorDisplayMode.Current
             };
+            _lastPhasorPresentationSignature = null;
             RefreshPhasorFrame();
         };
         controlsLine.Children.Add(_phasorQuantityCombo);
@@ -268,7 +273,11 @@ public partial class MainWindow
         var internalMode = SourceCombo.SelectedIndex == 0;
         var injectionAvailable = internalMode && !IsAdvancedInjectionOpen;
         if (_analysisModeButtons.TryGetValue(AnalysisWorkspaceMode.Injection, out var injectionButton))
-            injectionButton.Visibility = injectionAvailable ? Visibility.Visible : Visibility.Collapsed;
+        {
+            var desiredVisibility = injectionAvailable ? Visibility.Visible : Visibility.Collapsed;
+            if (injectionButton.Visibility != desiredVisibility)
+                injectionButton.Visibility = desiredVisibility;
+        }
 
         if (!injectionAvailable && _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
             ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
@@ -339,8 +348,12 @@ public partial class MainWindow
         foreach (var pair in _analysisModeButtons)
         {
             var selected = pair.Key == mode;
-            pair.Value.Background = selected ? accentSoft : Brushes.Transparent;
-            pair.Value.Foreground = selected ? accent : inactiveText;
+            var background = selected ? accentSoft : Brushes.Transparent;
+            var foreground = selected ? accent : inactiveText;
+            if (!Equals(pair.Value.Background, background))
+                pair.Value.Background = background;
+            if (!Equals(pair.Value.Foreground, foreground))
+                pair.Value.Foreground = foreground;
         }
 
         UpdateAnalysisHeader(mode);
@@ -353,26 +366,26 @@ public partial class MainWindow
                 AnalysisWorkspaceMode.Phasor => "Phasor focus",
                 _ => "Waveform + compact phasor"
             };
-            StatusText.Text = $"Analysis view · {description}. Phasor reference follows VA = 0° when voltage is available.";
+            StatusText.Text = $"Analysis view · {description}.";
         }
     }
 
     private void UpdateAnalysisHeader(AnalysisWorkspaceMode mode)
     {
         if (_analysisTitleText is not null)
-            _analysisTitleText.Text = mode switch
+            SetTextIfChanged(_analysisTitleText, mode switch
             {
                 AnalysisWorkspaceMode.Injection => "Virtual injection",
                 AnalysisWorkspaceMode.Phasor => "Phasor analysis",
                 _ => "SMV waveform"
-            };
+            });
         if (_analysisBadgeText is not null)
-            _analysisBadgeText.Text = mode switch
+            SetTextIfChanged(_analysisBadgeText, mode switch
             {
                 AnalysisWorkspaceMode.Injection => "AUTO APPLY",
                 AnalysisWorkspaceMode.Phasor => "1 CYCLE",
                 _ => "2 CYCLES"
-            };
+            });
     }
 
     private void RefreshPhasorFrame()
@@ -400,11 +413,28 @@ public partial class MainWindow
             phasors = null;
         }
 
-        _phasorScope.Frame = PhasorDisplayProjector.Project(phasors, _phasorDisplayMode);
-        _phasorQuantityCombo?.SetCurrentValue(
-            ToolTipProperty,
-            _phasorScope.Frame.IsAvailable
-                ? $"{_phasorScope.Frame.ReferenceLabel} · {_phasorScope.Frame.Status}"
-                : _phasorScope.Frame.Status);
+        var frame = PhasorDisplayProjector.Project(phasors, _phasorDisplayMode);
+        var signature = BuildPhasorPresentationSignature(frame);
+        if (!string.Equals(_lastPhasorPresentationSignature, signature, StringComparison.Ordinal))
+        {
+            _phasorScope.Frame = frame;
+            _lastPhasorPresentationSignature = signature;
+        }
+
+        var toolTip = frame.IsAvailable
+            ? $"{frame.ReferenceLabel} · {frame.Status}"
+            : frame.Status;
+        if (_phasorQuantityCombo is not null && !Equals(_phasorQuantityCombo.ToolTip, toolTip))
+            _phasorQuantityCombo.ToolTip = toolTip;
+    }
+
+    private static string BuildPhasorPresentationSignature(PhasorDisplayFrame frame)
+    {
+        var vectors = string.Join(
+            ";",
+            frame.Vectors.Select(vector => FormattableString.Invariant(
+                $"{vector.Key}:{vector.Magnitude:R}:{vector.AngleDegrees:R}:{vector.QuantityKind}:{vector.IsResidual}:{vector.IsNegativeSequence}")));
+        return FormattableString.Invariant(
+            $"{frame.Mode}|{frame.IsAvailable}|{frame.ReferenceLabel}|{frame.Status}|{frame.MaximumCurrent:R}|{frame.MaximumVoltage:R}|{frame.PositiveSequenceAngleDifferenceDegrees:R}|{vectors}");
     }
 }
