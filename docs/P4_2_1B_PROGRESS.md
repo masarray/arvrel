@@ -44,10 +44,12 @@ Clean the Internal virtual-injection layout and remove systemic WPF flicker repo
 - [x] Process-bus tests
 - [x] Virtual-injection tests
 - [x] NuGet vulnerability audit
-- [ ] Final CI after documentation commit
-- [ ] Final changed-file scope review
-- [ ] Mark PR ready for review
-- [ ] Squash merge to `main`
+- [x] Static public-site validation
+- [x] Final CI after documentation commit
+- [x] Final changed-file scope review: seven expected UI/docs files; no parser, process-bus engine, protection-function, or measurement-algorithm changes
+- [x] Mark PR #42 ready for review
+- [x] Squash merge PR #42 to `main`
+- [x] Merge commit `77e25d5521c7bd6ac55485cb178dc9582df0a104`
 
 ## Manual Windows QA
 
