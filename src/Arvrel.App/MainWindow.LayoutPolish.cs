@@ -34,9 +34,6 @@ public partial class MainWindow
             _analysisHost.SnapsToDevicePixels = true;
         }
 
-        // Reserve enough deterministic width for all four workspace tabs and
-        // the phasor selector. The previous center column was narrower than the
-        // controls it contained, which clipped INJECT and ADVANCED at 1520 px.
         if (headerGrid.ColumnDefinitions.Count >= 3)
         {
             headerGrid.ColumnDefinitions[0].Width = new GridLength(210);
@@ -83,6 +80,27 @@ public partial class MainWindow
                 groups[index].Margin = new Thickness(0, 0, index == groups.Length - 1 ? 0 : 8, 0);
             }
         }
+
+        // Preset, clear/reset, and Advanced actions may temporarily invoke the
+        // legacy generic renderer. Restore the concise injection labels in the
+        // same dispatcher cycle instead of waiting for the 250 ms observer.
+        if (_virtualInjectionView is not null)
+            _virtualInjectionView.AddHandler(
+                Button.ClickEvent,
+                new RoutedEventHandler(InjectionEditorAction_Click),
+                handledEventsToo: true);
+        if (_virtualInjectionPresetCombo is not null)
+            _virtualInjectionPresetCombo.SelectionChanged += (_, _) => QueueConciseInjectionRefresh();
+    }
+
+    private void InjectionEditorAction_Click(object sender, RoutedEventArgs e)
+        => QueueConciseInjectionRefresh();
+
+    private void QueueConciseInjectionRefresh()
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ContextIdle,
+            new Action(RefreshVirtualInjectionRunStopPresentation));
     }
 }
 
