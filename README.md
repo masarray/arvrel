@@ -42,8 +42,13 @@ ARVREL is designed for protection engineers, substation-automation engineers, pr
 
 The beta is not presented as a certified protection IED, calibrated relay test set, IEC 61850 conformance result, or deterministic hard-real-time trip platform.
 
+### Current source development
+
+The `main` development line adds the P4 **Virtual Injection Laboratory** for users without an SMV publisher. It provides an editable 4I+4V source, fixed 4 kHz nominal sampling grid, existing single-bin DFT measurement path, protection presets, phasor/waveform evidence, trust-aware atomic apply, and injection identity in evidence exports. This unreleased capability is included in the next package only after its release tag and integrity assets are published.
+
 ## What you can do
 
+- use the current source Virtual Injection Laboratory to edit 4I+4V RMS values, angles, common frequency, and explicit/calculated neutral-channel provenance without an external SV publisher;
 - capture IEC 61850 Sampled Values through Npcap or replay PCAP/PCAPNG files;
 - import SCL and evaluate APPID, destination MAC, VLAN, `svID`, `datSet`, `confRev`, mapping, scaling, quality, freshness, and `smpCnt` evidence;
 - inspect 4I+4V one-cycle RMS phasors, symmetrical components, residual quantities, and complete two-cycle waveform windows;
@@ -84,6 +89,8 @@ The trust pipeline evaluates complete measurement windows, live freshness, paylo
 
 Rejected duplicate and out-of-order frames remain visible in telemetry but their payload samples do not enter RMS, waveform, phasor, or protection buffers.
 
+A newly accepted virtual-injection profile is also visible immediately while pickup and trip authority remain restrained until a complete coherent nominal measurement cycle has been rebuilt.
+
 ## Five-minute evaluation
 
 ### Use an official Windows package
@@ -93,7 +100,7 @@ This is the recommended path for first-time evaluation. The packaged application
 1. Download the Windows installer or portable ZIP from [GitHub Releases](https://github.com/masarray/arvrel/releases).
 2. Launch ARVREL and select **Internal demo**.
 3. Open **Relay settings** and **CT/VT context**.
-4. Use **Inject A-G fault**.
+4. Use **Inject A-G fault** in `v0.1.0-beta.1`, or use the editable **INJECT** workspace when evaluating a later package that includes P4.
 5. Review the trust state, waveform, phasors, relay LCD, pickup/trip indication, event trace, and operation evidence.
 6. Install Npcap separately only when authorized live Sampled Values capture is required.
 
@@ -128,10 +135,10 @@ See [Windows build and run](docs/WINDOWS_SETUP.md) for execution-policy-safe com
 ## Architecture at a glance
 
 ```text
-Internal deterministic source / Live Npcap / PCAP replay
+Internal virtual injection / Live Npcap / PCAP replay
                          │
                          ▼
-              ARIEC61850 parse + SCL model
+       synthetic sample source / ARIEC61850 parse + SCL model
                          │
                          ▼
      continuity · mapping · scaling · quality · trust gates
@@ -148,9 +155,9 @@ Internal deterministic source / Live Npcap / PCAP replay
   virtual trip latch · operation record · evidence export
 ```
 
-Protection evaluation occurs when decoded measurements arrive, not when WPF renders. Mutable per-stream runtime state is protected independently and exposed to the UI through immutable snapshots.
+Protection evaluation occurs when decoded or internally generated measurements arrive, not when WPF renders. Mutable per-stream runtime state is protected independently and exposed to the UI through immutable snapshots.
 
-See [Architecture](docs/ARCHITECTURE.md) and [P2 multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md).
+See [Architecture](docs/ARCHITECTURE.md), [P2 multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md), and [P4 virtual injection laboratory](docs/P4_VIRTUAL_INJECTION.md).
 
 ## Research and validation
 
@@ -183,7 +190,7 @@ ARVREL currently covers the IEC 61850 SV → fundamental quantities → feeder p
 | [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html) | [Deterministic scenario catalog](docs/data/research-scenarios.json) | [Code of conduct](CODE_OF_CONDUCT.md) |
 | [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Third-party notices](THIRD-PARTY-NOTICES.md) |
 | [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Commercial licensing](COMMERCIAL-LICENSING.md) |
-| [Download and verify](https://masarray.github.io/arvrel/download.html) | [Product requirements](docs/PRD.md) | [Public roadmap](https://masarray.github.io/arvrel/roadmap.html) |
+| [Download and verify](https://masarray.github.io/arvrel/download.html) | [P4 virtual injection](docs/P4_VIRTUAL_INJECTION.md) | [Public roadmap](https://masarray.github.io/arvrel/roadmap.html) |
 
 ## Engineering and safety boundary
 
@@ -204,6 +211,8 @@ Use live capture only on isolated, authorized laboratory networks. Do not use AR
 
 - unsigned community binaries may trigger Windows reputation warnings;
 - live behavior depends on Windows scheduling, Npcap, adapter drivers, publisher behavior, adapter quality, and host load;
+- virtual injection uses a fixed 4 kHz nominal 50 Hz measurement grid and is not a calibrated relay-test source;
+- off-nominal injection intentionally exposes the current nominal-frequency estimator response rather than providing adaptive frequency tracking;
 - 46, 47, 49, 81U/O, 32, 37, 50BF, 79, 25, 86, 74TCS, 60, and 87T are not implemented;
 - negative-sequence and memory polarization for 67N are deferred;
 - CPU-isolated execution, real-time scheduling benchmarks, HIL timing characterization, and deployment-grade virtual-IED availability are not current claims;
