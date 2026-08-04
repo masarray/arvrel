@@ -324,7 +324,7 @@ public partial class MainWindow
             _virtualInjectionFrequencyText.BorderBrush = TripBrush;
             return false;
         }
-        _virtualInjectionFrequencyText.ClearValue(Border.BorderBrushProperty);
+        _virtualInjectionFrequencyText.ClearValue(Control.BorderBrushProperty);
 
         var channels = new Dictionary<VirtualInjectionSignal, VirtualInjectionChannel>();
         foreach (var row in _virtualInjectionRows)
