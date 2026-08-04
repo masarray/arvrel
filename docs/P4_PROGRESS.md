@@ -62,4 +62,5 @@ These checks require launching the Windows WPF application; they cannot be hones
 - [x] Resolve all compiler and CI findings
 - [x] Update changelog, README, engineering contract, and checklist
 - [x] Mark PR ready for review
-- [ ] Squash merge to `main`
+- [x] Squash merge PR #34 to `main`
+- [x] Merge commit `0d22f09aefcc9d7ef9b943dda94c9160761da0da`
