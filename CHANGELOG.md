@@ -2,6 +2,24 @@
 
 All notable public changes to ARVREL are documented here. The project uses semantic-style version labels while the public API and evidence formats remain subject to change during beta.
 
+## [Unreleased]
+
+### Added
+
+- Internal demo **Virtual Injection Laboratory** with editable 4I+4V RMS magnitude, angle, common frequency, enable state, and neutral-channel provenance;
+- validated debounced auto apply with last-valid retention and an explicit coherent-window rebuild state;
+- fixed 4 kHz nominal sampling grid feeding the existing mean-removed 50 Hz single-bin DFT, so off-nominal injection exposes the estimator response instead of changing the measurement grid;
+- normal, phase/ground-fault, voltage, and directional protection presets that populate the same editable table;
+- IN/VN explicit virtual channels with calculated `IA+IB+IC` and `VA+VB+VC` residual fallback;
+- injection SHA-256 identity and internal evidence schema version 3;
+- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, protection operation/restraint, and trip-latch retention.
+
+### Changed
+
+- Internal demo is no longer limited to a fixed A-G scenario;
+- the Internal analysis workspace defaults to Injection + Phasor while Waveform, Dual, and Phasor-only views remain available;
+- changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions.
+
 ## [0.1.0-beta.1] — 2026-08-03
 
 ### Added
