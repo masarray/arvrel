@@ -317,7 +317,7 @@ public static class VirtualInjectionPresets
         double frequency,
         double voltage,
         double current)
-        => new(
+        => new VirtualInjectionProfile(
             name,
             frequency,
             On(voltage, 0),
