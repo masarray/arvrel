@@ -12,11 +12,11 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-2563eb)](#current-public-status)
 [![Safety boundary](https://img.shields.io/badge/output-virtual%20only-b45309)](#engineering-and-safety-boundary)
 
-[Download Windows beta](https://github.com/masarray/arvrel/releases) · [Evaluate in five minutes](#five-minute-evaluation) · [Documentation](#documentation) · [Architecture](docs/ARCHITECTURE.md) · [Release notes](RELEASE-NOTES.md)
+[Product site](https://masarray.github.io/arvrel/) · [Download and verify](https://masarray.github.io/arvrel/download.html) · [Evaluate in five minutes](https://masarray.github.io/arvrel/quick-start.html) · [Documentation](#documentation) · [Release notes](RELEASE-NOTES.md)
 
 </div>
 
-![ARVREL IEC 61850 Sampled Values virtual protection relay laboratory](docs/assets/arvrel-main.png)
+![ARVREL IEC 61850 Sampled Values virtual protection relay laboratory](docs/assets/arvrel-main.webp)
 
 ## Why ARVREL
 
@@ -153,12 +153,13 @@ See [Architecture](docs/ARCHITECTURE.md) and [P2 multifunction feeder protection
 
 ## Documentation
 
-| Start here | Engineering detail | Project governance |
+| Public product routes | Engineering detail | Project governance |
 |---|---|---|
-| [Windows setup](docs/WINDOWS_SETUP.md) | [Architecture](docs/ARCHITECTURE.md) | [Contributing](CONTRIBUTING.md) |
-| [Release notes](RELEASE-NOTES.md) | [Multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md) | [Security](SECURITY.md) |
-| [Product requirements](docs/PRD.md) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Support](SUPPORT.md) |
-| [GitHub Releases](https://github.com/masarray/arvrel/releases) | [Third-party notices](THIRD-PARTY-NOTICES.md) | [Code of conduct](CODE_OF_CONDUCT.md) |
+| [Capabilities](https://masarray.github.io/arvrel/capabilities.html) | [Architecture notes](docs/ARCHITECTURE.md) | [Contributing](CONTRIBUTING.md) |
+| [Engineering workflows](https://masarray.github.io/arvrel/workflows/) | [Multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md) | [Security](SECURITY.md) |
+| [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Support](SUPPORT.md) |
+| [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Code of conduct](CODE_OF_CONDUCT.md) |
+| [Download and verify](https://masarray.github.io/arvrel/download.html) | [Product requirements](docs/PRD.md) | [Third-party notices](THIRD-PARTY-NOTICES.md) |
 
 ## Engineering and safety boundary
 
