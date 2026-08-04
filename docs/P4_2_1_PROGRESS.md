@@ -37,8 +37,9 @@ Remove visible text churn and steady-state flicker from the Internal virtual-inj
 - [x] Initial scope review: four UI/injection files only
 - [x] Documentation commit does not modify public-site assets; no static deployment gate required
 - [x] Final changed-file scope review: four UI/injection files plus changelog and progress document; no parser, process-bus, or protection-function implementation changes
-- [ ] Mark PR ready for review
-- [ ] Squash merge to `main`
+- [x] Mark PR #40 ready for review
+- [x] Squash merge PR #40 to `main`
+- [x] Merge commit `9c6edf000f4ba0dce71d13ab01e0105deaced696`
 
 ## Manual Windows QA
 
