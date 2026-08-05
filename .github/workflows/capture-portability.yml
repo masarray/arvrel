@@ -1,0 +1,46 @@
+name: Capture portability
+
+on:
+  pull_request:
+    paths:
+      - "src/Arvrel.Capture/**"
+      - "tests/Arvrel.Capture.Tests/**"
+      - ".github/workflows/capture-portability.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/Arvrel.Capture/**"
+      - "tests/Arvrel.Capture.Tests/**"
+      - ".github/workflows/capture-portability.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-portability:
+    name: capture-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test capture abstraction and PCAP replay
+        shell: bash
+        run: >-
+          dotnet test tests/Arvrel.Capture.Tests/Arvrel.Capture.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=capture-${{ runner.os }}.trx"
