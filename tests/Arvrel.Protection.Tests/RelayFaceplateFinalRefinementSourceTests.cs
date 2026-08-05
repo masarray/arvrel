@@ -7,19 +7,25 @@ namespace Arvrel.Protection.Tests;
 public sealed class RelayFaceplateFinalRefinementSourceTests
 {
     [TestMethod]
-    public void FinalGloss_IsDedicatedBroadOverlayAcrossCompleteFascia()
+    public void Fascia_UsesOneContinuousEdgeMatchedClearCoat()
     {
-        var source = File.ReadAllText(AppSourcePath("MainWindow.RelayFaceplateFinalRefinement.cs"));
+        var gloss = File.ReadAllText(AppSourcePath("MainWindow.RelayFullFaceGloss.cs"));
+        var finalLayer = File.ReadAllText(AppSourcePath("MainWindow.RelayFaceplateFinalRefinement.cs"));
 
-        StringAssert.Contains(source, "ARVREL_RELAY_FINAL_FULL_FACE_GLOSS");
-        StringAssert.Contains(source, "bodyGrid.Children.Insert(0, gloss)");
-        StringAssert.Contains(source, "Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count))");
-        StringAssert.Contains(source, "Grid.SetColumnSpan(gloss, Math.Max(1, bodyGrid.ColumnDefinitions.Count))");
-        StringAssert.Contains(source, "gloss.Margin = new Thickness(1.1)");
-        StringAssert.Contains(source, "gloss.CornerRadius = new CornerRadius(9.7)");
-        StringAssert.Contains(source, "M 0,0 L 0.72,0 L 0.24,1 L 0,1 Z");
-        StringAssert.Contains(source, "gloss.IsHitTestVisible = false");
-        Assert.IsFalse(source.Contains("Height = 62", StringComparison.Ordinal));
+        StringAssert.Contains(gloss, "RelayBodyDepthBackground");
+        StringAssert.Contains(gloss, "RelayBodyDepthBorder");
+        StringAssert.Contains(gloss, "Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count))");
+        StringAssert.Contains(gloss, "Grid.SetColumnSpan(gloss, Math.Max(1, bodyGrid.ColumnDefinitions.Count))");
+        StringAssert.Contains(gloss, "gloss.Margin = new Thickness(1.6)");
+        StringAssert.Contains(gloss, "gloss.CornerRadius = new CornerRadius(9.2)");
+        StringAssert.Contains(gloss, "FirstOrDefault(border => ReferenceEquals(border.Background, RelayBodyTopSheen))");
+        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, 0)");
+
+        Assert.IsFalse(gloss.Contains("Geometry.Parse", StringComparison.Ordinal));
+        Assert.IsFalse(gloss.Contains("DrawingBrush", StringComparison.Ordinal));
+        Assert.IsFalse(finalLayer.Contains("ApplyFinalFullFasciaGloss", StringComparison.Ordinal));
+        Assert.IsFalse(finalLayer.Contains("RelayFinalFasciaGloss", StringComparison.Ordinal));
+        Assert.IsFalse(finalLayer.Contains("Geometry.Parse", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -44,46 +50,33 @@ public sealed class RelayFaceplateFinalRefinementSourceTests
     }
 
     [TestMethod]
-    public void FinalRefinement_IsAppliedAfterEarlierPresentationLayers()
-    {
-        var source = File.ReadAllText(AppSourcePath("MainWindow.RelayFaceplateFinalRefinement.cs"));
-
-        StringAssert.Contains(source, "if (!_relayHardwarePresentationInitialized)");
-        StringAssert.Contains(source, "DispatcherPriority.SystemIdle");
-        StringAssert.Contains(source, "MaximumRelayFinalRefinementAttempts");
-        StringAssert.Contains(source, "button.Template = RelayFinalKeyTemplate");
-        StringAssert.Contains(source, "button.Template = RelayFinalResetTemplate");
-        Assert.IsFalse(source.Contains("DispatcherPriority.Inactive", StringComparison.Ordinal));
-    }
-
-    [TestMethod]
-    public void RelayLamps_UseOneMetalBezelAndAmberSmvBlock()
+    public void FaceplateLamps_UseSeparateBezelHaloAndLensLayers()
     {
         var behavior = File.ReadAllText(ControlSourcePath("RelayIndicatorLampBehavior.cs"));
         var presentation = File.ReadAllText(AppSourcePath("MainWindow.RelayLedPresentation.cs"));
-        var finalLayer = File.ReadAllText(AppSourcePath("MainWindow.RelayFaceplateFinalRefinement.cs"));
+        var annunciation = File.ReadAllText(AppSourcePath("MainWindow.RelayAnnunciation.cs"));
 
-        StringAssert.Contains(behavior, "RelayLampBezelBrush");
-        StringAssert.Contains(behavior, "ActiveLampGlowBlurRadius");
-        StringAssert.Contains(behavior, "ActiveLampGlowOpacity");
+        StringAssert.Contains(behavior, "RelayLampBezelDiameter = 16.0");
+        StringAssert.Contains(behavior, "RelayLampCavityDiameter = 12.4");
+        StringAssert.Contains(behavior, "RelayLampHaloDiameter = 10.8");
+        StringAssert.Contains(behavior, "RelayLampLensDiameter = 9.6");
+        StringAssert.Contains(behavior, "ConditionalWeakTable<Ellipse, LampVisualParts>");
+        StringAssert.Contains(behavior, "var halo = PhysicalEllipse(RelayLampHaloDiameter, TransparentHaloBrush, 19)");
+        StringAssert.Contains(behavior, "var bezel = PhysicalEllipse(RelayLampBezelDiameter, RelayLampBezelBrush, 20)");
+        StringAssert.Contains(behavior, "Panel.SetZIndex(lens, 22)");
         StringAssert.Contains(behavior, "\"BlockLed\" => RelayIndicatorState.Orange");
-        StringAssert.Contains(behavior, "ellipse.Stroke = RelayLampBezelBrush");
-        StringAssert.Contains(behavior, "RenderingBias = RenderingBias.Quality");
+        StringAssert.Contains(behavior, "lens.Stroke = null");
+        StringAssert.Contains(behavior, "lens.Effect = null");
 
-        StringAssert.Contains(presentation, "var diameter = compact ? 8d : 14d");
-        StringAssert.Contains(presentation, "led.OpacityMask = compact ? RelayLedLensOpacityMask : null");
-        StringAssert.Contains(presentation, "if (led.Fill is RadialGradientBrush)");
+        Assert.IsFalse(presentation.Contains("DependencyPropertyDescriptor", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("FillDescriptor", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("HealthyLed", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("TripLed", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("BlockLed", StringComparison.Ordinal));
 
-        foreach (var indicator in new[]
-                 {
-                     "HealthyLed", "PickupLed", "TripLed", "PhaseALed",
-                     "PhaseBLed", "PhaseCLed", "EarthLed", "BlockLed"
-                 })
-        {
-            StringAssert.Contains(finalLayer, indicator);
-        }
-        StringAssert.Contains(finalLayer, "led.Width = 14");
-        StringAssert.Contains(finalLayer, "led.StrokeThickness = 2");
+        Assert.IsFalse(annunciation.Contains("TripLed.Width", StringComparison.Ordinal));
+        Assert.IsFalse(annunciation.Contains("PhaseALed.Width", StringComparison.Ordinal));
+        Assert.IsFalse(annunciation.Contains("EarthLed.Width", StringComparison.Ordinal));
     }
 
     private static IEnumerable<string> ExtractRawTemplates(string source)
