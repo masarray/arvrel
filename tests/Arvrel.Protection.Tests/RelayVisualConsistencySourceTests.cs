@@ -38,7 +38,7 @@ public sealed class RelayVisualConsistencySourceTests
         StringAssert.Contains(gloss, "gloss.Height = double.NaN");
         StringAssert.Contains(gloss, "gloss.HorizontalAlignment = HorizontalAlignment.Stretch");
         StringAssert.Contains(gloss, "gloss.VerticalAlignment = VerticalAlignment.Stretch");
-        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, 0)");
+        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, -10)");
         StringAssert.Contains(gloss, "RelayBodyFullFaceGloss");
         StringAssert.Contains(gloss, "gloss.IsHitTestVisible = false");
         StringAssert.Contains(gloss, "ReferenceEquals(border.Background, RelayBodyTopSheen)");
