@@ -1,62 +1,115 @@
 # Platform and distribution policy
 
-## Current desktop support
+## Product channels
 
-ARVREL's desktop application is currently a Windows Presentation Foundation (WPF) application targeting `net8.0-windows`. The process-bus integration project also targets Windows because live capture uses the Windows Npcap transport.
+ARVREL currently maintains two desktop channels during the cross-platform migration:
 
-The official desktop release therefore supports **Windows 10/11 x64**. GitHub Actions must not label a Windows build as a Linux or macOS package.
+1. **ARVREL WPF** — the established Windows `net8.0-windows` product and release path.
+2. **ARVREL Avalonia** — the cross-platform `net10.0` migration shell packaged for Windows, Linux, and macOS after P5.5.
 
-## Windows packages
+The package family is always included in the filename. A WPF artifact must not be presented as a Linux or macOS application, and an Avalonia migration package must not silently replace the established WPF product.
 
-Each publishable release is expected to contain:
+## Established Windows WPF packages
+
+Each publishable WPF release contains:
 
 - `ARVREL-Setup-v<version>-win-x64.exe` — current-user installer;
 - `ARVREL-v<version>-win-x64-portable.exe` — self-contained single-file executable;
 - `ARVREL-v<version>-win-x64-portable.zip` — multi-file portable fallback;
-- `ARVREL-v<version>-legal-notices.zip` — license, third-party notices, support, security, and build information;
-- `SHA256SUMS.txt`, dependency report, optional CycloneDX SBOM, and GitHub artifact attestations.
+- `ARVREL-v<version>-legal-notices.zip`;
+- checksums, dependency evidence, optional SBOM, and GitHub attestations.
 
-### Per-user installer
-
-The installer uses `PrivilegesRequired=lowest` and installs under:
+The installer remains non-elevated and targets:
 
 ```text
 %LOCALAPPDATA%\Programs\ARVREL
 ```
 
-It does not request elevation and does not write to `Program Files` or machine-wide registry locations.
+## Avalonia cross-platform packages
 
-### Portable single EXE
+P5.5 produces a second, explicitly named package family:
 
-The portable executable is a self-contained .NET single-file publish. It does not require the .NET runtime to be installed and does not run an installer.
+### Windows x64
 
-The executable may extract bundled native components to the current user's temporary area at runtime. That is normal .NET single-file behavior and does not require administrator rights.
+- `ARVREL-Avalonia-v<version>-win-x64-portable.zip`;
+- `ARVREL-Avalonia-v<version>-win-x64-setup.exe`.
 
-## Locked or managed Windows computers
+The installer is per-user, non-elevated, and targets:
 
-“No installer” and “no administrator elevation” do **not** mean “bypass company security.” An unsigned executable can still be blocked by Windows SmartScreen, Microsoft Defender, AppLocker, WDAC, endpoint security, or an organization allow-list.
+```text
+%LOCALAPPDATA%\Programs\ARVREL-Avalonia
+```
 
-Users must follow the device owner's policy. When a managed computer blocks ARVREL, the correct path is for authorized IT staff to verify the published SHA-256 checksum and GitHub attestation, then allow the specific release if organizational policy permits it.
+### Linux x64
 
-Live IEC 61850 Sampled Values capture requires an authorized Npcap installation. Installing or updating that driver normally requires administrator approval. Internal virtual injection, source review, and PCAP replay do not install a capture driver.
+- `ARVREL-Avalonia-v<version>-linux-x64.tar.gz`;
+- `ARVREL-Avalonia-v<version>-linux-x64.deb`.
 
-## Code signing
+The Debian package installs under `/opt/arvrel`, creates `/usr/bin/arvrel`, and supplies a desktop entry and application icon. The `.deb` is intended for current Debian/Ubuntu-family x64 systems; the tar archive is the portable fallback for other compatible distributions.
 
-The public workflow intentionally performs no commercial Authenticode signing because no signing certificate is configured. Release metadata states that the binaries are unsigned. Checksums, SBOM data, pinned dependencies, and GitHub build-provenance attestations provide integrity evidence, but they are not a replacement for a trusted operating-system code-signing identity.
+### macOS Apple Silicon
 
-## Linux and macOS
+- `ARVREL-Avalonia-v<version>-osx-arm64.app.zip`;
+- `ARVREL-Avalonia-v<version>-osx-arm64.dmg`.
 
-The current WPF desktop UI cannot run on Linux or macOS. A GitHub Actions matrix cannot convert it into a native cross-platform application.
+The native bundle identifier is `io.github.masarray.arvrel`. The initial package targets Apple Silicon and macOS 12 or later.
 
-The protection engine itself targets cross-platform `net8.0`; the release workflow builds and tests that core on Windows, Ubuntu, and macOS to prevent unnecessary platform coupling. This is engineering groundwork, not a Linux or macOS desktop release.
+## Runtime policy
 
-A genuine Linux/macOS product requires a separate port with at least:
+Avalonia release candidates are self-contained publishes. Users do not need to install the matching .NET runtime separately.
 
-1. a cross-platform UI layer such as Avalonia;
-2. separation of Windows-specific WPF code from view models and application services;
-3. a capture abstraction with supported Linux/macOS transports;
-4. platform-specific packaging, icons, permissions, and file locations;
-5. macOS signing/notarization strategy or explicit unsigned distribution instructions;
-6. native smoke tests on each supported operating system.
+Self-contained does not mean that operating-system desktop libraries disappear:
 
-Until that port exists and passes native validation, releases must remain accurately labeled Windows-only.
+- Linux still requires the declared X11, font, FreeType, OpenGL, ICE, and SM packages;
+- macOS still enforces Gatekeeper and platform security policy;
+- Windows still enforces SmartScreen, Defender, AppLocker, WDAC, and organization allow-lists.
+
+## Capture capability
+
+Package availability and live-capture availability are separate claims.
+
+- Windows Avalonia packages include the existing Npcap adapter when the build has the pinned decoder, but Npcap itself must already be installed by an authorized administrator.
+- Linux and macOS packages support the internal laboratory and PCAP/PCAPNG replay.
+- P5.5 does not add a Linux libpcap backend or macOS BPF backend.
+
+No package installs a packet-capture driver or bypasses local security policy.
+
+## Signing and notarization
+
+The public repository has no commercial signing secrets configured.
+
+- WPF and Avalonia Windows packages are unsigned unless a future release explicitly reports a trusted Authenticode signature.
+- Linux archives and Debian packages are checksum-verified but are not signed by an APT repository key.
+- macOS packages receive an ad-hoc CI signature for bundle-integrity validation; they are not Developer ID signed or notarized.
+
+Users may receive platform warnings. SHA-256 checksums and GitHub provenance attestations provide source-to-artifact integrity evidence but do not replace trusted publisher signatures or Apple notarization.
+
+## Integrity evidence
+
+The Avalonia package workflow generates:
+
+- one platform manifest per runtime;
+- one checksum file per runtime;
+- an aggregate package index;
+- an aggregate checksum file;
+- GitHub build-provenance attestations on matching version tags.
+
+The aggregate verification job downloads artifacts produced by independent native runners and verifies the checksum files before any tag publication.
+
+## Managed computers
+
+Portable and per-user packages do not bypass enterprise controls. When execution is blocked, authorized IT staff should verify the published checksum and attestation and then apply the organization’s approved allow-list or software-distribution process.
+
+Installing Npcap, changing packet-capture permissions, overriding Gatekeeper, or modifying endpoint controls must follow the device owner’s policy.
+
+## Deferred distribution channels
+
+The following channels are not yet official:
+
+- Winget or Microsoft Store;
+- AppImage, Flatpak, Snap, or an APT repository;
+- Homebrew or the Mac App Store;
+- Intel macOS and ARM64 Linux packages;
+- signed/notarized commercial distribution.
+
+See `P5_5_CROSS_PLATFORM_PACKAGING.md` for the package implementation and acceptance boundary.
