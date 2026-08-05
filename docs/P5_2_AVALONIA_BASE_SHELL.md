@@ -25,9 +25,22 @@ Avalonia 12.1 uses the current desktop framework generation and the shell target
 Two solutions make that boundary explicit:
 
 - `ARVREL.sln`: current WPF product, portable core, process bus, capture, and established regression suites;
-- `ARVREL.Desktop.sln`: Avalonia migration shell plus its portable dependencies and shell tests.
+- `desktop/ARVREL.Desktop.sln`: Avalonia migration shell plus its portable dependencies and shell tests.
 
-This prevents the .NET 10 shell toolchain from silently changing the established WPF release build while still allowing the shell to reference the `net8.0` libraries.
+The root `global.json` remains pinned to .NET 8. `desktop/global.json` independently selects the .NET 10 SDK. This prevents the shell toolchain from silently changing the established WPF release build while still allowing the shell to reference the `net8.0` libraries.
+
+## Developer entry point
+
+From the repository root:
+
+```text
+cd desktop
+dotnet build ARVREL.Desktop.sln -c Release
+dotnet test ../tests/Arvrel.Desktop.Tests/Arvrel.Desktop.Tests.csproj -c Release --no-build
+dotnet run --project ../src/Arvrel.Desktop/Arvrel.Desktop.csproj
+```
+
+The sibling ARIEC61850 checkout remains optional for the deterministic internal laboratory. When it is absent, the shell reports live/replay capability as unavailable instead of failing to start.
 
 ## Delivered shell
 
@@ -76,7 +89,7 @@ The Avalonia layer does not own:
 
 The `Avalonia shell portability` workflow uses the .NET 10 SDK and runs on Windows, Ubuntu, and macOS. Each runner:
 
-1. builds the shell in decoder-less capability mode;
+1. builds `desktop/ARVREL.Desktop.sln` in decoder-less capability mode;
 2. runs shell lifecycle tests without a display server;
 3. publishes a framework-dependent host for the runner RID with the pinned ARIEC61850 decoder;
 4. verifies that the managed assembly and native app host are present.
@@ -86,6 +99,7 @@ The `Avalonia shell portability` workflow uses the .NET 10 SDK and runs on Windo
 P5.2 intentionally does not change:
 
 - `ARVREL.sln` membership or the WPF executable;
+- the root .NET 8 SDK selection;
 - the established Windows release packaging workflow;
 - core library target frameworks;
 - protection algorithms, settings, timing, trust, or evidence semantics;
@@ -97,7 +111,7 @@ P5.2 intentionally does not change:
 
 - WPF feature parity;
 - SCL import and file-dialog workflows in Avalonia;
-- live adapter selection and capture controls in Avalonia;
+- live adapter selection and capture controls;
 - replay file selection and stream browsing;
 - protection settings editors and algorithm laboratory;
 - evidence export;
