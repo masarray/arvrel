@@ -6,48 +6,56 @@ namespace Arvrel.Protection.Tests;
 public sealed class RelayVisualConsistencySourceTests
 {
     [TestMethod]
-    public void ActiveRelayLeds_ShareOneBezelAndGlowGeometry()
+    public void ActiveRelayLamps_ShareOnePhysicalBezelAndGlowGeometry()
     {
-        var source = File.ReadAllText(SourcePath("MainWindow.RelayLedPresentation.cs"));
+        var source = File.ReadAllText(ControlSourcePath("RelayIndicatorLampBehavior.cs"));
 
-        StringAssert.Contains(source, "RelayLedActiveStroke");
-        StringAssert.Contains(source, "RelayLedActiveBlurRadius");
-        StringAssert.Contains(source, "RelayLedActiveGlowOpacity");
-        Assert.AreEqual(4, CountOccurrences(source, "RelayLedActiveStroke, RelayLed"));
-        Assert.AreEqual(4, CountOccurrences(source, "RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity"));
+        StringAssert.Contains(source, "RelayLampBezelDiameter = 16.0");
+        StringAssert.Contains(source, "RelayLampCavityDiameter = 12.4");
+        StringAssert.Contains(source, "RelayLampHaloDiameter = 10.8");
+        StringAssert.Contains(source, "RelayLampLensDiameter = 9.6");
+        StringAssert.Contains(source, "ActiveLampGlowBlurRadius = 12.0");
+        StringAssert.Contains(source, "ActiveLampGlowOpacity = 0.74");
+        StringAssert.Contains(source, "ConditionalWeakTable<Ellipse, LampVisualParts>");
+        StringAssert.Contains(source, "PhysicalEllipse(RelayLampHaloDiameter, TransparentHaloBrush, 19)");
+        StringAssert.Contains(source, "PhysicalEllipse(RelayLampBezelDiameter, RelayLampBezelBrush, 20)");
+        StringAssert.Contains(source, "Panel.SetZIndex(lens, 22)");
+        StringAssert.Contains(source, "parts.Halo.Effect = visual.Glow");
+        StringAssert.Contains(source, "lens.Effect = null");
+        StringAssert.Contains(source, "\"BlockLed\" => RelayIndicatorState.Orange");
+
         Assert.IsFalse(source.Contains("RelayLedHealthyStroke", StringComparison.Ordinal));
-        Assert.IsFalse(source.Contains("RelayLedWarningStroke", StringComparison.Ordinal));
         Assert.IsFalse(source.Contains("RelayLedTripStroke", StringComparison.Ordinal));
-        Assert.IsFalse(source.Contains("RelayLedPhaseStroke", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("ellipse.Stroke = RelayLampBezelBrush", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void RelayGloss_StretchesAcrossFaceAndStaysBehindContent()
+    public void RelayGloss_StretchesAcrossFaceWithoutASecondReflectionPatch()
     {
-        var source = File.ReadAllText(SourcePath("MainWindow.RelayFullFaceGloss.cs"));
+        var gloss = File.ReadAllText(AppSourcePath("MainWindow.RelayFullFaceGloss.cs"));
+        var finalLayer = File.ReadAllText(AppSourcePath("MainWindow.RelayFaceplateFinalRefinement.cs"));
 
-        StringAssert.Contains(source, "gloss.Height = double.NaN");
-        StringAssert.Contains(source, "gloss.HorizontalAlignment = HorizontalAlignment.Stretch");
-        StringAssert.Contains(source, "gloss.VerticalAlignment = VerticalAlignment.Stretch");
-        StringAssert.Contains(source, "Panel.SetZIndex(gloss, -10)");
-        StringAssert.Contains(source, "RelayBodyFullFaceGloss");
-        StringAssert.Contains(source, "gloss.IsHitTestVisible = false");
-        Assert.IsFalse(source.Contains("Height = 62", StringComparison.Ordinal));
+        StringAssert.Contains(gloss, "gloss.Height = double.NaN");
+        StringAssert.Contains(gloss, "gloss.HorizontalAlignment = HorizontalAlignment.Stretch");
+        StringAssert.Contains(gloss, "gloss.VerticalAlignment = VerticalAlignment.Stretch");
+        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, 0)");
+        StringAssert.Contains(gloss, "RelayBodyFullFaceGloss");
+        StringAssert.Contains(gloss, "gloss.IsHitTestVisible = false");
+        StringAssert.Contains(gloss, "ReferenceEquals(border.Background, RelayBodyTopSheen)");
+
+        Assert.IsFalse(gloss.Contains("Geometry.Parse", StringComparison.Ordinal));
+        Assert.IsFalse(gloss.Contains("DrawingBrush", StringComparison.Ordinal));
+        Assert.IsFalse(finalLayer.Contains("RelayFinalFasciaGloss", StringComparison.Ordinal));
+        Assert.IsFalse(finalLayer.Contains("ApplyFinalFullFasciaGloss", StringComparison.Ordinal));
     }
 
-    private static int CountOccurrences(string source, string value)
-    {
-        var count = 0;
-        var offset = 0;
-        while ((offset = source.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            offset += value.Length;
-        }
-        return count;
-    }
+    private static string AppSourcePath(string fileName)
+        => SourcePath("src", "Arvrel.App", fileName);
 
-    private static string SourcePath(string fileName)
+    private static string ControlSourcePath(string fileName)
+        => SourcePath("src", "Arvrel.App", "Controls", fileName);
+
+    private static string SourcePath(params string[] segments)
     {
         var starts = new[]
         {
@@ -59,12 +67,12 @@ public sealed class RelayVisualConsistencySourceTests
         {
             for (var current = start; current is not null; current = current.Parent)
             {
-                var candidate = Path.Combine(current.FullName, "src", "Arvrel.App", fileName);
+                var candidate = Path.Combine(new[] { current.FullName }.Concat(segments).ToArray());
                 if (File.Exists(candidate))
                     return candidate;
             }
         }
 
-        throw new FileNotFoundException($"Unable to locate src/Arvrel.App/{fileName} from the test workspace.");
+        throw new FileNotFoundException($"Unable to locate {Path.Combine(segments)} from the test workspace.");
     }
 }
