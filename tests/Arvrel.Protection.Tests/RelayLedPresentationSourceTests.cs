@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Arvrel.Protection.Tests;
@@ -34,11 +33,29 @@ public sealed class RelayLedPresentationSourceTests
         StringAssert.Contains(source, "DependencyPropertyDescriptor.FromProperty(Shape.FillProperty");
     }
 
-    private static string SourcePath([CallerFilePath] string testFile = "")
+    private static string SourcePath()
     {
-        var testsDirectory = Path.GetDirectoryName(testFile)
-            ?? throw new InvalidOperationException("Unable to resolve test source directory.");
-        var repositoryRoot = Path.GetFullPath(Path.Combine(testsDirectory, "..", ".."));
-        return Path.Combine(repositoryRoot, "src", "Arvrel.App", "MainWindow.RelayLedPresentation.cs");
+        var starts = new[]
+        {
+            new DirectoryInfo(Environment.CurrentDirectory),
+            new DirectoryInfo(AppContext.BaseDirectory)
+        };
+
+        foreach (var start in starts)
+        {
+            for (var current = start; current is not null; current = current.Parent)
+            {
+                var candidate = Path.Combine(
+                    current.FullName,
+                    "src",
+                    "Arvrel.App",
+                    "MainWindow.RelayLedPresentation.cs");
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+
+        throw new FileNotFoundException(
+            "Unable to locate src/Arvrel.App/MainWindow.RelayLedPresentation.cs from the test workspace.");
     }
 }
