@@ -78,8 +78,11 @@ public partial class MainWindow
         if (_relayFullFaceGlossAttempts >= MaximumRelayFullFaceGlossAttempts)
             return;
 
+        // SystemIdle runs below the hardware presentation's ApplicationIdle
+        // work item, preventing a fast retry loop from exhausting before the
+        // original body bevel and sheen have been attached.
         Dispatcher.BeginInvoke(
-            DispatcherPriority.ContextIdle,
+            DispatcherPriority.SystemIdle,
             new Action(ApplyRelayFullFaceGloss));
     }
 }
