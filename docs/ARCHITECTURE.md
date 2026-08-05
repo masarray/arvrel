@@ -46,11 +46,11 @@ continuity, trust, measurement, and protection feed
 P5.2 adds a second executable shell rather than converting the WPF application in place.
 
 ```text
-Arvrel.Desktop
+Arvrel.Desktop (net10.0)
         ↓
 MainWindowViewModel and Avalonia controls
         ↓
-ArvrelWorkspace / InternalLabSession
+ArvrelWorkspace / InternalLabSession (net8.0)
         ↓
 immutable scenario and protection snapshots
 ```
@@ -58,6 +58,13 @@ immutable scenario and protection snapshots
 The Avalonia shell owns XAML, styles, dispatcher timing, commands, display formatting, and custom waveform rendering. It consumes the same deterministic internal laboratory and process-bus capability boundary as any future presentation. It does not duplicate source generation, protection evaluation, capture parsing, SV decoding, trust policy, or active-output behavior.
 
 `Arvrel.App` remains the current Windows product shell. `Arvrel.Desktop` is the cross-platform migration target. Both remain buildable until bounded feature slices reach parity and release policy explicitly changes.
+
+The repository deliberately maintains two solutions during migration:
+
+- `ARVREL.sln` retains the established .NET 8 WPF/core build and release path;
+- `ARVREL.Desktop.sln` owns the .NET 10 Avalonia shell, its portable dependencies, and shell tests.
+
+The split prevents the newer presentation toolchain from silently changing Windows release packaging while still preserving one-way references from the shell into the portable core.
 
 ## P1 runtime pipeline
 
@@ -88,7 +95,7 @@ immutable UI snapshot and JSON evidence
 ## Projects
 
 - `Arvrel.App`: current WPF presentation shell, framework-specific controls, dialogs, user workflow, and Windows release packaging.
-- `Arvrel.Desktop`: Avalonia cross-platform shell, presentation ViewModels, dispatcher lifecycle, and portable waveform control.
+- `Arvrel.Desktop`: .NET 10 Avalonia cross-platform shell, presentation ViewModels, dispatcher lifecycle, and portable waveform control.
 - `Arvrel.Application`: platform-neutral workspace state and deterministic laboratory orchestration shared by current and future presentation layers.
 - `Arvrel.Capture`: platform-neutral live-capture contracts, captured-frame models, and classic-PCAP/PCAPNG replay.
 - `Arvrel.ProcessBus`: multi-target SV stream discovery, SCL binding, decoding, sample rings, RMS, trust, evidence models, and backend orchestration.
