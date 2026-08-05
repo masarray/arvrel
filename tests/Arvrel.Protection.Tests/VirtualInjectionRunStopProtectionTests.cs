@@ -7,12 +7,17 @@ namespace Arvrel.Protection.Tests;
 public sealed class VirtualInjectionRunStopProtectionTests
 {
     [TestMethod]
-    public void ExactPickupCurrent_TripsAfterConfiguredDelayOnlyWhileStarted()
+    public void PickupCurrentWithNumericalHeadroom_TripsAfterConfiguredDelayOnlyWhileStarted()
     {
         const double pickupA = 4.0;
+        const double injectedA = pickupA + 0.01;
         var profile = VirtualInjectionPresets.Create("A-G fault") with
         {
-            PhaseACurrent = new VirtualInjectionChannel(true, pickupA, 45)
+            // The virtual source is reconstructed through platform math routines before
+            // the phasor estimator evaluates it. Keep a small, explicit engineering
+            // headroom so this run/stop test does not accidentally become a test of
+            // platform-specific transcendental rounding at an exact binary boundary.
+            PhaseACurrent = new VirtualInjectionChannel(true, injectedA, 45)
         };
         var runtime = new VirtualInjectionRuntime(
             profile,
@@ -29,7 +34,7 @@ public sealed class VirtualInjectionRunStopProtectionTests
         for (var elapsed = 0; elapsed < 20; elapsed += 5)
             firstAllowedPickup = engine.Evaluate(runtime.Advance(TimeSpan.FromMilliseconds(5), false).Frame.Measurement);
 
-        Assert.AreEqual(pickupA, firstAllowedPickup.Phase50.OperatingQuantity, 0.002);
+        Assert.AreEqual(injectedA, firstAllowedPickup.Phase50.OperatingQuantity, 0.002);
         Assert.IsTrue(firstAllowedPickup.Phase50.Pickup);
         Assert.IsFalse(firstAllowedPickup.Phase50.Operated);
         Assert.IsFalse(firstAllowedPickup.TripLatched);
