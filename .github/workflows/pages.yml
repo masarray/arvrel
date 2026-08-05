@@ -7,12 +7,14 @@ on:
       - "docs/**"
       - "Asset/icon/**"
       - "scripts/validate-public-site.py"
+      - "scripts/validate-public-seo.py"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "docs/**"
       - "Asset/icon/**"
       - "scripts/validate-public-site.py"
+      - "scripts/validate-public-seo.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -46,8 +48,10 @@ jobs:
           cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
           cp Asset/icon/site.webmanifest docs/assets/icon/
 
-      - name: Validate HTML metadata and local links
-        run: python scripts/validate-public-site.py
+      - name: Validate public site and SEO
+        run: |
+          python scripts/validate-public-site.py
+          python scripts/validate-public-seo.py
 
   deploy:
     name: deploy-static-site

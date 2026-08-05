@@ -3,11 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ARVREL — IEC 61850 Sampled Values Protection Laboratory</title>
-  <meta name="description" content="ARVREL turns IEC 61850 Sampled Values into trusted measurements, virtual protection decisions, and reviewable engineering evidence on Windows.">
-  <meta name="keywords" content="IEC 61850 Sampled Values, virtual protection relay, process bus engineering, SMV subscriber, protection relay laboratory, phasor analysis">
+  <title>ARVREL — IEC 61850 Sampled Values Virtual Protection Relay Laboratory</title>
+  <meta name="description" content="ARVREL is a vendor-neutral Windows laboratory for IEC 61850 Sampled Values, virtual feeder protection, trust gating, waveform and phasor analysis, and reviewable engineering evidence.">
   <meta name="author" content="Ari Sulistiono / masarray">
-  <meta name="robots" content="index,follow">
+  <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://masarray.github.io/arvrel/">
   <link rel="stylesheet" href="assets/site.css">
   <link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml">
@@ -18,62 +17,134 @@
   <link rel="alternate" href="data/research-scenarios.json" type="application/json" title="ARVREL deterministic research scenarios">
   <meta name="theme-color" content="#10232f">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="ARVREL — Virtual Protection Relay Laboratory">
-  <meta property="og:description" content="Inspect IEC 61850 Sampled Values, evaluate virtual protection logic, and preserve the engineering evidence behind each decision.">
+  <meta property="og:site_name" content="ARVREL">
+  <meta property="og:title" content="ARVREL — IEC 61850 Sampled Values Virtual Protection Relay Laboratory">
+  <meta property="og:description" content="Observe process-bus evidence, evaluate virtual protection behavior, and preserve the reason behind every operation.">
   <meta property="og:url" content="https://masarray.github.io/arvrel/">
-  <meta property="og:image" content="https://raw.githubusercontent.com/masarray/arvrel/main/docs/assets/arvrel-main.webp">
+  <meta property="og:image" content="https://masarray.github.io/arvrel/assets/arvrel-main.webp">
   <meta property="og:image:width" content="2258">
   <meta property="og:image:height" content="1339">
   <meta property="og:image:alt" content="ARVREL engineering workspace with Sampled Values waveform, phasors, virtual relay faceplate, protection state, and evidence">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ARVREL — Virtual Protection Relay Laboratory">
+  <meta name="twitter:description" content="Vendor-neutral IEC 61850 Sampled Values analysis, virtual protection, trust gating, and reviewable engineering evidence on Windows.">
+  <meta name="twitter:image" content="https://masarray.github.io/arvrel/assets/arvrel-main.webp">
   <meta name="twitter:image:alt" content="ARVREL engineering workspace with Sampled Values waveform, phasors, virtual relay faceplate, protection state, and evidence">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "ARVREL",
-    "alternateName": "ARVREL Virtual Protection Relay Laboratory",
-    "applicationCategory": "EngineeringApplication",
-    "applicationSubCategory": "Power-system protection and IEC 61850 engineering",
-    "operatingSystem": "Windows 10, Windows 11",
-    "softwareVersion": "0.1.0-beta.1",
-    "description": "Vendor-neutral Windows software that turns IEC 61850 Sampled Values into trusted measurements, virtual protection decisions, and reviewable engineering evidence.",
-    "url": "https://masarray.github.io/arvrel/",
-    "downloadUrl": "https://github.com/masarray/arvrel/releases",
-    "softwareHelp": "https://masarray.github.io/arvrel/quick-start.html",
-    "releaseNotes": "https://masarray.github.io/arvrel/release-status.html",
-    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
-    "author": {"@type": "Person", "name": "Ari Sulistiono", "url": "https://github.com/masarray"},
-    "isAccessibleForFree": true
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://masarray.github.io/arvrel/#website",
+        "name": "ARVREL",
+        "alternateName": "ARVREL Virtual Protection Relay Laboratory",
+        "url": "https://masarray.github.io/arvrel/",
+        "description": "Public product, documentation, research, and validation site for the ARVREL virtual protection relay laboratory.",
+        "inLanguage": "en",
+        "publisher": {
+          "@type": "Person",
+          "name": "Ari Sulistiono",
+          "url": "https://github.com/masarray"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://masarray.github.io/arvrel/#software",
+        "name": "ARVREL",
+        "alternateName": "ARVREL Virtual Protection Relay Laboratory",
+        "applicationCategory": "EducationalApplication",
+        "applicationSubCategory": "Power-system protection and IEC 61850 engineering",
+        "operatingSystem": "Windows 10, Windows 11",
+        "softwareVersion": "0.1.0-beta.1",
+        "description": "Vendor-neutral Windows software that turns IEC 61850 Sampled Values into trusted measurements, virtual feeder-protection decisions, and reviewable engineering evidence.",
+        "url": "https://masarray.github.io/arvrel/",
+        "downloadUrl": "https://github.com/masarray/arvrel/releases",
+        "softwareHelp": "https://masarray.github.io/arvrel/documentation.html",
+        "releaseNotes": "https://masarray.github.io/arvrel/release-status.html",
+        "screenshot": "https://masarray.github.io/arvrel/assets/arvrel-main.webp",
+        "featureList": [
+          "IEC 61850 Sampled Values live capture and PCAP replay",
+          "SCL-assisted stream identity, mapping, and scaling review",
+          "4I+4V RMS phasors, sequence quantities, and waveform evidence",
+          "Virtual 50, 51, 67, 27, 59, and 59N protection",
+          "Trust-gated measurement, pickup, and virtual trip authority",
+          "Deterministic scenarios and exportable engineering evidence"
+        ],
+        "softwareRequirements": "Windows 10 or Windows 11 x64; Npcap is required separately only for live Sampled Values capture.",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": 0,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "url": "https://github.com/masarray/arvrel/releases"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Ari Sulistiono",
+          "url": "https://github.com/masarray"
+        },
+        "isPartOf": {
+          "@id": "https://masarray.github.io/arvrel/#website"
+        }
+      }
+    ]
   }
   </script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header"><div class="wrap nav"><a class="brand" href="index.html" aria-current="page"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="research/index.html">Research</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
-<section class="hero"><div class="wrap hero-grid"><div><p class="eyebrow">IEC 61850 Sampled Values · Virtual protection · Engineering evidence</p><h1>Turn process-bus data into reviewable protection decisions.</h1><p class="hero-copy">ARVREL is a vendor-neutral Windows laboratory for inspecting live or replayed Sampled Values, evaluating multifunction protection logic, and preserving the trust and trip evidence behind every virtual operation.</p><div class="actions"><a class="button primary" href="download.html">Download Windows beta</a><a class="button secondary" href="quick-start.html">Evaluate in five minutes</a></div><div class="status-line" aria-label="Product status"><span><i class="status-dot"></i>v0.1.0-beta.1</span><span><i class="status-dot"></i>Windows 10/11 x64</span><span><i class="status-dot safe"></i>Open source</span><span><i class="status-dot warn"></i>Virtual output only</span></div></div><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-main.webp" width="2258" height="1339" fetchpriority="high" decoding="async" alt="ARVREL workspace showing Sampled Values waveform, phasor analysis, virtual relay faceplate, protection state, and event evidence"></div><figcaption>One engineering workspace from Sampled Values identity and trust to virtual protection operation and evidence.</figcaption></figure></div></section>
+
+<section class="hero"><div class="wrap hero-grid"><div><p class="eyebrow">IEC 61850 Sampled Values · Virtual feeder protection · Engineering evidence</p><h1>Make every protection decision explainable.</h1><p class="hero-copy">ARVREL is a vendor-neutral Windows laboratory for observing live, replayed, or internally generated signals; evaluating multifunction protection; and preserving the trust, settings, timing, and trip evidence behind every virtual operation.</p><div class="actions"><a class="button primary" href="download.html">Download Windows beta</a><a class="button secondary" href="quick-start.html">Evaluate in five minutes</a></div><div class="status-line" aria-label="Product status"><span><i class="status-dot"></i>v0.1.0-beta.1</span><span><i class="status-dot"></i>Windows 10/11 x64</span><span><i class="status-dot safe"></i>Open source</span><span><i class="status-dot warn"></i>Virtual output only</span></div></div><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-main.webp" width="2258" height="1339" fetchpriority="high" decoding="async" alt="ARVREL workspace showing Sampled Values waveform, phasor analysis, virtual relay faceplate, protection state, and event evidence"></div><figcaption>One engineering workspace from stream identity and trust to virtual operation and reviewable evidence.</figcaption></figure></div></section>
+
 <div class="proof-strip"><div class="wrap proof-grid"><div class="proof-item"><strong>Live Npcap</strong>Sampled Values</div><div class="proof-item"><strong>PCAP replay</strong>PCAP / PCAPNG</div><div class="proof-item"><strong>SCL binding</strong>Identity and mapping</div><div class="proof-item"><strong>4I + 4V</strong>RMS and phasors</div><div class="proof-item"><strong>50 / 51 / 67</strong>Current protection</div><div class="proof-item"><strong>27 / 59 / 59N</strong>Voltage protection</div><div class="proof-item"><strong>Trust gating</strong>Measure · pickup · trip</div><div class="proof-item"><strong>Evidence export</strong>Reviewable records</div></div></div>
-<div class="release-proof" aria-label="Public release identity"><div class="wrap release-proof-grid"><div class="release-proof-item"><span>Public version</span><strong>v0.1.0-beta.1</strong></div><div class="release-proof-item"><span>Required integrity file</span><strong>SHA256SUMS.txt</strong></div><div class="release-proof-item"><span>Pinned ARIEC61850 engine</span><strong class="mono">c1afc68c9931…</strong></div><div class="release-proof-item"><span>Output authority</span><strong>Virtual only</strong></div><a class="release-proof-link" href="release-status.html">Review release status →</a></div></div>
+<div class="release-proof" aria-label="Public release identity"><div class="wrap release-proof-grid"><div class="release-proof-item"><span>Public version</span><strong>v0.1.0-beta.1</strong></div><div class="release-proof-item"><span>Integrity file</span><strong>SHA256SUMS.txt</strong></div><div class="release-proof-item"><span>Pinned ARIEC61850 engine</span><strong class="mono">c1afc68c9931…</strong></div><div class="release-proof-item"><span>Output authority</span><strong>Virtual only</strong></div><a class="release-proof-link" href="release-status.html">Review release status →</a></div></div>
+
 <main id="main-content">
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Product model</p><h2>Observe. Evaluate. Prove.</h2><p>ARVREL makes the complete protection cause-and-effect chain visible without hiding the engineering assumptions between packet evidence and virtual operation.</p></div><div class="value-grid"><article class="value-item"><span class="value-number">01</span><h3>Observe</h3><p>Inspect stream identity, continuity, quality, mapping, scaling, waveform, phasors, residual channels, and symmetrical components.</p></article><article class="value-item"><span class="value-number">02</span><h3>Evaluate</h3><p>Apply native settings and review pickup, timing, directional decisions, blocking, operation, and the virtual trip latch.</p></article><article class="value-item"><span class="value-number">03</span><h3>Prove</h3><p>Preserve active settings identity, trust state, timestamps, operating quantity, trip cause, event trace, and exportable evidence.</p></article></div></div></section>
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Engineering flow</p><h2>From Ethernet evidence to an operation record.</h2></div><div class="chain"><div class="chain-step"><span>01</span><strong>Sampled Values source</strong></div><div class="chain-step"><span>02</span><strong>Identity and SCL binding</strong></div><div class="chain-step"><span>03</span><strong>Continuity, quality, mapping, scaling</strong></div><div class="chain-step"><span>04</span><strong>RMS, phasors, sequences</strong></div><div class="chain-step"><span>05</span><strong>Protection elements and timers</strong></div><div class="chain-step"><span>06</span><strong>Trust permission and virtual trip</strong></div><div class="chain-step"><span>07</span><strong>Reviewable evidence</strong></div></div></div></section>
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Explore the product</p><h2>Use the page that matches your question.</h2></div><div class="grid-3">
-<a class="card card-link" href="capabilities.html"><span class="label">Capability map</span><h3>What ARVREL implements</h3><p>Process bus, measurement, protection, trust, settings, research, and evidence.</p></a>
-<a class="card card-link" href="workflows/index.html"><span class="label">Engineering workflows</span><h3>Start from the task</h3><p>Protection, process bus, FAT/SAT preparation, education, and research routes.</p></a>
-<a class="card card-link" href="research/index.html"><span class="label">Research and validation</span><h3>Trace claims to source and tests</h3><p>Application notes, deterministic scenarios, related work, laboratory exercises, and an evidence-gated roadmap.</p></a>
-<a class="card card-link" href="architecture.html"><span class="label">System design</span><h3>How the pipeline is separated</h3><p>Repository boundaries, runtime flow, threading, state, and evidence ownership.</p></a>
-<a class="card card-link" href="evidence-and-trust.html"><span class="label">Trust architecture</span><h3>Why visible does not mean trippable</h3><p>Measurement, pickup, and trip permissions with failure handling.</p></a>
-<a class="card card-link" href="safety-and-limitations.html"><span class="label">Engineering boundary</span><h3>What ARVREL is not</h3><p>Virtual-output scope, known beta limitations, data handling, and reporting.</p></a>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Engineering outcome</p><h2>Observe. Evaluate. Prove.</h2><p>ARVREL keeps the complete cause-and-effect chain visible instead of reducing protection analysis to a final pickup or trip lamp.</p></div><div class="value-grid"><article class="value-item"><span class="value-number">01</span><h3>Observe</h3><p>Inspect stream identity, continuity, quality, mapping, scaling, waveform, phasors, residual channels, and sequence quantities.</p></article><article class="value-item"><span class="value-number">02</span><h3>Evaluate</h3><p>Apply native settings and review pickup, timing, directional decisions, blocking, operation, and the virtual trip latch.</p></article><article class="value-item"><span class="value-number">03</span><h3>Prove</h3><p>Preserve settings identity, trust state, timestamps, operating quantity, trip cause, event trace, and exportable evidence.</p></article></div></div></section>
+
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Built for engineering work</p><h2>One laboratory, several professional workflows.</h2></div><div class="grid-3">
+<article class="card"><span class="label">Protection engineering</span><h3>Explain operate and restrain behavior</h3><p>Review quantities, settings, timers, directional decisions, trust permissions, and the exact virtual trip cause.</p></article>
+<article class="card"><span class="label">Process-bus integration</span><h3>Trace packet evidence into measurements</h3><p>Inspect APPID, MAC, VLAN, <code>svID</code>, dataset, <code>confRev</code>, continuity, quality, mapping, and scaling.</p></article>
+<article class="card"><span class="label">FAT and SAT preparation</span><h3>Prepare repeatable laboratory evidence</h3><p>Use deterministic internal scenarios and controlled replay before authorized site-network work.</p></article>
+<article class="card"><span class="label">Education</span><h3>Teach the complete protection chain</h3><p>Connect Sampled Values, phasors, sequence quantities, settings, protection logic, and evidence in one workspace.</p></article>
+<article class="card"><span class="label">Research</span><h3>Trace claims to source and tests</h3><p>Use stable scenario IDs, exact test methods, source anchors, limitations, and evidence-gated roadmap criteria.</p></article>
+<article class="card"><span class="label">Open-source review</span><h3>Inspect boundaries instead of trusting claims</h3><p>Review architecture, algorithms, trust gates, automated tests, release metadata, and known limitations.</p></article>
 </div></div></section>
-<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Research authority</p><h2>Public claims now have source-to-test traceability.</h2><p>The P3 research layer documents the one-cycle single-bin DFT estimator, SMV continuity and trust behavior, 67P/67N directional quantities, deterministic operate and restraint scenarios, related work, and explicit entry criteria for 87T and deployment-oriented virtualization research.</p></div><div class="grid-3">
+
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Engineering flow</p><h2>From signal source to an operation record.</h2></div><div class="chain"><div class="chain-step"><span>01</span><strong>Internal, live, or replay source</strong></div><div class="chain-step"><span>02</span><strong>Identity and SCL binding</strong></div><div class="chain-step"><span>03</span><strong>Continuity, quality, mapping, scaling</strong></div><div class="chain-step"><span>04</span><strong>RMS, phasors, sequences</strong></div><div class="chain-step"><span>05</span><strong>Protection elements and timers</strong></div><div class="chain-step"><span>06</span><strong>Trust permission and virtual trip</strong></div><div class="chain-step"><span>07</span><strong>Reviewable evidence</strong></div></div></div></section>
+
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Why ARVREL is different</p><h2>Visibility, authority, and evidence stay separate.</h2></div><div class="grid-3">
+<article class="card"><span class="label">Trust architecture</span><h3>Visible does not automatically mean trippable</h3><p><code>AllowsMeasurement</code>, <code>AllowsPickup</code>, and <code>AllowsTrip</code> make degraded communication and configuration evidence explicit.</p></article>
+<article class="card"><span class="label">Reproducibility</span><h3>Public claims map to deterministic tests</h3><p>Stable scenario identifiers connect engineering statements to exact source files, test files, and named test methods.</p></article>
+<article class="card"><span class="label">Bounded claims</span><h3>Laboratory capability without operational overclaim</h3><p>ARVREL states what is implemented, what remains deferred, and what is not certification, calibration, conformance, or hard-real-time evidence.</p></article>
+</div></div></section>
+
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Explore the product</p><h2>Start from your question.</h2></div><div class="grid-3">
+<a class="card card-link" href="capabilities.html"><span class="label">Capability map</span><h3>What does ARVREL implement?</h3><p>Process bus, measurement, protection, settings, trust, research, and evidence.</p></a>
+<a class="card card-link" href="workflows/index.html"><span class="label">Workflow router</span><h3>How should I evaluate it?</h3><p>Protection, process bus, FAT/SAT preparation, education, and research routes.</p></a>
+<a class="card card-link" href="documentation.html"><span class="label">Documentation hub</span><h3>Where is the right guide?</h3><p>Quick start, user guide, engineering references, release integrity, governance, and troubleshooting.</p></a>
+<a class="card card-link" href="research/index.html"><span class="label">Research and validation</span><h3>What supports the claims?</h3><p>Application notes, deterministic scenarios, related work, laboratories, and an evidence-gated roadmap.</p></a>
+<a class="card card-link" href="evidence-and-trust.html"><span class="label">Evidence and trust</span><h3>Why was operation allowed or blocked?</h3><p>Measurement, pickup, and virtual-trip permissions with explicit failure handling.</p></a>
+<a class="card card-link" href="faq.html"><span class="label">Engineering FAQ</span><h3>What should I know before testing?</h3><p>Scope, Npcap, replay, internal injection, supported functions, evidence, privacy, and licensing.</p></a>
+</div></div></section>
+
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Trust before trip</p><h2>Diagnostic visibility remains separate from virtual-trip authority.</h2><p>ARVREL evaluates complete windows, freshness, decode health, <code>smpCnt</code> continuity, quality, mapping, scaling provenance, SCL binding, address identity, <code>svID</code>, dataset, and <code>confRev</code> consistency.</p></div><div class="permission-list"><div class="permission"><code>AllowsMeasurement</code><p>Quantities may enter the measurement and display pipeline.</p></div><div class="permission"><code>AllowsPickup</code><p>Protection pickup and timing may be evaluated.</p></div><div class="permission"><code>AllowsTrip</code><p>An operated element may assert the virtual trip latch.</p></div></div><div class="actions"><a class="button light" href="evidence-and-trust.html">Read evidence and trust</a></div></div></section>
+
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Research authority</p><h2>Source-to-test traceability for public engineering claims.</h2><p>The research layer documents the one-cycle single-bin DFT estimator, SMV continuity and trust behavior, 67P/67N directional quantities, deterministic operate and restraint scenarios, related work, and explicit maturity gates.</p></div><div class="grid-3">
 <a class="card card-link" href="research/signal-processing.html"><span class="label">AN-01</span><h3>Fundamental signal estimation</h3><p>Exact method, RMS scaling, sequence quantities, tests, and current limitations.</p></a>
 <a class="card card-link" href="research/validation.html"><span class="label">Validation</span><h3>Stable scenario identifiers</h3><p>Measurement, operate, restrain, and trust-blocked cases tied to exact automated tests.</p></a>
 <a class="card card-link" href="roadmap.html"><span class="label">Roadmap</span><h3>Evidence before claim expansion</h3><p>Gate-based criteria for estimator robustness, 87T, CPU isolation, timing benchmarks, and HIL work.</p></a>
 </div><div class="actions"><a class="button light" href="research/index.html">Open research and validation</a><a class="button light" href="laboratory-exercises.html">Open laboratory exercises</a></div></div></section>
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Trust before trip</p><h2>Diagnostic visibility remains separate from virtual-trip authority.</h2><p>ARVREL evaluates complete windows, freshness, decode health, <code>smpCnt</code> continuity, quality, mapping, scaling provenance, SCL binding, address identity, <code>svID</code>, dataset, and <code>confRev</code> consistency.</p></div><div class="permission-list"><div class="permission"><code>AllowsMeasurement</code><p>Quantities may enter the measurement and display pipeline.</p></div><div class="permission"><code>AllowsPickup</code><p>Protection pickup and timing may be evaluated.</p></div><div class="permission"><code>AllowsTrip</code><p>An operated element may assert the virtual trip latch.</p></div></div><div class="actions"><a class="button light" href="evidence-and-trust.html">Read evidence and trust</a></div></div></section>
+
 <section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Clear engineering boundary</p><h2>Virtual-output laboratory software.</h2><p><strong>ARVREL is not a certified protection IED or calibrated relay test set.</strong> It provides no physical contact, operational GOOSE trip, MMS control, autonomous switching, switching authority, IEC 61850 conformance certification, IEC 60255 type-test evidence, or hard-real-time guarantee.</p></div><div class="actions"><a class="button light" href="safety-and-limitations.html">Review safety and limitations</a><a class="button light" href="https://github.com/masarray/arvrel/blob/main/SECURITY.md">Security policy</a></div></div></section>
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Public engineering beta</p><h2>Begin with the deterministic internal laboratory.</h2><p>Use the official Windows package, validate the A-G scenario, then move to controlled replay or authorized live Sampled Values.</p></div><div class="actions"><a class="button light" href="download.html">Download and verify</a><a class="button light" href="quick-start.html">Open quick start</a><a class="button light" href="research/index.html">Research and validation</a><a class="button light" href="release-status.html">Review release status</a><a class="button light" href="https://github.com/masarray/arvrel">Review source</a></div></div></section>
+
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Public engineering beta</p><h2>Begin with a deterministic internal scenario.</h2><p>Use the official Windows package, validate the available A-G scenario, then move to controlled replay or authorized live Sampled Values.</p></div><div class="actions"><a class="button light" href="download.html">Download and verify</a><a class="button light" href="quick-start.html">Open quick start</a><a class="button light" href="documentation.html">Browse documentation</a><a class="button light" href="faq.html">Read FAQ</a><a class="button light" href="release-status.html">Review release status</a></div></div></section>
 </main>
-<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Virtual Protection Relay Laboratory</div></div><div class="small"><a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="laboratory-exercises.html">Laboratories</a> · <a href="roadmap.html">Roadmap</a> · <a href="release-status.html">Release status</a> · <a href="trust-manifest.json">Trust manifest</a> · <a href="https://github.com/masarray/arvrel">Source</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
+
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">IEC 61850 Sampled Values Virtual Protection Relay Laboratory</div></div><div class="small"><a href="documentation.html">Documentation</a> · <a href="faq.html">FAQ</a> · <a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="roadmap.html">Roadmap</a> · <a href="release-status.html">Release status</a> · <a href="trust-manifest.json">Trust manifest</a> · <a href="https://github.com/masarray/arvrel">Source</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
 </body>
 </html>
