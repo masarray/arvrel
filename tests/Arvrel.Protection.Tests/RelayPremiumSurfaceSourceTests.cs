@@ -7,7 +7,7 @@ namespace Arvrel.Protection.Tests;
 public sealed class RelayPremiumSurfaceSourceTests
 {
     [TestMethod]
-    public void FullFaceGloss_SpansEveryRelayBodyGridCell()
+    public void FullFaceGloss_SpansEveryRelayBodyGridCellWithoutHardPatch()
     {
         var source = File.ReadAllText(SourcePath("MainWindow.RelayFullFaceGloss.cs"));
 
@@ -15,8 +15,12 @@ public sealed class RelayPremiumSurfaceSourceTests
         StringAssert.Contains(source, "Grid.SetColumn(gloss, 0)");
         StringAssert.Contains(source, "Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count))");
         StringAssert.Contains(source, "Grid.SetColumnSpan(gloss, Math.Max(1, bodyGrid.ColumnDefinitions.Count))");
-        StringAssert.Contains(source, "#30FFFFFF");
+        StringAssert.Contains(source, "RelayBodyDepthBackground");
+        StringAssert.Contains(source, "RelayBodyDepthBorder");
+        StringAssert.Contains(source, "#24FFFFFF");
         Assert.IsFalse(source.Contains("#66FFFFFF", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("Geometry.Parse", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("DrawingBrush", StringComparison.Ordinal));
     }
 
     [TestMethod]
