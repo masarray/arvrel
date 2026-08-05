@@ -102,14 +102,14 @@ jobs:
 
       - name: Publish self-contained Windows host
         shell: pwsh
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: |
           $ErrorActionPreference = 'Stop'
-          dotnet publish src/Arvrel.Desktop/Arvrel.Desktop.csproj `
+          dotnet publish ../src/Arvrel.Desktop/Arvrel.Desktop.csproj `
             --configuration Release `
             --runtime win-x64 `
             --self-contained true `
-            --output artifacts/publish/win-x64 `
+            --output ../artifacts/publish/win-x64 `
             -p:Version='${{ needs.prepare.outputs.version }}' `
             -p:HasARIEC61850Sibling=true `
             -p:ARIEC61850Root='${{ github.workspace }}\ARIEC61850' `
@@ -173,14 +173,14 @@ jobs:
 
       - name: Publish self-contained Linux host
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: |
           set -euo pipefail
-          dotnet publish src/Arvrel.Desktop/Arvrel.Desktop.csproj \
+          dotnet publish ../src/Arvrel.Desktop/Arvrel.Desktop.csproj \
             --configuration Release \
             --runtime linux-x64 \
             --self-contained true \
-            --output artifacts/publish/linux-x64 \
+            --output ../artifacts/publish/linux-x64 \
             -p:Version='${{ needs.prepare.outputs.version }}' \
             -p:HasARIEC61850Sibling=true \
             -p:ARIEC61850Root='${{ github.workspace }}/ARIEC61850' \
@@ -234,14 +234,14 @@ jobs:
 
       - name: Publish self-contained macOS host
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: |
           set -euo pipefail
-          dotnet publish src/Arvrel.Desktop/Arvrel.Desktop.csproj \
+          dotnet publish ../src/Arvrel.Desktop/Arvrel.Desktop.csproj \
             --configuration Release \
             --runtime osx-arm64 \
             --self-contained true \
-            --output artifacts/publish/osx-arm64 \
+            --output ../artifacts/publish/osx-arm64 \
             -p:Version='${{ needs.prepare.outputs.version }}' \
             -p:HasARIEC61850Sibling=true \
             -p:ARIEC61850Root='${{ github.workspace }}/ARIEC61850' \
