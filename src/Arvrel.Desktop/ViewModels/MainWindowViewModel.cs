@@ -101,6 +101,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
     public string StatusText => _statusText;
     public string InjectionEditorStatus => _injectionEditorStatus;
     public string SettingsEditorStatus => _settingsEditorStatus;
+    public bool InjectionDraftDirty => _injectionDraftDirty;
+    public bool SettingsDraftDirty => _settingsDraftDirty;
 
     public string? SelectedPreset
     {
@@ -277,6 +279,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
 
             var changed = _workspace.InternalLab.ApplyProfile(profile);
             _injectionDraftDirty = false;
+            OnPropertyChanged(nameof(InjectionDraftDirty));
             if (!VirtualInjectionPresets.Names.Contains(profile.Name))
             {
                 _syncInjectionEditor = true;
@@ -356,6 +359,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
         _settings = settings;
         SyncSettingsEditor();
         _settingsDraftDirty = false;
+        OnPropertyChanged(nameof(SettingsDraftDirty));
         _settingsEditorStatus = "APPLIED · relay timers and trip latch reset";
         _statusText = $"Protection settings applied · {settings.GroupName} revision {settings.Revision}. Injection remains {(wasRunning ? "RUNNING" : "STOPPED")}.";
         AddEvent("SETTINGS", $"{settings.GroupName} rev {settings.Revision} · {settings.Fingerprint()[..12]}");
@@ -403,6 +407,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
             _injectionDraftDirty = false;
             OnPropertyChanged(nameof(FrequencyText));
             OnPropertyChanged(nameof(SelectedPreset));
+            OnPropertyChanged(nameof(InjectionDraftDirty));
         }
         finally
         {
@@ -417,6 +422,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
         {
             SettingsEditor.Apply(_settings);
             _settingsDraftDirty = false;
+            OnPropertyChanged(nameof(SettingsDraftDirty));
         }
         finally
         {
@@ -433,6 +439,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
             return;
         _injectionDraftDirty = true;
         _injectionEditorStatus = "EDITING · last valid source remains active";
+        OnPropertyChanged(nameof(InjectionDraftDirty));
         OnPropertyChanged(nameof(InjectionEditorStatus));
     }
 
@@ -442,6 +449,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
             return;
         _settingsDraftDirty = true;
         _settingsEditorStatus = "EDITING · active relay settings unchanged";
+        OnPropertyChanged(nameof(SettingsDraftDirty));
         OnPropertyChanged(nameof(SettingsEditorStatus));
     }
 
