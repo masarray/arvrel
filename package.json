@@ -1,0 +1,20 @@
+{
+  "name": "arvrel-public-site-qa",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browser, accessibility, and Lighthouse quality gates for the ARVREL public site.",
+  "type": "module",
+  "scripts": {
+    "prepare:site": "python scripts/prepare-public-site.py",
+    "test:site": "playwright test",
+    "lighthouse": "lhci autorun --config=lighthouserc.json"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.62.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

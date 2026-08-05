@@ -6,15 +6,19 @@ on:
     paths:
       - "docs/**"
       - "Asset/icon/**"
+      - "scripts/prepare-public-site.py"
       - "scripts/validate-public-site.py"
       - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "docs/**"
       - "Asset/icon/**"
+      - "scripts/prepare-public-site.py"
       - "scripts/validate-public-site.py"
       - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -50,10 +54,14 @@ jobs:
           cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
           cp Asset/icon/site.webmanifest docs/assets/icon/
 
-      - name: Validate public site and SEO
+      - name: Prepare and validate public site
         run: |
+          python scripts/prepare-public-site.py
+          mv docs/404.html "$RUNNER_TEMP/arvrel-404.html"
           python scripts/validate-public-site.py
           python scripts/validate-public-seo.py
+          mv "$RUNNER_TEMP/arvrel-404.html" docs/404.html
+          python scripts/validate-public-quality.py
 
   deploy:
     name: deploy-static-site
@@ -73,7 +81,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Stage ARVREL brand icons
+      - name: Stage ARVREL brand icons and metadata
         shell: bash
         run: |
           set -euo pipefail
@@ -85,6 +93,7 @@ jobs:
           cp Asset/icon/web-app-manifest-192x192.png docs/assets/icon/
           cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
           cp Asset/icon/site.webmanifest docs/assets/icon/
+          python scripts/prepare-public-site.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

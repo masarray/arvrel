@@ -1,0 +1,122 @@
+name: Public site browser QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/prepare-public-site.py"
+      - "scripts/validate-public-*.py"
+      - "tests/site/**"
+      - "package.json"
+      - "playwright.config.mjs"
+      - "lighthouserc.json"
+      - ".github/workflows/public-site-qa.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "scripts/prepare-public-site.py"
+      - "scripts/validate-public-*.py"
+      - "tests/site/**"
+      - "package.json"
+      - "playwright.config.mjs"
+      - "lighthouserc.json"
+      - ".github/workflows/public-site-qa.yml"
+  schedule:
+    - cron: "37 3 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-site-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-quality:
+    name: browser-accessibility-lighthouse
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - name: Install exact QA dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Stage icons and validate generated site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/assets/icon
+          cp Asset/icon/favicon.ico docs/assets/icon/
+          cp Asset/icon/favicon.svg docs/assets/icon/
+          cp Asset/icon/favicon-96x96.png docs/assets/icon/
+          cp Asset/icon/apple-touch-icon.png docs/assets/icon/
+          cp Asset/icon/web-app-manifest-192x192.png docs/assets/icon/
+          cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
+          cp Asset/icon/site.webmanifest docs/assets/icon/
+          python scripts/prepare-public-site.py
+          mv docs/404.html "$RUNNER_TEMP/arvrel-404.html"
+          python scripts/validate-public-site.py
+          python scripts/validate-public-seo.py
+          mv "$RUNNER_TEMP/arvrel-404.html" docs/404.html
+          python scripts/validate-public-quality.py
+
+      - name: Playwright responsive and accessibility matrix
+        run: npm run test:site
+
+      - name: Lighthouse budgets
+        run: npm run lighthouse
+
+      - name: Upload browser and Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-site-qa-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/
+          if-no-files-found: warn
+          retention-days: 14
+
+  external-links:
+    name: external-link-integrity
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Check public external links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          args: >-
+            --verbose
+            --no-progress
+            --max-retries 3
+            --timeout 30
+            --accept 200,204,206,301,302,303,307,308,403,429
+            --exclude-mail
+            './README.md'
+            './docs/**/*.html'
+            './docs/**/*.md'
+          fail: true
+          jobSummary: true
+          lycheeVersion: v0.24.2
