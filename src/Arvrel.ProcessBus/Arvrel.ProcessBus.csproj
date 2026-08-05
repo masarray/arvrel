@@ -7,6 +7,9 @@
     <!-- The decoder proves Va/Vb/Vc presence through hasVoltage before accessing
          nullable local values. The compiler cannot retain that relational proof. -->
     <NoWarn>$(NoWarn);CS8629</NoWarn>
+    <!-- In an explicit decoder-less build, replay mode is intentionally a constant
+         false stub because all decoder-backed entry points compile to capability errors. -->
+    <NoWarn Condition="'$(HasARIEC61850Sibling)' != 'true'">$(NoWarn);CS0649</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
