@@ -2,7 +2,7 @@
 
 ## Repository boundary
 
-ARVREL owns the virtual-relay application, protection algorithms, process-bus orchestration, measurement context, trust policy, and evidence presentation. The sibling ARIEC61850 repository remains the single source of truth for reusable IEC 61850 frame, SCL, Sampled Values, and Npcap primitives.
+ARVREL owns the virtual-relay application, protection algorithms, process-bus orchestration, measurement context, trust policy, and evidence presentation. The sibling ARIEC61850 repository remains the single source of truth for reusable IEC 61850 frame, SCL, Sampled Values, and native transport primitives.
 
 ```text
 Git/
@@ -24,10 +24,28 @@ Arvrel.Protection (deterministic algorithms and models)
 
 Presentation projects may adapt application snapshots into framework-specific controls. `Arvrel.Application` must not reference WPF, Avalonia, Windows desktop APIs, dialogs, controls, or dispatchers.
 
+## Capture dependency direction
+
+P5.1 separates packet-source ownership from Sampled Values processing.
+
+```text
+ILiveCaptureBackend / ICaptureReplaySource
+        ↓
+Arvrel.ProcessBus controller
+        ↓
+ARIEC61850 SV decoder
+        ↓
+continuity, trust, measurement, and protection feed
+```
+
+`Arvrel.Capture` targets plain `net8.0` and owns portable capture contracts plus classic-PCAP/PCAPNG replay. `Arvrel.ProcessBus` targets both `net8.0` and `net8.0-windows`; only the Windows target references the Npcap transport. A future libpcap or BPF implementation can satisfy the same live-backend contract without changing the controller.
+
 ## P1 runtime pipeline
 
 ```text
-Npcap live capture or PCAP/PCAPNG replay
+live capture backend or PCAP/PCAPNG replay source
+        ↓
+platform-neutral timestamped Ethernet frame
         ↓
 ARIEC61850 SampledValuesFrameParser
         ↓
@@ -52,21 +70,23 @@ immutable UI snapshot and JSON evidence
 
 - `Arvrel.App`: WPF presentation shell, framework-specific controls, dialogs, user workflow, and export.
 - `Arvrel.Application`: platform-neutral workspace state and deterministic laboratory orchestration shared by current and future presentation layers.
-- `Arvrel.ProcessBus`: live/replay source, stream discovery, SCL binding, decoding, sample rings, RMS, trust, and evidence models.
+- `Arvrel.Capture`: platform-neutral live-capture contracts, captured-frame models, and classic-PCAP/PCAPNG replay.
+- `Arvrel.ProcessBus`: multi-target SV stream discovery, SCL binding, decoding, sample rings, RMS, trust, evidence models, and backend orchestration.
 - `Arvrel.Protection`: deterministic protection elements and virtual-injection models independent from presentation refresh.
 - `Arvrel.Application.Tests`: application-boundary and source-lifecycle regression tests.
-- `Arvrel.ProcessBus.Tests`: PCAP/PCAPNG reader and SV-to-protection regression tests.
+- `Arvrel.Capture.Tests`: portable capture-contract and replay regression tests.
+- `Arvrel.ProcessBus.Tests`: capture injection, compatibility replay, and SV-to-protection regression tests.
 - `Arvrel.Protection.Tests`: element and algorithm-policy regression tests.
 
 ## Threading
 
-- Npcap capture runs outside the UI dispatcher and writes into the sibling transport's bounded channel.
-- PCAP replay runs on a worker task.
+- live capture runs outside the UI dispatcher and yields timestamped frames through an asynchronous backend contract;
+- PCAP replay streams frames from disk without materializing the complete capture file;
 - each stream runtime protects mutable rings and protection state with a private lock;
 - the UI requests immutable snapshots at a bounded refresh cadence;
-- protection evaluation is performed when decoded ASDUs arrive, not when WPF renders.
+- protection evaluation is performed when decoded ASDUs arrive, not when a presentation framework renders.
 
-P5.0 keeps the existing WPF refresh cadence unchanged. Future presentation shells should schedule rendering independently while consuming the same application and process-bus snapshots.
+P5.0 keeps the existing WPF refresh cadence unchanged. P5.1 keeps capture filter, buffer, timeout, decoder, and trust behavior unchanged while making source selection injectable.
 
 ## Trust boundary
 
