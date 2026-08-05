@@ -141,7 +141,7 @@ jobs:
           $tagExists = -not [string]::IsNullOrWhiteSpace((git ls-remote --tags origin "refs/tags/$tag" | Out-String))
           $tagMatchesCurrentCommit = $false
           if ($tagExists) {
-            git fetch origin "refs/tags/$tag:refs/tags/$tag" --force
+            git fetch origin "refs/tags/${tag}:refs/tags/${tag}" --force
             if ($LASTEXITCODE -ne 0) {
               throw "Failed to fetch existing tag $tag."
             }
