@@ -1,0 +1,54 @@
+name: Application portability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/Arvrel.Application/**"
+      - "src/Arvrel.Protection/**"
+      - "tests/Arvrel.Application.Tests/**"
+      - "Directory.Build.*"
+      - ".github/workflows/application-portability.yml"
+  pull_request:
+    paths:
+      - "src/Arvrel.Application/**"
+      - "src/Arvrel.Protection/**"
+      - "tests/Arvrel.Application.Tests/**"
+      - "Directory.Build.*"
+      - ".github/workflows/application-portability.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arvrel-application-portability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-boundary:
+    name: application-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test platform-neutral application boundary
+        shell: bash
+        run: >-
+          dotnet test tests/Arvrel.Application.Tests/Arvrel.Application.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=application-${{ runner.os }}.trx"
