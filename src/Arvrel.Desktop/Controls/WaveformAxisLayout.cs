@@ -45,12 +45,17 @@ public static class WaveformAxisLayout
         }
 
         var quarterCycleMilliseconds = cycleMilliseconds / 4d;
-        var quarterSteps = Math.Max(1, (int)Math.Round(durationMilliseconds / quarterCycleMilliseconds));
-        var ticks = new List<WaveformTick>(quarterSteps + 1);
+        var quarterSteps = Math.Max(
+            1,
+            (int)Math.Floor(durationMilliseconds / quarterCycleMilliseconds + 1e-9));
+        var ticks = new List<WaveformTick>(quarterSteps + 2);
 
         for (var step = 0; step <= quarterSteps; step++)
         {
-            var timeMilliseconds = Math.Min(step * quarterCycleMilliseconds, durationMilliseconds);
+            var timeMilliseconds = step * quarterCycleMilliseconds;
+            if (timeMilliseconds > durationMilliseconds + 1e-9)
+                break;
+
             var normalizedPosition = Math.Clamp(timeMilliseconds / durationMilliseconds, 0, 1);
             var isCycleBoundary = step % 4 == 0;
             var isMajor = step % 2 == 0;
@@ -66,13 +71,13 @@ public static class WaveformAxisLayout
                 label));
         }
 
-        if (ticks[^1].NormalizedPosition < 1 - 1e-9)
+        if (ticks.Count == 0 || ticks[^1].NormalizedPosition < 1 - 1e-9)
         {
             ticks.Add(new WaveformTick(
                 durationMilliseconds,
                 1,
-                isMajor: true,
-                isCycleBoundary: IsApproximatelyCycleBoundary(durationMilliseconds, cycleMilliseconds),
+                true,
+                IsApproximatelyCycleBoundary(durationMilliseconds, cycleMilliseconds),
                 $"{FormatMilliseconds(durationMilliseconds)} ms"));
         }
 
