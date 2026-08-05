@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -19,8 +20,12 @@ internal enum RelayIndicatorState
 
 internal static class RelayIndicatorLampBehavior
 {
-    private const double ActiveLampGlowBlurRadius = 13.5;
-    private const double ActiveLampGlowOpacity = 0.84;
+    private const double RelayLampBezelDiameter = 16.0;
+    private const double RelayLampCavityDiameter = 12.4;
+    private const double RelayLampHaloDiameter = 10.8;
+    private const double RelayLampLensDiameter = 9.6;
+    private const double ActiveLampGlowBlurRadius = 12.0;
+    private const double ActiveLampGlowOpacity = 0.74;
 
     private static readonly DependencyProperty IsAttachedProperty = DependencyProperty.RegisterAttached(
         "IsAttached",
@@ -43,40 +48,52 @@ internal static class RelayIndicatorLampBehavior
     private static readonly DependencyPropertyDescriptor FillDescriptor =
         DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Ellipse));
 
+    private static readonly ConditionalWeakTable<Ellipse, LampVisualParts> LampParts = new();
     private static readonly Color OffReference = Color.FromRgb(81, 96, 106);
 
     private static readonly Brush RelayLampBezelBrush = CreateBezelBrush();
+    private static readonly Brush RelayLampCavityBrush = CreateCavityBrush();
+    private static readonly Brush RelayLampHighlightBrush = Freeze(
+        new SolidColorBrush(Color.FromArgb(205, 255, 255, 255)));
 
     private static readonly Brush OffLampBrush = CreateLampBrush(
-        Color.FromRgb(218, 225, 229),
-        Color.FromRgb(106, 119, 127),
-        Color.FromRgb(54, 65, 72),
-        Color.FromRgb(22, 29, 34),
-        Color.FromRgb(5, 8, 10));
+        Color.FromRgb(210, 219, 224),
+        Color.FromRgb(112, 124, 132),
+        Color.FromRgb(61, 72, 79),
+        Color.FromRgb(31, 39, 44),
+        Color.FromRgb(7, 11, 13));
 
     private static readonly Brush GreenLampBrush = CreateLampBrush(
-        Color.FromRgb(251, 255, 252),
-        Color.FromRgb(116, 255, 151),
-        Color.FromRgb(9, 199, 75),
-        Color.FromRgb(3, 101, 39),
-        Color.FromRgb(2, 20, 9));
+        Color.FromRgb(250, 255, 251),
+        Color.FromRgb(118, 255, 151),
+        Color.FromRgb(12, 204, 78),
+        Color.FromRgb(3, 112, 42),
+        Color.FromRgb(1, 28, 11));
 
     private static readonly Brush OrangeLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 255, 246),
-        Color.FromRgb(255, 219, 111),
-        Color.FromRgb(247, 157, 20),
-        Color.FromRgb(159, 65, 0),
-        Color.FromRgb(31, 10, 0));
+        Color.FromRgb(255, 255, 244),
+        Color.FromRgb(255, 224, 121),
+        Color.FromRgb(248, 161, 24),
+        Color.FromRgb(163, 69, 1),
+        Color.FromRgb(35, 12, 0));
 
     private static readonly Brush RedLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 239, 239),
-        Color.FromRgb(255, 105, 109),
-        Color.FromRgb(230, 23, 38),
-        Color.FromRgb(130, 4, 16),
-        Color.FromRgb(28, 0, 4));
+        Color.FromRgb(255, 241, 241),
+        Color.FromRgb(255, 112, 116),
+        Color.FromRgb(231, 25, 40),
+        Color.FromRgb(133, 4, 17),
+        Color.FromRgb(30, 0, 4));
 
-    private static readonly Effect OffLampShadow = CreateGlow(
-        Color.FromRgb(24, 32, 38), 4.5, 0.48);
+    private static readonly Brush GreenHaloBrush = Freeze(
+        new SolidColorBrush(Color.FromRgb(38, 225, 91)));
+    private static readonly Brush OrangeHaloBrush = Freeze(
+        new SolidColorBrush(Color.FromRgb(242, 151, 23)));
+    private static readonly Brush RedHaloBrush = Freeze(
+        new SolidColorBrush(Color.FromRgb(237, 38, 48)));
+    private static readonly Brush TransparentHaloBrush = Freeze(Brushes.Transparent.Clone());
+
+    private static readonly Effect BezelShadow = CreateDirectionalShadow(
+        Color.FromRgb(28, 38, 44), 4.0, 315, 1.2, 0.62);
     private static readonly Effect GreenGlow = CreateGlow(
         Color.FromRgb(31, 255, 99), ActiveLampGlowBlurRadius, ActiveLampGlowOpacity);
     private static readonly Effect OrangeGlow = CreateGlow(
@@ -112,10 +129,13 @@ internal static class RelayIndicatorLampBehavior
 
     private static void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (sender is not Ellipse ellipse || !IsRelayIndicator(ellipse) || (bool)ellipse.GetValue(IsAttachedProperty))
+        if (sender is not Ellipse ellipse ||
+            !IsRelayIndicator(ellipse) ||
+            (bool)ellipse.GetValue(IsAttachedProperty))
             return;
 
         ellipse.SetValue(IsAttachedProperty, true);
+        ConfigurePhysicalLamp(ellipse);
         FillDescriptor.AddValueChanged(ellipse, OnFillChanged);
         ApplyVisualState(ellipse);
     }
@@ -126,9 +146,6 @@ internal static class RelayIndicatorLampBehavior
             return;
 
         FillDescriptor.RemoveValueChanged(ellipse, OnFillChanged);
-
-        // BeginAnimation can synchronously raise the Fill value-changed callback.
-        // Move the guard first so teardown cannot re-enter the pinned-state path.
         ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
         ellipse.BeginAnimation(Shape.FillProperty, null);
         ellipse.SetValue(IsAttachedProperty, false);
@@ -140,73 +157,173 @@ internal static class RelayIndicatorLampBehavior
             ApplyVisualState(ellipse);
     }
 
-    private static void ApplyVisualState(Ellipse ellipse)
+    private static void ConfigurePhysicalLamp(Ellipse lens)
     {
-        var pinned = GetPinnedState(ellipse);
-        if (pinned != RelayIndicatorState.Auto)
+        if (string.Equals(lens.Name, "TopHealthLed", StringComparison.Ordinal) ||
+            lens.Parent is not Grid host)
         {
-            ApplyResolvedState(ellipse, pinned, enforcePinnedFill: true);
+            ConfigureCompactLamp(lens);
             return;
         }
 
-        ClearPinnedFillOverride(ellipse);
-        if (ellipse.Fill is RadialGradientBrush)
+        if (LampParts.TryGetValue(lens, out _))
             return;
 
-        var active = IsActive(ellipse.Fill);
-        var state = active ? ResolveActiveState(ellipse.Name, ellipse.Fill) : RelayIndicatorState.Off;
-        ApplyResolvedState(ellipse, state, enforcePinnedFill: false);
+        var bezel = PhysicalEllipse(RelayLampBezelDiameter, RelayLampBezelBrush, 20);
+        bezel.Effect = BezelShadow;
+
+        var cavity = PhysicalEllipse(RelayLampCavityDiameter, RelayLampCavityBrush, 21);
+        var halo = PhysicalEllipse(RelayLampHaloDiameter, TransparentHaloBrush, 22);
+        halo.Opacity = 0;
+
+        var highlight = PhysicalEllipse(3.2, RelayLampHighlightBrush, 24);
+        highlight.Height = 2.15;
+        highlight.Opacity = 0.38;
+        highlight.RenderTransform = new TranslateTransform(-2.15, -2.35);
+
+        CopyGridCell(lens, bezel);
+        CopyGridCell(lens, cavity);
+        CopyGridCell(lens, halo);
+        CopyGridCell(lens, highlight);
+
+        host.Children.Add(bezel);
+        host.Children.Add(cavity);
+        host.Children.Add(halo);
+        host.Children.Add(highlight);
+
+        lens.Width = RelayLampLensDiameter;
+        lens.Height = RelayLampLensDiameter;
+        lens.MinWidth = RelayLampLensDiameter;
+        lens.MinHeight = RelayLampLensDiameter;
+        lens.HorizontalAlignment = HorizontalAlignment.Center;
+        lens.VerticalAlignment = VerticalAlignment.Center;
+        lens.Stretch = Stretch.Fill;
+        lens.Stroke = null;
+        lens.StrokeThickness = 0;
+        lens.Effect = null;
+        lens.OpacityMask = null;
+        lens.SnapsToDevicePixels = false;
+        lens.UseLayoutRounding = true;
+        lens.IsHitTestVisible = false;
+        Panel.SetZIndex(lens, 23);
+
+        LampParts.Add(lens, new LampVisualParts(bezel, cavity, halo, highlight));
+    }
+
+    private static void ConfigureCompactLamp(Ellipse lens)
+    {
+        lens.Width = 8;
+        lens.Height = 8;
+        lens.MinWidth = 8;
+        lens.MinHeight = 8;
+        lens.StrokeThickness = 1;
+        lens.SnapsToDevicePixels = false;
+        lens.UseLayoutRounding = true;
+    }
+
+    private static Ellipse PhysicalEllipse(double diameter, Brush fill, int zIndex)
+    {
+        var ellipse = new Ellipse
+        {
+            Width = diameter,
+            Height = diameter,
+            MinWidth = diameter,
+            MinHeight = diameter,
+            Fill = fill,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Stretch = Stretch.Fill,
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = false,
+            UseLayoutRounding = true
+        };
+        Panel.SetZIndex(ellipse, zIndex);
+        return ellipse;
+    }
+
+    private static void CopyGridCell(UIElement source, UIElement target)
+    {
+        Grid.SetRow(target, Grid.GetRow(source));
+        Grid.SetColumn(target, Grid.GetColumn(source));
+        Grid.SetRowSpan(target, Grid.GetRowSpan(source));
+        Grid.SetColumnSpan(target, Grid.GetColumnSpan(source));
+    }
+
+    private static void ApplyVisualState(Ellipse lens)
+    {
+        var pinned = GetPinnedState(lens);
+        if (pinned != RelayIndicatorState.Auto)
+        {
+            ApplyResolvedState(lens, pinned, enforcePinnedFill: true);
+            return;
+        }
+
+        ClearPinnedFillOverride(lens);
+        if (lens.Fill is RadialGradientBrush)
+            return;
+
+        var active = IsActive(lens.Fill);
+        var state = active ? ResolveActiveState(lens.Name, lens.Fill) : RelayIndicatorState.Off;
+        ApplyResolvedState(lens, state, enforcePinnedFill: false);
     }
 
     private static void ApplyResolvedState(
-        Ellipse ellipse,
+        Ellipse lens,
         RelayIndicatorState state,
         bool enforcePinnedFill)
     {
-        switch (state)
+        var visual = state switch
         {
-            case RelayIndicatorState.Green:
-                SetLamp(ellipse, GreenLampBrush, GreenGlow, true, state, enforcePinnedFill);
-                break;
-            case RelayIndicatorState.Orange:
-                SetLamp(ellipse, OrangeLampBrush, OrangeGlow, true, state, enforcePinnedFill);
-                break;
-            case RelayIndicatorState.Red:
-                SetLamp(ellipse, RedLampBrush, RedGlow, true, state, enforcePinnedFill);
-                break;
-            default:
-                SetLamp(ellipse, OffLampBrush, OffLampShadow, false, RelayIndicatorState.Off, enforcePinnedFill);
-                break;
+            RelayIndicatorState.Green =>
+                new LampStateVisual(GreenLampBrush, GreenHaloBrush, GreenGlow, 0.80, 0.94),
+            RelayIndicatorState.Orange =>
+                new LampStateVisual(OrangeLampBrush, OrangeHaloBrush, OrangeGlow, 0.80, 0.94),
+            RelayIndicatorState.Red =>
+                new LampStateVisual(RedLampBrush, RedHaloBrush, RedGlow, 0.80, 0.94),
+            _ =>
+                new LampStateVisual(OffLampBrush, TransparentHaloBrush, null, 0.0, 0.38)
+        };
+
+        if (enforcePinnedFill)
+            ApplyPinnedFillOverride(lens, visual.Lens, state);
+        else if (!ReferenceEquals(lens.Fill, visual.Lens))
+            lens.Fill = visual.Lens;
+
+        if (LampParts.TryGetValue(lens, out var parts))
+        {
+            parts.Halo.Fill = visual.Halo;
+            parts.Halo.Effect = visual.Glow;
+            parts.Halo.Opacity = visual.HaloOpacity;
+            parts.Highlight.Opacity = visual.HighlightOpacity;
+            lens.Stroke = null;
+            lens.StrokeThickness = 0;
+            lens.Effect = null;
+            lens.Opacity = 1;
+            return;
         }
+
+        ApplyCompactLampVisual(lens, state, visual);
     }
 
-    private static void SetLamp(
-        Ellipse ellipse,
-        Brush fill,
-        Effect effect,
-        bool active,
+    private static void ApplyCompactLampVisual(
+        Ellipse lens,
         RelayIndicatorState state,
-        bool enforcePinnedFill)
+        LampStateVisual visual)
     {
-        if (enforcePinnedFill)
-            ApplyPinnedFillOverride(ellipse, fill, state);
-        else if (!ReferenceEquals(ellipse.Fill, fill))
-            ellipse.Fill = fill;
-
-        // Every state uses one metallic bezel and one physical lens geometry.
-        // Only the emitted colour changes, matching a real relay indicator bank.
-        ellipse.Stroke = RelayLampBezelBrush;
-        ellipse.StrokeThickness = ellipse.Width <= 9 ? 1.15 : 2.0;
-        ellipse.Opacity = active ? 1.0 : 0.96;
-        ellipse.Effect = effect;
+        lens.Stroke = state == RelayIndicatorState.Off
+            ? Freeze(new SolidColorBrush(Color.FromRgb(69, 82, 90)))
+            : Freeze(new SolidColorBrush(Color.FromRgb(215, 225, 230)));
+        lens.StrokeThickness = 1;
+        lens.Effect = visual.Glow;
+        lens.Opacity = state == RelayIndicatorState.Off ? 0.90 : 1.0;
     }
 
     private static void ApplyPinnedFillOverride(
-        Ellipse ellipse,
+        Ellipse lens,
         Brush fill,
         RelayIndicatorState state)
     {
-        var applied = (RelayIndicatorState)ellipse.GetValue(AppliedPinnedStateProperty);
+        var applied = (RelayIndicatorState)lens.GetValue(AppliedPinnedStateProperty);
         if (applied == state)
             return;
 
@@ -218,33 +335,28 @@ internal static class RelayIndicatorLampBehavior
         animation.KeyFrames.Add(new DiscreteObjectKeyFrame(fill, KeyTime.FromTimeSpan(TimeSpan.Zero)));
         animation.Freeze();
 
-        // Mark the transition before BeginAnimation. WPF can synchronously notify
-        // FillDescriptor while applying the animation; the marker makes that callback
-        // idempotent and prevents recursive animation creation / UI stack overflow.
-        ellipse.SetValue(AppliedPinnedStateProperty, state);
+        lens.SetValue(AppliedPinnedStateProperty, state);
         try
         {
-            ellipse.BeginAnimation(
+            lens.BeginAnimation(
                 Shape.FillProperty,
                 animation,
                 HandoffBehavior.SnapshotAndReplace);
         }
         catch
         {
-            ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
+            lens.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
             throw;
         }
     }
 
-    private static void ClearPinnedFillOverride(Ellipse ellipse)
+    private static void ClearPinnedFillOverride(Ellipse lens)
     {
-        if ((RelayIndicatorState)ellipse.GetValue(AppliedPinnedStateProperty) == RelayIndicatorState.Auto)
+        if ((RelayIndicatorState)lens.GetValue(AppliedPinnedStateProperty) == RelayIndicatorState.Auto)
             return;
 
-        // Clear the guard before removing the animation for the same synchronous
-        // callback reason as ApplyPinnedFillOverride.
-        ellipse.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
-        ellipse.BeginAnimation(Shape.FillProperty, null);
+        lens.SetValue(AppliedPinnedStateProperty, RelayIndicatorState.Auto);
+        lens.BeginAnimation(Shape.FillProperty, null);
     }
 
     private static RelayIndicatorState ResolveActiveState(string name, Brush source)
@@ -254,7 +366,8 @@ internal static class RelayIndicatorLampBehavior
             "PickupLed" => RelayIndicatorState.Orange,
             "TripLed" => RelayIndicatorState.Red,
             "BlockLed" => RelayIndicatorState.Orange,
-            "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? RelayIndicatorState.Green : RelayIndicatorState.Red,
+            "HealthyLed" or "TopHealthLed" =>
+                IsHealthyColor(source) ? RelayIndicatorState.Green : RelayIndicatorState.Red,
             "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" =>
                 IsTripColor(source) ? RelayIndicatorState.Red : RelayIndicatorState.Orange,
             _ => RelayIndicatorState.Green
@@ -278,7 +391,9 @@ internal static class RelayIndicatorLampBehavior
     }
 
     private static bool IsHealthyColor(Brush? brush)
-        => brush is SolidColorBrush solid && solid.Color.G > solid.Color.R && solid.Color.G > solid.Color.B;
+        => brush is SolidColorBrush solid &&
+           solid.Color.G > solid.Color.R &&
+           solid.Color.G > solid.Color.B;
 
     private static bool IsTripColor(Brush? brush)
         => brush is SolidColorBrush solid &&
@@ -296,9 +411,9 @@ internal static class RelayIndicatorLampBehavior
         var brush = new RadialGradientBrush
         {
             Center = new Point(0.52, 0.54),
-            GradientOrigin = new Point(0.29, 0.23),
-            RadiusX = 0.72,
-            RadiusY = 0.72,
+            GradientOrigin = new Point(0.28, 0.22),
+            RadiusX = 0.73,
+            RadiusY = 0.73,
             MappingMode = BrushMappingMode.RelativeToBoundingBox
         };
         brush.GradientStops.Add(new GradientStop(highlight, 0.00));
@@ -317,10 +432,25 @@ internal static class RelayIndicatorLampBehavior
             EndPoint = new Point(1, 1),
             MappingMode = BrushMappingMode.RelativeToBoundingBox
         };
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(232, 238, 241), 0.00));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(127, 141, 149), 0.28));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(48, 58, 65), 0.68));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(8, 12, 15), 1.00));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(244, 248, 250), 0.00));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(166, 178, 185), 0.25));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(75, 88, 96), 0.63));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(18, 25, 29), 1.00));
+        return Freeze(brush);
+    }
+
+    private static Brush CreateCavityBrush()
+    {
+        var brush = new RadialGradientBrush
+        {
+            Center = new Point(0.48, 0.46),
+            GradientOrigin = new Point(0.37, 0.30),
+            RadiusX = 0.72,
+            RadiusY = 0.72
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(82, 95, 103), 0.00));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(32, 41, 46), 0.58));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(5, 8, 10), 1.00));
         return Freeze(brush);
     }
 
@@ -335,9 +465,38 @@ internal static class RelayIndicatorLampBehavior
             RenderingBias = RenderingBias.Quality
         });
 
+    private static Effect CreateDirectionalShadow(
+        Color color,
+        double blurRadius,
+        double direction,
+        double depth,
+        double opacity)
+        => Freeze(new DropShadowEffect
+        {
+            BlurRadius = blurRadius,
+            Color = color,
+            Direction = direction,
+            ShadowDepth = depth,
+            Opacity = opacity,
+            RenderingBias = RenderingBias.Quality
+        });
+
     private static T Freeze<T>(T value) where T : Freezable
     {
         value.Freeze();
         return value;
     }
+
+    private sealed record LampVisualParts(
+        Ellipse Bezel,
+        Ellipse Cavity,
+        Ellipse Halo,
+        Ellipse Highlight);
+
+    private readonly record struct LampStateVisual(
+        Brush Lens,
+        Brush Halo,
+        Effect? Glow,
+        double HaloOpacity,
+        double HighlightOpacity);
 }
