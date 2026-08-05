@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
 
@@ -8,6 +9,9 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
+    private static readonly Brush VirtualInjectionStoppedBrush = Freeze(
+        new SolidColorBrush(Color.FromRgb(101, 117, 134)));
+
     private bool _virtualInjectionRunStopInitialized;
     private DispatcherTimer? _virtualInjectionRunStopTimer;
 
@@ -213,7 +217,7 @@ public partial class MainWindow
             if (!string.Equals(currentStatus, desiredStatus, StringComparison.Ordinal))
             {
                 if (!running)
-                    SetVirtualInjectionStatus(desiredStatus, BrushFrom("#657586"), "#F2F5F7", "#CBD3DA");
+                    SetVirtualInjectionStatus(desiredStatus, VirtualInjectionStoppedBrush, "#F2F5F7", "#CBD3DA");
                 else if (_scenario.WindowStatus == "rebuilding")
                     SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
                 else
@@ -234,8 +238,8 @@ public partial class MainWindow
             ? WarningBrush
             : running
                 ? HealthyBrush
-                : BrushFrom("#657586");
-        if (!Equals(StreamHealthText.Foreground, streamBrush))
+                : VirtualInjectionStoppedBrush;
+        if (!ReferenceEquals(StreamHealthText.Foreground, streamBrush))
             StreamHealthText.Foreground = streamBrush;
 
         var stateText = !running
@@ -264,7 +268,7 @@ public partial class MainWindow
         SetTextIfChanged(SampleCounterText, "  ·  4 kHz");
         SetTextIfChanged(SyncText, "  ·  VIRTUAL");
         SetTextIfChanged(FpsText, string.Empty);
-        if (!Equals(SyncText.Foreground, HealthyBrush))
+        if (!ReferenceEquals(SyncText.Foreground, HealthyBrush))
             SyncText.Foreground = HealthyBrush;
 
         SetTextIfChanged(RelayFooterText, $"{_settings.GroupName} · REV {_settings.Revision}");
