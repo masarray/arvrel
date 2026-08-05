@@ -42,6 +42,7 @@ Make the modeless Advanced Injection Laboratory denser, clearer, and closer to a
 - [x] Static-site validation
 - [x] Changed-file scope review: one WPF layout file and this progress document
 - [x] Ready-for-review and squash merge through PR #49
+- [x] Main commit `83587c75def6f12124a30ec7f65bd8440ecc7118`
 
 ## Manual Windows QA
 
