@@ -90,7 +90,8 @@ internal static class RelayIndicatorLampBehavior
         new SolidColorBrush(Color.FromRgb(242, 151, 23)));
     private static readonly Brush RedHaloBrush = Freeze(
         new SolidColorBrush(Color.FromRgb(237, 38, 48)));
-    private static readonly Brush TransparentHaloBrush = Freeze(Brushes.Transparent.Clone());
+    private static readonly Brush TransparentHaloBrush = Freeze(
+        new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)));
 
     private static readonly Effect BezelShadow = CreateDirectionalShadow(
         Color.FromRgb(28, 38, 44), 4.0, 315, 1.2, 0.62);
@@ -169,26 +170,29 @@ internal static class RelayIndicatorLampBehavior
         if (LampParts.TryGetValue(lens, out _))
             return;
 
+        // The halo is deliberately below the metal bezel. Its colour may spill
+        // around the assembly, but it can never repaint or wash out the ring.
+        var halo = PhysicalEllipse(RelayLampHaloDiameter, TransparentHaloBrush, 19);
+        halo.Opacity = 0;
+
         var bezel = PhysicalEllipse(RelayLampBezelDiameter, RelayLampBezelBrush, 20);
         bezel.Effect = BezelShadow;
 
         var cavity = PhysicalEllipse(RelayLampCavityDiameter, RelayLampCavityBrush, 21);
-        var halo = PhysicalEllipse(RelayLampHaloDiameter, TransparentHaloBrush, 22);
-        halo.Opacity = 0;
 
-        var highlight = PhysicalEllipse(3.2, RelayLampHighlightBrush, 24);
+        var highlight = PhysicalEllipse(3.2, RelayLampHighlightBrush, 23);
         highlight.Height = 2.15;
         highlight.Opacity = 0.38;
         highlight.RenderTransform = new TranslateTransform(-2.15, -2.35);
 
+        CopyGridCell(lens, halo);
         CopyGridCell(lens, bezel);
         CopyGridCell(lens, cavity);
-        CopyGridCell(lens, halo);
         CopyGridCell(lens, highlight);
 
+        host.Children.Add(halo);
         host.Children.Add(bezel);
         host.Children.Add(cavity);
-        host.Children.Add(halo);
         host.Children.Add(highlight);
 
         lens.Width = RelayLampLensDiameter;
@@ -205,7 +209,7 @@ internal static class RelayIndicatorLampBehavior
         lens.SnapsToDevicePixels = false;
         lens.UseLayoutRounding = true;
         lens.IsHitTestVisible = false;
-        Panel.SetZIndex(lens, 23);
+        Panel.SetZIndex(lens, 22);
 
         LampParts.Add(lens, new LampVisualParts(bezel, cavity, halo, highlight));
     }
@@ -311,12 +315,15 @@ internal static class RelayIndicatorLampBehavior
         LampStateVisual visual)
     {
         lens.Stroke = state == RelayIndicatorState.Off
-            ? Freeze(new SolidColorBrush(Color.FromRgb(69, 82, 90)))
-            : Freeze(new SolidColorBrush(Color.FromRgb(215, 225, 230)));
+            ? CreateCompactStroke(Color.FromRgb(69, 82, 90))
+            : CreateCompactStroke(Color.FromRgb(215, 225, 230));
         lens.StrokeThickness = 1;
         lens.Effect = visual.Glow;
         lens.Opacity = state == RelayIndicatorState.Off ? 0.90 : 1.0;
     }
+
+    private static Brush CreateCompactStroke(Color color)
+        => Freeze(new SolidColorBrush(color));
 
     private static void ApplyPinnedFillOverride(
         Ellipse lens,
