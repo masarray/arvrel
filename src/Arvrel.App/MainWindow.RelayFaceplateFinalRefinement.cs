@@ -26,11 +26,17 @@ public partial class MainWindow
             _relayFinalRefinementAttempts >= MaximumRelayFinalRefinementAttempts)
             return;
 
-        // This layer intentionally runs below SystemIdle. The hardware shell,
-        // full-face gloss correction and premium button tuning have therefore
-        // completed before this final visual authority is applied.
+        // Use two SystemIdle hops. Every earlier Loaded handler gets to enqueue
+        // its hardware/gloss/button work before this final authority is appended.
         Dispatcher.BeginInvoke(
-            DispatcherPriority.Inactive,
+            DispatcherPriority.SystemIdle,
+            new Action(DeferRelayFaceplateFinalRefinement));
+    }
+
+    private void DeferRelayFaceplateFinalRefinement()
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.SystemIdle,
             new Action(ApplyRelayFaceplateFinalRefinement));
     }
 
@@ -78,15 +84,10 @@ public partial class MainWindow
 
         if (gloss is null)
         {
-            gloss = new Border
-            {
-                Tag = RelayFinalGlossTag
-            };
+            gloss = new Border { Tag = RelayFinalGlossTag };
 
-            // Insert before the normal relay content. Elements with the same
-            // Grid Z-order are painted in child order, so the broad reflection
-            // remains above the molded body colour but below every label,
-            // display, LED, button and bezel.
+            // Same-Z children paint in collection order. Insert first so the
+            // clear coat is above the molded body but below every control.
             bodyGrid.Children.Insert(0, gloss);
         }
 
@@ -179,7 +180,7 @@ public partial class MainWindow
             return;
 
         Dispatcher.BeginInvoke(
-            DispatcherPriority.Inactive,
+            DispatcherPriority.SystemIdle,
             new Action(ApplyRelayFaceplateFinalRefinement));
     }
 
@@ -249,21 +250,10 @@ public partial class MainWindow
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  TargetType="{x:Type Button}">
     <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
-        <Grid.RenderTransform>
-            <TranslateTransform Y="0" />
-        </Grid.RenderTransform>
-
-        <Border x:Name="Base"
-                Margin="1,2.5,1,0"
-                CornerRadius="4"
-                Background="#172128"
-                BorderBrush="#0A0F13"
-                BorderThickness="1" />
-
-        <Border x:Name="Face"
-                Margin="0,0,0,2.5"
-                CornerRadius="4"
-                BorderThickness="1">
+        <Grid.RenderTransform><TranslateTransform Y="0" /></Grid.RenderTransform>
+        <Border x:Name="Base" Margin="1,2.5,1,0" CornerRadius="4"
+                Background="#172128" BorderBrush="#0A0F13" BorderThickness="1" />
+        <Border x:Name="Face" Margin="0,0,0,2.5" CornerRadius="4" BorderThickness="1">
             <Border.BorderBrush>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#A0ADB5" Offset="0" />
@@ -280,19 +270,13 @@ public partial class MainWindow
                 </LinearGradientBrush>
             </Border.Background>
             <Border.Effect>
-                <DropShadowEffect Color="#11191E"
-                                  BlurRadius="4"
-                                  Direction="270"
-                                  ShadowDepth="0.8"
-                                  Opacity="0.34"
+                <DropShadowEffect Color="#11191E" BlurRadius="4" Direction="270"
+                                  ShadowDepth="0.8" Opacity="0.34"
                                   RenderingBias="Performance" />
             </Border.Effect>
             <Grid ClipToBounds="True">
-                <Border x:Name="Gloss"
-                        Height="8"
-                        Margin="2,1,2,0"
-                        CornerRadius="3,3,1,1"
-                        VerticalAlignment="Top">
+                <Border x:Name="Gloss" Height="8" Margin="2,1,2,0"
+                        CornerRadius="3,3,1,1" VerticalAlignment="Top">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#50FFFFFF" Offset="0" />
@@ -301,15 +285,10 @@ public partial class MainWindow
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
-                <Border x:Name="LowerLip"
-                        Height="2"
-                        Margin="2,0,2,0.5"
-                        CornerRadius="0,0,3,3"
-                        VerticalAlignment="Bottom"
+                <Border x:Name="LowerLip" Height="2" Margin="2,0,2,0.5"
+                        CornerRadius="0,0,3,3" VerticalAlignment="Bottom"
                         Background="#6210181D" />
-                <Border x:Name="Hover"
-                        Background="#00FFFFFF"
-                        CornerRadius="3" />
+                <Border x:Name="Hover" Background="#00FFFFFF" CornerRadius="3" />
                 <ContentPresenter Margin="{TemplateBinding Padding}"
                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -345,21 +324,10 @@ public partial class MainWindow
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  TargetType="{x:Type Button}">
     <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
-        <Grid.RenderTransform>
-            <TranslateTransform Y="0" />
-        </Grid.RenderTransform>
-
-        <Border x:Name="Base"
-                Margin="1,2.5,1,0"
-                CornerRadius="4"
-                Background="#89969D"
-                BorderBrush="#65747D"
-                BorderThickness="1" />
-
-        <Border x:Name="Face"
-                Margin="0,0,0,2.5"
-                CornerRadius="4"
-                BorderThickness="1">
+        <Grid.RenderTransform><TranslateTransform Y="0" /></Grid.RenderTransform>
+        <Border x:Name="Base" Margin="1,2.5,1,0" CornerRadius="4"
+                Background="#89969D" BorderBrush="#65747D" BorderThickness="1" />
+        <Border x:Name="Face" Margin="0,0,0,2.5" CornerRadius="4" BorderThickness="1">
             <Border.BorderBrush>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#FFFFFF" Offset="0" />
@@ -376,19 +344,13 @@ public partial class MainWindow
                 </LinearGradientBrush>
             </Border.Background>
             <Border.Effect>
-                <DropShadowEffect Color="#26343D"
-                                  BlurRadius="4"
-                                  Direction="270"
-                                  ShadowDepth="0.8"
-                                  Opacity="0.28"
+                <DropShadowEffect Color="#26343D" BlurRadius="4" Direction="270"
+                                  ShadowDepth="0.8" Opacity="0.28"
                                   RenderingBias="Performance" />
             </Border.Effect>
             <Grid ClipToBounds="True">
-                <Border x:Name="Gloss"
-                        Height="7"
-                        Margin="2,1,2,0"
-                        CornerRadius="3,3,1,1"
-                        VerticalAlignment="Top">
+                <Border x:Name="Gloss" Height="7" Margin="2,1,2,0"
+                        CornerRadius="3,3,1,1" VerticalAlignment="Top">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#B8FFFFFF" Offset="0" />
@@ -397,15 +359,10 @@ public partial class MainWindow
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
-                <Border x:Name="LowerLip"
-                        Height="2"
-                        Margin="2,0,2,0.5"
-                        CornerRadius="0,0,3,3"
-                        VerticalAlignment="Bottom"
+                <Border x:Name="LowerLip" Height="2" Margin="2,0,2,0.5"
+                        CornerRadius="0,0,3,3" VerticalAlignment="Bottom"
                         Background="#5063727B" />
-                <Border x:Name="Hover"
-                        Background="#00FFFFFF"
-                        CornerRadius="3" />
+                <Border x:Name="Hover" Background="#00FFFFFF" CornerRadius="3" />
                 <ContentPresenter Margin="{TemplateBinding Padding}"
                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
