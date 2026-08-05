@@ -1,35 +1,13 @@
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 
 namespace Arvrel.App;
 
 public partial class MainWindow
 {
-    private const double RelayLedActiveBlurRadius = 9.5;
-    private const double RelayLedActiveGlowOpacity = 0.80;
-
-    private static readonly DependencyPropertyDescriptor? RelayLedFillDescriptor =
-        DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Shape));
-
-    private static readonly Brush RelayLedLensOpacityMask = CreateLensOpacityMask();
-    private static readonly Brush RelayLedOffStroke = CreateFrozenBrush("#768691");
-    private static readonly Brush RelayLedActiveStroke = CreateFrozenBrush("#D6E0E6");
-
-    private static readonly Effect RelayLedOffEffect = CreateGlow("#26343D", 3.5, 0.32);
-    private static readonly Effect RelayLedHealthyEffect = CreateGlow(
-        "#46C766", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
-    private static readonly Effect RelayLedWarningEffect = CreateGlow(
-        "#E5A935", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
-    private static readonly Effect RelayLedTripEffect = CreateGlow(
-        "#EF514D", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
-    private static readonly Effect RelayLedPhaseEffect = CreateGlow(
-        "#4A9FD6", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
-
-    private readonly List<Ellipse> _relayLedIndicators = new();
+    private static readonly Brush RelayToolbarLensOpacityMask = CreateToolbarLensOpacityMask();
     private bool _relayLedPresentationInitialized;
 
     internal void InitializeRelayLedPresentation()
@@ -39,100 +17,30 @@ public partial class MainWindow
 
         _relayLedPresentationInitialized = true;
 
-        ConfigureRelayLed(HealthyLed);
-        ConfigureRelayLed(PickupLed);
-        ConfigureRelayLed(TripLed);
-        ConfigureRelayLed(PhaseALed);
-        ConfigureRelayLed(PhaseBLed);
-        ConfigureRelayLed(PhaseCLed);
-        ConfigureRelayLed(EarthLed);
-        ConfigureRelayLed(BlockLed);
-
-        // Keep the top application-health indicator compact while giving it the
-        // same circular lens, bezel and state-matched glow geometry.
-        ConfigureRelayLed(TopHealthLed, compact: true);
-
-        Closed += (_, _) => ReleaseRelayLedPresentation();
+        // Faceplate lamps are owned exclusively by RelayIndicatorLampBehavior,
+        // which builds a composite bezel/cavity/halo/lens assembly. This class
+        // now configures only the compact toolbar lamp and never subscribes to
+        // Fill changes or rewrites faceplate stroke/effect state.
+        ConfigureToolbarHealthLed(TopHealthLed);
     }
 
-    private void ConfigureRelayLed(Ellipse led, bool compact = false)
+    private static void ConfigureToolbarHealthLed(Ellipse led)
     {
         ArgumentNullException.ThrowIfNull(led);
 
-        var diameter = compact ? 8d : 14d;
-        led.Width = diameter;
-        led.Height = diameter;
-        led.MinWidth = diameter;
-        led.MinHeight = diameter;
+        led.Width = 8;
+        led.Height = 8;
+        led.MinWidth = 8;
+        led.MinHeight = 8;
         led.Stretch = Stretch.Fill;
-        led.StrokeThickness = compact ? 1d : 2d;
-
-        // The faceplate lamps receive a true radial lens plus a metallic bezel
-        // from RelayIndicatorLampBehavior. A second opacity mask softens that
-        // bezel and makes active green/amber lamps look flatter than TRIP, so it
-        // is retained only for the compact toolbar indicator.
-        led.OpacityMask = compact ? RelayLedLensOpacityMask : null;
+        led.StrokeThickness = 1;
+        led.OpacityMask = RelayToolbarLensOpacityMask;
         led.SnapsToDevicePixels = false;
         led.UseLayoutRounding = true;
         RenderOptions.SetEdgeMode(led, EdgeMode.Unspecified);
-
-        RelayLedFillDescriptor?.AddValueChanged(led, RelayLedFillChanged);
-        _relayLedIndicators.Add(led);
-        ApplyRelayLedPresentation(led);
     }
 
-    private void ReleaseRelayLedPresentation()
-    {
-        foreach (var led in _relayLedIndicators)
-            RelayLedFillDescriptor?.RemoveValueChanged(led, RelayLedFillChanged);
-        _relayLedIndicators.Clear();
-    }
-
-    private static void RelayLedFillChanged(object? sender, EventArgs e)
-    {
-        if (sender is Ellipse led)
-            ApplyRelayLedPresentation(led);
-    }
-
-    private static void ApplyRelayLedPresentation(Ellipse led)
-    {
-        // RelayIndicatorLampBehavior converts the logical solid state colour to
-        // a realistic radial lens. Do not reinterpret that lens as an unknown
-        // colour and overwrite its bezel/glow with the passive OFF treatment.
-        if (led.Fill is RadialGradientBrush)
-            return;
-
-        var color = (led.Fill as SolidColorBrush)?.Color;
-        var presentation = ResolveRelayLedPresentation(color);
-
-        if (!ReferenceEquals(led.Stroke, presentation.Stroke))
-            led.Stroke = presentation.Stroke;
-        if (!ReferenceEquals(led.Effect, presentation.Effect))
-            led.Effect = presentation.Effect;
-        if (!AreClose(led.Opacity, presentation.Opacity))
-            led.Opacity = presentation.Opacity;
-    }
-
-    private static RelayLedPresentation ResolveRelayLedPresentation(Color? color)
-    {
-        if (color is null)
-            return new RelayLedPresentation(RelayLedOffStroke, RelayLedOffEffect, 0.92);
-
-        return color.Value switch
-        {
-            { R: 70, G: 154, B: 88 } =>
-                new RelayLedPresentation(RelayLedActiveStroke, RelayLedHealthyEffect, 1.0),
-            { R: 196, G: 139, B: 43 } =>
-                new RelayLedPresentation(RelayLedActiveStroke, RelayLedWarningEffect, 1.0),
-            { R: 199, G: 71, B: 67 } =>
-                new RelayLedPresentation(RelayLedActiveStroke, RelayLedTripEffect, 1.0),
-            { R: 65, G: 139, B: 191 } =>
-                new RelayLedPresentation(RelayLedActiveStroke, RelayLedPhaseEffect, 1.0),
-            _ => new RelayLedPresentation(RelayLedOffStroke, RelayLedOffEffect, 0.92)
-        };
-    }
-
-    private static Brush CreateLensOpacityMask()
+    private static Brush CreateToolbarLensOpacityMask()
     {
         var brush = new RadialGradientBrush
         {
@@ -149,37 +57,6 @@ public partial class MainWindow
         brush.Freeze();
         return brush;
     }
-
-    private static Brush CreateFrozenBrush(string value)
-    {
-        var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(value)!;
-        brush.Freeze();
-        return brush;
-    }
-
-    private static Effect CreateGlow(string value, double blurRadius, double opacity)
-    {
-        var color = (Color)ColorConverter.ConvertFromString(value)!;
-        var effect = new DropShadowEffect
-        {
-            Color = color,
-            BlurRadius = blurRadius,
-            ShadowDepth = 0,
-            Direction = 0,
-            Opacity = opacity,
-            RenderingBias = RenderingBias.Performance
-        };
-        effect.Freeze();
-        return effect;
-    }
-
-    private static bool AreClose(double left, double right)
-        => Math.Abs(left - right) < 0.0001;
-
-    private readonly record struct RelayLedPresentation(
-        Brush Stroke,
-        Effect Effect,
-        double Opacity);
 }
 
 internal static class RelayLedPresentationBootstrap
