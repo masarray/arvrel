@@ -1,7 +1,15 @@
-#define AppVersion GetStringParam("AppVersion", "0.0.0")
-#define PublishDir GetStringParam("PublishDir", ".")
-#define OutputDir GetStringParam("OutputDir", ".")
-#define IconFile GetStringParam("IconFile", "")
+#ifndef AppVersion
+  #define AppVersion "0.0.0"
+#endif
+#ifndef PublishDir
+  #define PublishDir "."
+#endif
+#ifndef OutputDir
+  #define OutputDir "."
+#endif
+#ifndef IconFile
+  #define IconFile ""
+#endif
 
 [Setup]
 AppId={{9F04E2A0-5F97-49DD-9C1C-B0E9092C55D4}
