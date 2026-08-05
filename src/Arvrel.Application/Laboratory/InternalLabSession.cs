@@ -25,23 +25,33 @@ public sealed class InternalLabSession
     public DeterministicLabScenario Scenario { get; }
     public ProtectionSettings Settings => _engine.Settings;
     public ProtectionSnapshot Snapshot { get; private set; }
-    public bool IsRunning { get; private set; }
+    public bool IsRunning => Scenario.IsRunning;
 
     public bool ToggleRunning()
-    {
-        IsRunning = !IsRunning;
-        return IsRunning;
-    }
+        => SetRunning(!IsRunning);
 
     public bool SetRunning(bool running)
-    {
-        if (IsRunning == running)
-            return false;
+        => running
+            ? Scenario.StartInjection()
+            : Scenario.StopInjection();
 
-        IsRunning = running;
-        return true;
+    /// <summary>
+    /// Advances one deterministic source frame and evaluates the protection engine.
+    /// This method is also used to render the forced-zero output after STOP.
+    /// </summary>
+    public InternalLabTick Step(TimeSpan delta)
+    {
+        if (delta < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(delta));
+
+        var scenarioStep = Scenario.Advance(delta);
+        Snapshot = _engine.Evaluate(scenarioStep.Measurement);
+        return new InternalLabTick(scenarioStep, Snapshot);
     }
 
+    /// <summary>
+    /// Advances a scheduled batch only while the source is running.
+    /// </summary>
     public IReadOnlyList<InternalLabTick> Advance(TimeSpan substep, int iterations)
     {
         if (substep < TimeSpan.Zero)
@@ -53,11 +63,7 @@ public sealed class InternalLabSession
 
         var ticks = new InternalLabTick[iterations];
         for (var index = 0; index < iterations; index++)
-        {
-            var scenarioStep = Scenario.Advance(substep);
-            Snapshot = _engine.Evaluate(scenarioStep.Measurement);
-            ticks[index] = new InternalLabTick(scenarioStep, Snapshot);
-        }
+            ticks[index] = Step(substep);
 
         return ticks;
     }
@@ -76,7 +82,16 @@ public sealed class InternalLabSession
         _engine.UpdateSettings(settings, keepTripLatch);
         Scenario.Reset();
         Snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
-        IsRunning = false;
+    }
+
+    /// <summary>
+    /// Clears protection timers and the trip latch without changing the configured
+    /// profile or source run state.
+    /// </summary>
+    public void ResetProtection()
+    {
+        _engine.Reset();
+        Snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
     public void Reset(bool keepProfile = false)
@@ -84,7 +99,6 @@ public sealed class InternalLabSession
         _engine.Reset();
         Scenario.Restart(keepProfile);
         Snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
-        IsRunning = false;
     }
 }
 
