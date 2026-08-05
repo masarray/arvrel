@@ -3,7 +3,7 @@ name: Avalonia shell portability
 on:
   pull_request:
     paths:
-      - "ARVREL.Desktop.sln"
+      - "desktop/**"
       - "src/Arvrel.Desktop/**"
       - "src/Arvrel.Application/**"
       - "src/Arvrel.Capture/**"
@@ -14,7 +14,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "ARVREL.Desktop.sln"
+      - "desktop/**"
       - "src/Arvrel.Desktop/**"
       - "src/Arvrel.Application/**"
       - "src/Arvrel.Capture/**"
@@ -68,7 +68,7 @@ jobs:
 
       - name: Build decoder-less desktop solution
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: >-
           dotnet build ARVREL.Desktop.sln
           --configuration Release
@@ -76,28 +76,28 @@ jobs:
 
       - name: Test shell lifecycle without display server
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: >-
-          dotnet test tests/Arvrel.Desktop.Tests/Arvrel.Desktop.Tests.csproj
+          dotnet test ../tests/Arvrel.Desktop.Tests/Arvrel.Desktop.Tests.csproj
           --configuration Release
           --no-build
           -p:HasARIEC61850Sibling=false
 
       - name: Publish shell with pinned portable decoder
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: >-
-          dotnet publish src/Arvrel.Desktop/Arvrel.Desktop.csproj
+          dotnet publish ../src/Arvrel.Desktop/Arvrel.Desktop.csproj
           --configuration Release
           --runtime ${{ matrix.rid }}
           --self-contained false
-          --output artifacts/${{ matrix.rid }}
+          --output ../artifacts/${{ matrix.rid }}
           -p:HasARIEC61850Sibling=true
           -p:ARIEC61850Root="${{ github.workspace }}/ARIEC61850"
 
       - name: Validate desktop host output
         shell: bash
-        working-directory: arvrel
+        working-directory: arvrel/desktop
         run: |
-          test -f "artifacts/${{ matrix.rid }}/Arvrel.Desktop.dll"
-          test -f "artifacts/${{ matrix.rid }}/${{ matrix.executable }}"
+          test -f "../artifacts/${{ matrix.rid }}/Arvrel.Desktop.dll"
+          test -f "../artifacts/${{ matrix.rid }}/${{ matrix.executable }}"
