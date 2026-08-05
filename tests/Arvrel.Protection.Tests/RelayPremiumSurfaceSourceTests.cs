@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -52,13 +51,23 @@ public sealed class RelayPremiumSurfaceSourceTests
 
     private static IEnumerable<string> ExtractRawTemplates(string source)
     {
-        var matches = Regex.Matches(
-            source,
-            "private const string RelayPremium(?:Key|Reset)TemplateXaml = \\\"\\\"\\\"(?<xaml>.*?)\\\"\\\"\\\";",
-            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        var names = new[]
+        {
+            "RelayPremiumKeyTemplateXaml",
+            "RelayPremiumResetTemplateXaml"
+        };
 
-        foreach (Match match in matches)
-            yield return match.Groups["xaml"].Value.Trim();
+        foreach (var name in names)
+        {
+            var startMarker = $"private const string {name} = \"\"\"";
+            var start = source.IndexOf(startMarker, StringComparison.Ordinal);
+            Assert.IsTrue(start >= 0, $"Template marker {name} was not found.");
+            start += startMarker.Length;
+
+            var end = source.IndexOf("\"\"\";", start, StringComparison.Ordinal);
+            Assert.IsTrue(end > start, $"Template terminator {name} was not found.");
+            yield return source[start..end].Trim();
+        }
     }
 
     private static string SourcePath(string fileName)
