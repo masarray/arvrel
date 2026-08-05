@@ -181,8 +181,8 @@
                                Margin="0,0,0,6" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+              </ItemsControl>
+            </ScrollViewer>
           </Grid>
         </Border>
       </Grid>
