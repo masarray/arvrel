@@ -59,14 +59,19 @@ public partial class MainWindow
     {
         ArgumentNullException.ThrowIfNull(led);
 
-        var diameter = compact ? 8d : 12d;
+        var diameter = compact ? 8d : 14d;
         led.Width = diameter;
         led.Height = diameter;
         led.MinWidth = diameter;
         led.MinHeight = diameter;
         led.Stretch = Stretch.Fill;
-        led.StrokeThickness = compact ? 1d : 1.25d;
-        led.OpacityMask = RelayLedLensOpacityMask;
+        led.StrokeThickness = compact ? 1d : 2d;
+
+        // The faceplate lamps receive a true radial lens plus a metallic bezel
+        // from RelayIndicatorLampBehavior. A second opacity mask softens that
+        // bezel and makes active green/amber lamps look flatter than TRIP, so it
+        // is retained only for the compact toolbar indicator.
+        led.OpacityMask = compact ? RelayLedLensOpacityMask : null;
         led.SnapsToDevicePixels = false;
         led.UseLayoutRounding = true;
         RenderOptions.SetEdgeMode(led, EdgeMode.Unspecified);
@@ -91,6 +96,12 @@ public partial class MainWindow
 
     private static void ApplyRelayLedPresentation(Ellipse led)
     {
+        // RelayIndicatorLampBehavior converts the logical solid state colour to
+        // a realistic radial lens. Do not reinterpret that lens as an unknown
+        // colour and overwrite its bezel/glow with the passive OFF treatment.
+        if (led.Fill is RadialGradientBrush)
+            return;
+
         var color = (led.Fill as SolidColorBrush)?.Color;
         var presentation = ResolveRelayLedPresentation(color);
 
