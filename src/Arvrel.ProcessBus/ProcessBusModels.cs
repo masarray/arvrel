@@ -5,7 +5,7 @@ namespace Arvrel.ProcessBus;
 public enum ProcessBusSourceMode
 {
     InternalDemo,
-    LiveNpcap,
+    LiveCapture,
     PcapReplay
 }
 

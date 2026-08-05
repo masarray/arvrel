@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
+using Arvrel.Capture;
+using Arvrel.ProcessBus.Capture;
 using Arvrel.Protection;
 
 #if ARIEC61850_SIBLING
 using AR.Iec61850.SampledValues;
 using AR.Iec61850.Scl;
-using AR.Iec61850.Transports;
-using AR.Iec61850.Transports.Npcap;
 #endif
 
 namespace Arvrel.ProcessBus;
@@ -13,6 +13,8 @@ namespace Arvrel.ProcessBus;
 public sealed class SmvProcessBusController : IAsyncDisposable
 {
     private readonly ProtectionSettings _settings;
+    private readonly ILiveCaptureBackend _liveCaptureBackend;
+    private readonly ICaptureReplaySource _replaySource;
     private readonly ConcurrentDictionary<string, SmvStreamRuntime> _streams = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, SmvIngressContinuityGate> _continuity = new(StringComparer.Ordinal);
     private readonly SmvContinuityNoticeLimiter _continuityNotices = new();
@@ -27,45 +29,58 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 #endif
 
     public SmvProcessBusController(ProtectionSettings settings)
+        : this(
+            settings,
+            ProcessBusCaptureBackendFactory.CreateDefault(),
+            new PcapFileReplaySource())
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-#if ARIEC61850_SIBLING
-    public static readonly bool IsAvailable = true;
-#else
-    public static readonly bool IsAvailable = false;
-#endif
+    public SmvProcessBusController(
+        ProtectionSettings settings,
+        ILiveCaptureBackend liveCaptureBackend,
+        ICaptureReplaySource replaySource)
+    {
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _liveCaptureBackend = liveCaptureBackend ?? throw new ArgumentNullException(nameof(liveCaptureBackend));
+        _replaySource = replaySource ?? throw new ArgumentNullException(nameof(replaySource));
+    }
+
+    public static readonly bool IsAvailable = ProcessBusCaptureBackendFactory.DecoderAvailable;
 
     public event EventHandler<ProcessBusEventArgs>? EventRaised;
 
     public bool IsRunning => _captureTask is { IsCompleted: false };
     public bool IsReplayMode => _replayMode;
+    public bool IsLiveCaptureAvailable => IsAvailable && _liveCaptureBackend.IsAvailable;
+    public bool IsReplayAvailable => IsAvailable;
+    public string LiveCaptureBackendId => _liveCaptureBackend.BackendId;
+    public string LiveCaptureBackendName => _liveCaptureBackend.DisplayName;
+    public string CaptureAvailabilityMessage => IsAvailable
+        ? _liveCaptureBackend.AvailabilityMessage
+        : "The sibling ARIEC61850 decoder was not available at build time.";
     public string SclSummary { get; private set; } = "No SCL loaded";
     public SmvMeasurementContext MeasurementContext => _measurementContext;
 
     public IReadOnlyList<ProcessBusAdapter> ListAdapters()
     {
-#if ARIEC61850_SIBLING
+        if (!IsLiveCaptureAvailable)
+            return Array.Empty<ProcessBusAdapter>();
+
         try
         {
-            return NpcapAdapterCatalog.ListAdapters()
+            return _liveCaptureBackend.ListAdapters()
                 .Select(adapter => new ProcessBusAdapter(
-                    adapter.Index.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    string.IsNullOrWhiteSpace(adapter.Description)
-                        ? $"{adapter.Index}. {adapter.Name}"
-                        : $"{adapter.Index}. {adapter.Description}",
-                    adapter.MacAddress?.ToString() ?? "No MAC"))
+                    adapter.Id,
+                    adapter.DisplayName,
+                    adapter.Address))
                 .ToArray();
         }
         catch (Exception ex)
         {
-            Raise("ADAPTER", $"Npcap adapter discovery failed: {ex.Message}");
+            Raise("ADAPTER", $"{_liveCaptureBackend.DisplayName} adapter discovery failed: {ex.Message}");
             return Array.Empty<ProcessBusAdapter>();
         }
-#else
-        return Array.Empty<ProcessBusAdapter>();
-#endif
     }
 
     public void LoadScl(string path)
@@ -96,17 +111,20 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     {
 #if ARIEC61850_SIBLING
         ArgumentException.ThrowIfNullOrWhiteSpace(adapterSelector);
+        if (!_liveCaptureBackend.IsAvailable)
+            throw new NotSupportedException(_liveCaptureBackend.AvailabilityMessage);
+
         await StopAsync().ConfigureAwait(false);
         ClearStreams();
         _replayMode = false;
         _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = _captureCancellation.Token;
         _captureTask = Task.Run(() => CaptureLoopAsync(adapterSelector, token), CancellationToken.None);
-        Raise("LIVE", $"Listening on Npcap adapter {adapterSelector}.");
+        Raise("LIVE", $"Listening on {_liveCaptureBackend.DisplayName} adapter {adapterSelector}.");
         await Task.Yield();
 #else
         await Task.CompletedTask.ConfigureAwait(false);
-        throw new NotSupportedException("Live Npcap capture requires the sibling ARIEC61850 engine.");
+        throw new NotSupportedException("Live capture requires the sibling ARIEC61850 decoder and a supported capture backend.");
 #endif
     }
 
@@ -114,13 +132,16 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     {
 #if ARIEC61850_SIBLING
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!_replaySource.CanRead(path))
+            throw new NotSupportedException($"Capture replay source '{_replaySource.SourceId}' cannot read {Path.GetExtension(path)} files.");
+
         await StopAsync().ConfigureAwait(false);
         ClearStreams();
         _replayMode = true;
-        var processed = await Task.Run(() =>
+        var processed = await Task.Run(async () =>
         {
             var count = 0;
-            foreach (var packet in PcapPacketReader.Read(path))
+            await foreach (var packet in _replaySource.ReadAsync(path, cancellationToken).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ObserveFrame(packet.Timestamp, packet.Frame, replay: true);
@@ -130,11 +151,11 @@ public sealed class SmvProcessBusController : IAsyncDisposable
             }
             return count;
         }, cancellationToken).ConfigureAwait(false);
-        Raise("REPLAY", $"Processed {processed:N0} frame(s) from {Path.GetFileName(path)}.");
+        Raise("REPLAY", $"Processed {processed:N0} frame(s) from {Path.GetFileName(path)} via {_replaySource.SourceId}.");
         return processed;
 #else
         await Task.CompletedTask.ConfigureAwait(false);
-        throw new NotSupportedException("PCAP replay requires the sibling ARIEC61850 engine.");
+        throw new NotSupportedException("PCAP replay requires the sibling ARIEC61850 decoder.");
 #endif
     }
 
@@ -218,16 +239,19 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     {
         try
         {
-            using var source = new NpcapProcessBusFrameSource(adapterSelector);
-            var options = new ProcessBusCaptureOptions
+            var options = new CaptureOptions
             {
                 Filter = "(ether proto 0x88ba) or (vlan and ether proto 0x88ba)",
                 BufferCapacity = 16_384,
                 ReadTimeoutMilliseconds = 250
             };
 
-            await foreach (var captured in source.CaptureAsync(options, cancellationToken).ConfigureAwait(false))
+            await foreach (var captured in _liveCaptureBackend
+                .CaptureAsync(adapterSelector, options, cancellationToken)
+                .ConfigureAwait(false))
+            {
                 ObserveFrame(captured.Timestamp, captured.Frame, replay: false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -235,7 +259,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            Raise("ERROR", $"Live capture failed: {ex.Message}");
+            Raise("ERROR", $"{_liveCaptureBackend.DisplayName} capture failed: {ex.Message}");
         }
     }
 
