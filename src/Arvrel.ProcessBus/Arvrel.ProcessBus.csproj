@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Arvrel.Capture\Arvrel.Capture.csproj" />
     <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
   </ItemGroup>
 
