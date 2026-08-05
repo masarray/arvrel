@@ -19,7 +19,7 @@ public sealed class RelayFaceplateFinalRefinementSourceTests
         StringAssert.Contains(gloss, "gloss.Margin = new Thickness(1.6)");
         StringAssert.Contains(gloss, "gloss.CornerRadius = new CornerRadius(9.2)");
         StringAssert.Contains(gloss, "FirstOrDefault(border => ReferenceEquals(border.Background, RelayBodyTopSheen))");
-        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, 0)");
+        StringAssert.Contains(gloss, "Panel.SetZIndex(gloss, -10)");
 
         Assert.IsFalse(gloss.Contains("Geometry.Parse", StringComparison.Ordinal));
         Assert.IsFalse(gloss.Contains("DrawingBrush", StringComparison.Ordinal));
