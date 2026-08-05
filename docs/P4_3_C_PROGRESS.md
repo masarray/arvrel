@@ -33,15 +33,15 @@ Make the modeless Advanced Injection Laboratory denser, clearer, and closer to a
 
 ## Automated validation
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] Changed-file scope review: one WPF layout file and this progress document
+- [x] Ready-for-review and squash merge through PR #49
 
 ## Manual Windows QA
 
