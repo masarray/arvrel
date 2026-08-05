@@ -17,6 +17,9 @@ public partial class MainWindow
     private Grid? _relayMeasurementHomePanel;
     private RelayLcdPhasorScope? _relayLcdHomePhasor;
     private DispatcherTimer? _relayMeasurementHomeTimer;
+    private PhasorDisplayFrame? _relayLcdDisplayedPhasor;
+    private string? _relayLcdPhasorPresentationSignature;
+    private string? _relayLcdPhasorSourceIdentity;
 
     internal void InitializeRelayMeasurementHome()
     {
@@ -217,16 +220,31 @@ public partial class MainWindow
         {
             _relayLcdHeader.Text = "MEASUREMENTS";
             SetMeasurementValues(null, null);
-            _relayLcdHomePhasor.Frame = PhasorDisplayFrame.Unavailable(PhasorDisplayMode.Current, "No data");
+            ResetRelayLcdPhasor("No data");
             _relayLcdFooter.Text = "WAITING FOR DATA · ENTER MENU";
             return;
+        }
+
+        if (!string.Equals(_relayLcdPhasorSourceIdentity, frame.SourceIdentity, StringComparison.Ordinal))
+        {
+            _relayLcdPhasorSourceIdentity = frame.SourceIdentity;
+            _relayLcdDisplayedPhasor = null;
+            _relayLcdPhasorPresentationSignature = null;
         }
 
         var primary = ViewCombo.SelectedIndex == 1;
         var measurement = RelayHomeDisplayMeasurement(frame.Measurement, primary);
         var overview = RelayMeasurementOverviewProjector.Project(measurement);
         SetMeasurementValues(overview.CurrentsRstn, overview.VoltagesRstn);
-        _relayLcdHomePhasor.Frame = overview.CurrentPhasor;
+
+        var candidate = SourceCombo.SelectedIndex == 0
+            ? RelayLcdPhasorStabilizer.Canonicalize(overview.CurrentPhasor)
+            : _lastCoherentRelayCurrentPhasor
+              ?? _relayLcdDisplayedPhasor
+              ?? PhasorDisplayFrame.Unavailable(
+                  PhasorDisplayMode.Current,
+                  "Waiting for coherent current phasor");
+        ApplyRelayLcdPhasor(candidate);
 
         _relayLcdHeader.Text = primary
             ? "MEASUREMENTS · PRIMARY"
@@ -238,6 +256,29 @@ public partial class MainWindow
                 : overview.VoltageAvailable
                     ? $"READY · {overview.FrequencyHz:0.000} HZ · ENTER MENU"
                     : "I READY · U UNAVAILABLE";
+    }
+
+    private void ApplyRelayLcdPhasor(PhasorDisplayFrame frame)
+    {
+        if (_relayLcdHomePhasor is null)
+            return;
+
+        var canonical = RelayLcdPhasorStabilizer.Canonicalize(frame);
+        var signature = RelayLcdPhasorStabilizer.Signature(canonical);
+        if (string.Equals(_relayLcdPhasorPresentationSignature, signature, StringComparison.Ordinal))
+            return;
+
+        _relayLcdDisplayedPhasor = canonical;
+        _relayLcdPhasorPresentationSignature = signature;
+        _relayLcdHomePhasor.Frame = canonical;
+    }
+
+    private void ResetRelayLcdPhasor(string status)
+    {
+        _relayLcdPhasorSourceIdentity = null;
+        _relayLcdDisplayedPhasor = null;
+        _relayLcdPhasorPresentationSignature = null;
+        ApplyRelayLcdPhasor(PhasorDisplayFrame.Unavailable(PhasorDisplayMode.Current, status));
     }
 
     private MeasurementFrame RelayHomeDisplayMeasurement(MeasurementFrame measurement, bool primary)
