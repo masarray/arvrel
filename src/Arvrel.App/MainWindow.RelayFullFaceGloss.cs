@@ -11,10 +11,10 @@ public partial class MainWindow
     private const int MaximumRelayFullFaceGlossAttempts = 5;
 
     private static readonly Brush RelayBodyFullFaceGloss = CreateDiagonalGradient(
-        ("#66FFFFFF", 0.00),
-        ("#38FFFFFF", 0.18),
-        ("#20FFFFFF", 0.42),
-        ("#0CFFFFFF", 0.68),
+        ("#30FFFFFF", 0.00),
+        ("#1EFFFFFF", 0.20),
+        ("#12FFFFFF", 0.45),
+        ("#08FFFFFF", 0.72),
         ("#00FFFFFF", 1.00));
 
     private bool _relayFullFaceGlossApplied;
@@ -58,13 +58,19 @@ public partial class MainWindow
 
         _relayFullFaceGlossApplied = true;
 
-        // The previous 62 px strip sat above the header content and read as a
-        // bright patch. Stretch the material reflection across the complete
-        // molded face and keep it behind labels, LCD, LEDs and controls.
+        // A child without an explicit Grid span occupies only row 0 / column 0.
+        // That produced the narrow white vertical patch visible on the left side
+        // of the relay. Explicitly cover every body-grid cell and keep the
+        // reflection subtle enough to read as molded plastic, not a white film.
+        Grid.SetRow(gloss, 0);
+        Grid.SetColumn(gloss, 0);
+        Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count));
+        Grid.SetColumnSpan(gloss, Math.Max(1, bodyGrid.ColumnDefinitions.Count));
+
         gloss.Height = double.NaN;
         gloss.Width = double.NaN;
-        gloss.Margin = new Thickness(2.2);
-        gloss.CornerRadius = new CornerRadius(9);
+        gloss.Margin = new Thickness(2.4);
+        gloss.CornerRadius = new CornerRadius(8.5);
         gloss.HorizontalAlignment = HorizontalAlignment.Stretch;
         gloss.VerticalAlignment = VerticalAlignment.Stretch;
         gloss.Background = RelayBodyFullFaceGloss;
