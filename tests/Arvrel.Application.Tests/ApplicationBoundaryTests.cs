@@ -58,6 +58,60 @@ public sealed class ApplicationBoundaryTests
     }
 
     [TestMethod]
+    public void InternalLabSession_ApplySettingsPreservingSource_KeepsTestSetState()
+    {
+        var session = new InternalLabSession(new ProtectionSettings());
+        session.ApplyProfile(VirtualInjectionPresets.Create("B-G fault", 60));
+        session.Scenario.SmvDegraded = true;
+        session.SetRunning(true);
+        session.Advance(TimeSpan.FromMilliseconds(5), 4);
+
+        var configuredFingerprint = session.Scenario.InjectionFingerprint;
+        var outputFingerprint = session.Scenario.OutputFingerprint;
+        var sampleCounter = session.Scenario.SampleCounter;
+        var settings = session.Settings with
+        {
+            GroupName = "GROUP TEST",
+            Revision = 3,
+            PhaseInstantaneousPickupA = 6.5
+        };
+
+        session.ApplySettingsPreservingSource(settings);
+
+        Assert.AreEqual("GROUP TEST", session.Settings.GroupName);
+        Assert.AreEqual(3, session.Settings.Revision);
+        Assert.IsTrue(session.IsRunning);
+        Assert.IsTrue(session.Scenario.SmvDegraded);
+        Assert.AreEqual("B-G fault", session.Scenario.ActiveProfile.Name);
+        Assert.AreEqual(60, session.Scenario.ActiveProfile.FrequencyHz, 1e-9);
+        Assert.AreEqual(configuredFingerprint, session.Scenario.InjectionFingerprint);
+        Assert.AreEqual(outputFingerprint, session.Scenario.OutputFingerprint);
+        Assert.AreEqual(sampleCounter, session.Scenario.SampleCounter);
+        Assert.IsFalse(session.Snapshot.TripLatched);
+        Assert.AreEqual("READY", session.Snapshot.ActiveElement);
+    }
+
+    [TestMethod]
+    public void InternalLabSession_StoppedSourceRetainsConfiguredProfile()
+    {
+        var session = new InternalLabSession(new ProtectionSettings());
+        session.ApplyProfile(VirtualInjectionPresets.Create("C-G fault"));
+        var configuredFingerprint = session.Scenario.InjectionFingerprint;
+
+        session.SetRunning(true);
+        session.SetRunning(false);
+        var stopped = session.Step(TimeSpan.Zero);
+
+        Assert.IsFalse(session.IsRunning);
+        Assert.AreEqual("C-G fault", session.Scenario.ActiveProfile.Name);
+        Assert.AreEqual(configuredFingerprint, session.Scenario.InjectionFingerprint);
+        Assert.AreEqual(0, stopped.Scenario.Measurement.PhaseA, 1e-9);
+        Assert.AreEqual(0, stopped.Scenario.Measurement.PhaseB, 1e-9);
+        Assert.AreEqual(0, stopped.Scenario.Measurement.PhaseC, 1e-9);
+        Assert.AreEqual("stopped", session.Scenario.OutputState);
+    }
+
+    [TestMethod]
     public void Workspace_SelectingExternalSource_StopsInternalLaboratory()
     {
         var workspace = new ArvrelWorkspace(new ProtectionSettings());
