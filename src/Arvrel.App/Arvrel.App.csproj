@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Arvrel.Application\Arvrel.Application.csproj" />
     <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
     <ProjectReference Include="..\Arvrel.ProcessBus\Arvrel.ProcessBus.csproj" />
   </ItemGroup>
