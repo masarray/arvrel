@@ -1,0 +1,63 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 2 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codeql-csharp:
+    name: codeql-csharp
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: arvrel
+          persist-credentials: false
+
+      - name: Checkout pinned ARIEC61850
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: Restore
+        working-directory: arvrel
+        run: dotnet restore .\ARVREL.sln
+
+      - name: Build
+        working-directory: arvrel
+        run: dotnet build .\ARVREL.sln -c Release --no-restore
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3
+        with:
+          category: /language:csharp
