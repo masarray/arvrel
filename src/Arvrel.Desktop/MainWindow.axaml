@@ -115,7 +115,7 @@
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
               <StackPanel Spacing="2">
                 <TextBlock Classes="section" Text="TWO-CYCLE WAVEFORM EVIDENCE" />
-                <TextBlock Classes="caption" Text="Phase A · Phase B · Phase C · residual current" />
+                <TextBlock Classes="caption" Text="Phase A · Phase B · Phase C · residual · quarter-cycle time ticks" />
               </StackPanel>
               <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="2">
                 <TextBlock HorizontalAlignment="Right" FontWeight="SemiBold" Text="{Binding FrequencyText}" />
@@ -181,8 +181,8 @@
                                Margin="0,0,0,6" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </Grid>
         </Border>
       </Grid>
