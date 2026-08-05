@@ -66,6 +66,28 @@ The repository deliberately maintains two solutions during migration:
 
 The root `global.json` remains the established .NET 8 selection. `desktop/global.json` selects .NET 10 only for the migration solution. The split prevents the newer presentation toolchain from silently changing Windows release packaging while still preserving one-way references from the shell into the portable core.
 
+## Virtual source and relay authority
+
+P5.4 models the virtual source and relay as separate equipment even though they share one laboratory process.
+
+```text
+VirtualInjectionProfile / VirtualInjectionRuntime
+        ↓ measurement and waveform
+InternalLabSession
+        ↓
+ProtectionEngine / ProtectionSettings
+```
+
+The authority rules are explicit:
+
+- source START/STOP changes effective output without discarding configured source values;
+- applying or clearing a source profile does not reset relay timers or a latched trip;
+- relay reset does not change the source profile, run state, degradation state, sample counter, or source fingerprints;
+- `ApplySettingsPreservingSource` changes relay settings and resets relay state without restarting or replacing the virtual source;
+- complete laboratory reset is the only cross-equipment command that intentionally restores source and relay state together.
+
+Presentation editors stage text and selections. Only complete validated `VirtualInjectionProfile` and `ProtectionSettings` objects cross into the application layer. Invalid drafts never partially mutate active equipment state.
+
 ## P1 runtime pipeline
 
 ```text
@@ -95,14 +117,14 @@ immutable UI snapshot and JSON evidence
 ## Projects
 
 - `Arvrel.App`: current WPF presentation shell, framework-specific controls, dialogs, user workflow, and Windows release packaging.
-- `Arvrel.Desktop`: .NET 10 Avalonia cross-platform shell, presentation ViewModels, dispatcher lifecycle, and portable waveform control.
+- `Arvrel.Desktop`: .NET 10 Avalonia cross-platform shell, presentation ViewModels, dispatcher lifecycle, portable waveform control, and staged relay/source editors.
 - `Arvrel.Application`: platform-neutral workspace state and deterministic laboratory orchestration shared by current and future presentation layers.
 - `Arvrel.Capture`: platform-neutral live-capture contracts, captured-frame models, and classic-PCAP/PCAPNG replay.
 - `Arvrel.ProcessBus`: multi-target SV stream discovery, SCL binding, decoding, sample rings, RMS, trust, evidence models, and backend orchestration.
 - `Arvrel.Protection`: deterministic protection elements and virtual-injection models independent from presentation refresh.
-- `Arvrel.Application.Tests`: application-boundary and source-lifecycle regression tests.
+- `Arvrel.Application.Tests`: application-boundary, source-lifecycle, and equipment-authority regression tests.
 - `Arvrel.Capture.Tests`: portable capture-contract and replay regression tests.
-- `Arvrel.Desktop.Tests`: display-server-free Avalonia shell lifecycle and application-core integration tests.
+- `Arvrel.Desktop.Tests`: display-server-free Avalonia shell lifecycle, source editor, relay editor, waveform, and application-core integration tests.
 - `Arvrel.ProcessBus.Tests`: capture injection, compatibility replay, and SV-to-protection regression tests.
 - `Arvrel.Protection.Tests`: element and algorithm-policy regression tests.
 
@@ -114,9 +136,10 @@ immutable UI snapshot and JSON evidence
 - the UI requests immutable snapshots at a bounded refresh cadence;
 - protection evaluation is performed when decoded ASDUs arrive, not when a presentation framework renders;
 - the Avalonia shell uses a 40 ms dispatcher timer and advances the deterministic laboratory through fixed 5 ms substeps;
+- source and relay editor mutation is performed atomically on the UI thread before immutable models enter the application layer;
 - closing the Avalonia window stops source activity and asynchronously disposes process-bus resources.
 
-P5.0 keeps the existing WPF refresh cadence unchanged. P5.1 keeps capture filter, buffer, timeout, decoder, and trust behavior unchanged while making source selection injectable. P5.2 adds presentation scheduling only and does not alter deterministic source or protection timing.
+P5.0 keeps the existing WPF refresh cadence unchanged. P5.1 keeps capture filter, buffer, timeout, decoder, and trust behavior unchanged while making source selection injectable. P5.2 adds presentation scheduling only and does not alter deterministic source or protection timing. P5.3 adds frequency-aware waveform geometry without changing samples. P5.4 adds staged source/relay editing and authority separation without changing injection generation or protection algorithms.
 
 ## Trust boundary
 
