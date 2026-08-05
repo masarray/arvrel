@@ -10,6 +10,20 @@ Git/
 └── arvrel/
 ```
 
+## Application dependency direction
+
+P5.0 introduces a platform-neutral application layer so present and future desktop shells depend inward on shared orchestration rather than owning simulation behavior themselves.
+
+```text
+Arvrel.App (WPF presentation)
+        ↓
+Arvrel.Application (workspace and laboratory orchestration)
+        ↓
+Arvrel.Protection (deterministic algorithms and models)
+```
+
+Presentation projects may adapt application snapshots into framework-specific controls. `Arvrel.Application` must not reference WPF, Avalonia, Windows desktop APIs, dialogs, controls, or dispatchers.
+
 ## P1 runtime pipeline
 
 ```text
@@ -36,9 +50,11 @@ immutable UI snapshot and JSON evidence
 
 ## Projects
 
-- `Arvrel.App`: WPF shell, virtual relay, waveform, Lucide-derived icons, user workflow, and export.
+- `Arvrel.App`: WPF presentation shell, framework-specific controls, dialogs, user workflow, and export.
+- `Arvrel.Application`: platform-neutral workspace state and deterministic laboratory orchestration shared by current and future presentation layers.
 - `Arvrel.ProcessBus`: live/replay source, stream discovery, SCL binding, decoding, sample rings, RMS, trust, and evidence models.
-- `Arvrel.Protection`: deterministic protection elements independent from WPF refresh.
+- `Arvrel.Protection`: deterministic protection elements and virtual-injection models independent from presentation refresh.
+- `Arvrel.Application.Tests`: application-boundary and source-lifecycle regression tests.
 - `Arvrel.ProcessBus.Tests`: PCAP/PCAPNG reader and SV-to-protection regression tests.
 - `Arvrel.Protection.Tests`: element and algorithm-policy regression tests.
 
@@ -49,6 +65,8 @@ immutable UI snapshot and JSON evidence
 - each stream runtime protects mutable rings and protection state with a private lock;
 - the UI requests immutable snapshots at a bounded refresh cadence;
 - protection evaluation is performed when decoded ASDUs arrive, not when WPF renders.
+
+P5.0 keeps the existing WPF refresh cadence unchanged. Future presentation shells should schedule rendering independently while consuming the same application and process-bus snapshots.
 
 ## Trust boundary
 
