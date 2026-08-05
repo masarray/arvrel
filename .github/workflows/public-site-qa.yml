@@ -53,8 +53,8 @@ jobs:
       - name: Install exact QA dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Verify hosted Chrome
+        run: google-chrome --version
 
       - name: Stage icons and validate generated site
         shell: bash
