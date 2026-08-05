@@ -10,7 +10,7 @@ SITE = ROOT / "docs"
 BASE = "https://masarray.github.io/arvrel/"
 IMAGE = f"{BASE}assets/arvrel-main.webp"
 ALT = "ARVREL engineering workspace with Sampled Values waveform, phasors, virtual relay faceplate, protection state, and evidence"
-META_RE = re.compile(r'^\s*<meta\s+(?:property="og:[^"]+"|name="twitter:[^"]+")[^>]*>\s*\n?', re.I | re.M)
+META_RE = re.compile(r'<meta\b(?=[^>]*\b(?:property="og:[^"]+"|name="twitter:[^"]+"))[^>]*>\s*', re.I)
 
 
 def attr(text: str, tag: str, key: str, value: str) -> str:
