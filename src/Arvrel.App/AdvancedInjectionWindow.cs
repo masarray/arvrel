@@ -1,6 +1,8 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Arvrel.App.Controls;
 
 namespace Arvrel.App;
 
@@ -9,10 +11,13 @@ public sealed class AdvancedInjectionWindow : Window
     private static readonly SolidColorBrush RunningBrush = CreateBrush("#469A58");
     private static readonly SolidColorBrush StartingBrush = CreateBrush("#C48B2B");
     private static readonly SolidColorBrush StoppedBrush = CreateBrush("#657586");
+    private static readonly SolidColorBrush StopCommandBrush = CreateBrush("#C44946");
 
     private readonly ContentControl _directHost;
     private readonly TextBlock _statusText;
     private readonly TextBlock _profileText;
+    private readonly Button _startInjectionButton;
+    private readonly Button _stopInjectionButton;
     private readonly TabControl _tabs;
     private string? _lastProfileName;
     private string? _lastFingerprint;
@@ -113,6 +118,8 @@ public sealed class AdvancedInjectionWindow : Window
         };
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
 
@@ -126,6 +133,31 @@ public sealed class AdvancedInjectionWindow : Window
         };
         footer.Children.Add(_profileText);
 
+        var outputCommands = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(outputCommands, 1);
+        footer.Children.Add(outputCommands);
+
+        _startInjectionButton = CreateOutputCommandButton(
+            LucideIconKind.Play,
+            RunningBrush,
+            "Start injection",
+            "Start virtual injection output");
+        _startInjectionButton.Margin = new Thickness(0, 0, 6, 0);
+        _startInjectionButton.Click += (_, _) => StartInjectionRequested?.Invoke(this, EventArgs.Empty);
+        outputCommands.Children.Add(_startInjectionButton);
+
+        _stopInjectionButton = CreateOutputCommandButton(
+            LucideIconKind.CircleStop,
+            StopCommandBrush,
+            "Stop injection",
+            "Stop virtual injection output");
+        _stopInjectionButton.Click += (_, _) => StopInjectionRequested?.Invoke(this, EventArgs.Empty);
+        outputCommands.Children.Add(_stopInjectionButton);
+
         _statusText = new TextBlock
         {
             Text = "STOPPED",
@@ -134,9 +166,14 @@ public sealed class AdvancedInjectionWindow : Window
             Foreground = StoppedBrush,
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetColumn(_statusText, 1);
+        Grid.SetColumn(_statusText, 3);
         footer.Children.Add(_statusText);
+
+        UpdateCommandAvailability("stopped");
     }
+
+    public event EventHandler? StartInjectionRequested;
+    public event EventHandler? StopInjectionRequested;
 
     public bool HasEditor => _directHost.Content is FrameworkElement;
 
@@ -180,6 +217,7 @@ public sealed class AdvancedInjectionWindow : Window
             _lastFingerprint = fingerprint;
         }
 
+        UpdateCommandAvailability(outputState);
         if (string.Equals(_lastOutputState, outputState, StringComparison.Ordinal))
             return;
 
@@ -196,6 +234,52 @@ public sealed class AdvancedInjectionWindow : Window
             _ => StoppedBrush
         };
         _lastOutputState = outputState;
+    }
+
+    private void UpdateCommandAvailability(string outputState)
+    {
+        var outputActive = outputState is "running" or "starting";
+        if (_startInjectionButton.IsEnabled == outputActive)
+            _startInjectionButton.IsEnabled = !outputActive;
+        if (_stopInjectionButton.IsEnabled != outputActive)
+            _stopInjectionButton.IsEnabled = outputActive;
+
+        _startInjectionButton.ToolTip = outputActive
+            ? "Virtual injection output is already energized."
+            : "Start virtual injection output using the validated values currently shown in the editor.";
+        _stopInjectionButton.ToolTip = outputActive
+            ? "Stop virtual injection output at 0 V / 0 A while retaining the configured values."
+            : "Virtual injection output is already stopped.";
+    }
+
+    private static Button CreateOutputCommandButton(
+        LucideIconKind iconKind,
+        Brush iconBrush,
+        string automationName,
+        string helpText)
+    {
+        var button = new Button
+        {
+            Style = Application.Current?.TryFindResource("IconOnlyButton") as Style,
+            Width = 34,
+            Height = 32,
+            MinWidth = 34,
+            MinHeight = 32,
+            Padding = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = new LucideIcon
+            {
+                Kind = iconKind,
+                Width = 15,
+                Height = 15,
+                Foreground = iconBrush,
+                Filled = iconKind == LucideIconKind.CircleStop
+            }
+        };
+        AutomationProperties.SetName(button, automationName);
+        AutomationProperties.SetHelpText(button, helpText);
+        ToolTipService.SetShowOnDisabled(button, true);
+        return button;
     }
 
     private static TabItem CreateTab(string header, object content, bool enabled)
