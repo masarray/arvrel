@@ -1,10 +1,13 @@
 #ifndef AppVersion
   #define AppVersion "0.1.0-beta.1"
 #endif
+#ifndef AppVersionNumeric
+  #define AppVersionNumeric "0.1.0.0"
+#endif
 
 #define AppName "ARVREL"
 #define AppPublisher "Ari Sulistiono / masarray"
-#define AppExeName "Arvrel.App.exe"
+#define AppExeName "ARVREL.exe"
 
 [Setup]
 AppId={{9F3BF2F7-E86C-47DF-B8BE-2EA38AC16A50}
@@ -19,7 +22,6 @@ DefaultDirName={localappdata}\Programs\ARVREL
 DefaultGroupName=ARVREL
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 LicenseFile=..\LICENSE
@@ -30,12 +32,17 @@ OutputBaseFilename=ARVREL-Setup-v{#AppVersion}-win-x64
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+Uninstallable=yes
+UsePreviousAppDir=yes
+UsePreviousPrivileges=no
+SetupLogging=yes
+AppMutex=ARVREL-9F3BF2F7-E86C-47DF-B8BE-2EA38AC16A50
 UninstallDisplayIcon={app}\{#AppExeName}
-VersionInfoVersion=0.1.0.0
+VersionInfoVersion={#AppVersionNumeric}
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription=IEC 61850 Sampled Values virtual protection relay laboratory
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion=0.1.0.0
+VersionInfoProductVersion={#AppVersionNumeric}
 VersionInfoCopyright=Copyright (C) 2026 Ari Sulistiono
 
 [Languages]
