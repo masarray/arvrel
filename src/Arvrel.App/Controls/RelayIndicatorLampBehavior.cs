@@ -19,6 +19,9 @@ internal enum RelayIndicatorState
 
 internal static class RelayIndicatorLampBehavior
 {
+    private const double ActiveLampGlowBlurRadius = 13.5;
+    private const double ActiveLampGlowOpacity = 0.84;
+
     private static readonly DependencyProperty IsAttachedProperty = DependencyProperty.RegisterAttached(
         "IsAttached",
         typeof(bool),
@@ -42,38 +45,44 @@ internal static class RelayIndicatorLampBehavior
 
     private static readonly Color OffReference = Color.FromRgb(81, 96, 106);
 
+    private static readonly Brush RelayLampBezelBrush = CreateBezelBrush();
+
     private static readonly Brush OffLampBrush = CreateLampBrush(
-        Color.FromRgb(121, 132, 140),
-        Color.FromRgb(64, 75, 82),
-        Color.FromRgb(31, 39, 44),
-        Color.FromRgb(12, 17, 20));
+        Color.FromRgb(218, 225, 229),
+        Color.FromRgb(106, 119, 127),
+        Color.FromRgb(54, 65, 72),
+        Color.FromRgb(22, 29, 34),
+        Color.FromRgb(5, 8, 10));
 
     private static readonly Brush GreenLampBrush = CreateLampBrush(
-        Color.FromRgb(249, 255, 250),
-        Color.FromRgb(64, 255, 121),
-        Color.FromRgb(4, 153, 58),
-        Color.FromRgb(1, 52, 22));
+        Color.FromRgb(251, 255, 252),
+        Color.FromRgb(116, 255, 151),
+        Color.FromRgb(9, 199, 75),
+        Color.FromRgb(3, 101, 39),
+        Color.FromRgb(2, 20, 9));
 
     private static readonly Brush OrangeLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 253, 239),
-        Color.FromRgb(255, 196, 66),
-        Color.FromRgb(210, 96, 0),
-        Color.FromRgb(73, 25, 0));
+        Color.FromRgb(255, 255, 246),
+        Color.FromRgb(255, 219, 111),
+        Color.FromRgb(247, 157, 20),
+        Color.FromRgb(159, 65, 0),
+        Color.FromRgb(31, 10, 0));
 
     private static readonly Brush RedLampBrush = CreateLampBrush(
-        Color.FromRgb(255, 218, 218),
-        Color.FromRgb(255, 46, 52),
-        Color.FromRgb(226, 0, 24),
-        Color.FromRgb(76, 0, 8));
+        Color.FromRgb(255, 239, 239),
+        Color.FromRgb(255, 105, 109),
+        Color.FromRgb(230, 23, 38),
+        Color.FromRgb(130, 4, 16),
+        Color.FromRgb(28, 0, 4));
 
-    private static readonly Brush OffStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(42, 51, 57)));
-    private static readonly Brush GreenStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(151, 255, 181)));
-    private static readonly Brush OrangeStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 224, 141)));
-    private static readonly Brush RedStrokeBrush = Freeze(new SolidColorBrush(Color.FromRgb(255, 176, 176)));
-
-    private static readonly Effect GreenGlow = CreateGlow(Color.FromRgb(31, 255, 99), 15);
-    private static readonly Effect OrangeGlow = CreateGlow(Color.FromRgb(255, 157, 20), 15);
-    private static readonly Effect RedGlow = CreateGlow(Color.FromRgb(255, 16, 30), 19);
+    private static readonly Effect OffLampShadow = CreateGlow(
+        Color.FromRgb(24, 32, 38), 4.5, 0.48);
+    private static readonly Effect GreenGlow = CreateGlow(
+        Color.FromRgb(31, 255, 99), ActiveLampGlowBlurRadius, ActiveLampGlowOpacity);
+    private static readonly Effect OrangeGlow = CreateGlow(
+        Color.FromRgb(255, 166, 25), ActiveLampGlowBlurRadius, ActiveLampGlowOpacity);
+    private static readonly Effect RedGlow = CreateGlow(
+        Color.FromRgb(255, 37, 48), ActiveLampGlowBlurRadius, ActiveLampGlowOpacity);
 
     [ModuleInitializer]
     internal static void Initialize()
@@ -157,16 +166,16 @@ internal static class RelayIndicatorLampBehavior
         switch (state)
         {
             case RelayIndicatorState.Green:
-                SetLamp(ellipse, GreenLampBrush, GreenStrokeBrush, GreenGlow, true, state, enforcePinnedFill);
+                SetLamp(ellipse, GreenLampBrush, GreenGlow, true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Orange:
-                SetLamp(ellipse, OrangeLampBrush, OrangeStrokeBrush, OrangeGlow, true, state, enforcePinnedFill);
+                SetLamp(ellipse, OrangeLampBrush, OrangeGlow, true, state, enforcePinnedFill);
                 break;
             case RelayIndicatorState.Red:
-                SetLamp(ellipse, RedLampBrush, RedStrokeBrush, RedGlow, true, state, enforcePinnedFill);
+                SetLamp(ellipse, RedLampBrush, RedGlow, true, state, enforcePinnedFill);
                 break;
             default:
-                SetLamp(ellipse, OffLampBrush, OffStrokeBrush, null, false, RelayIndicatorState.Off, enforcePinnedFill);
+                SetLamp(ellipse, OffLampBrush, OffLampShadow, false, RelayIndicatorState.Off, enforcePinnedFill);
                 break;
         }
     }
@@ -174,8 +183,7 @@ internal static class RelayIndicatorLampBehavior
     private static void SetLamp(
         Ellipse ellipse,
         Brush fill,
-        Brush stroke,
-        Effect? effect,
+        Effect effect,
         bool active,
         RelayIndicatorState state,
         bool enforcePinnedFill)
@@ -185,9 +193,11 @@ internal static class RelayIndicatorLampBehavior
         else if (!ReferenceEquals(ellipse.Fill, fill))
             ellipse.Fill = fill;
 
-        ellipse.Stroke = stroke;
-        ellipse.StrokeThickness = active ? 1.25 : 1;
-        ellipse.Opacity = active ? 1 : 0.88;
+        // Every state uses one metallic bezel and one physical lens geometry.
+        // Only the emitted colour changes, matching a real relay indicator bank.
+        ellipse.Stroke = RelayLampBezelBrush;
+        ellipse.StrokeThickness = ellipse.Width <= 9 ? 1.15 : 2.0;
+        ellipse.Opacity = active ? 1.0 : 0.96;
         ellipse.Effect = effect;
     }
 
@@ -242,7 +252,8 @@ internal static class RelayIndicatorLampBehavior
         return name switch
         {
             "PickupLed" => RelayIndicatorState.Orange,
-            "TripLed" or "BlockLed" => RelayIndicatorState.Red,
+            "TripLed" => RelayIndicatorState.Red,
+            "BlockLed" => RelayIndicatorState.Orange,
             "HealthyLed" or "TopHealthLed" => IsHealthyColor(source) ? RelayIndicatorState.Green : RelayIndicatorState.Red,
             "PhaseALed" or "PhaseBLed" or "PhaseCLed" or "EarthLed" =>
                 IsTripColor(source) ? RelayIndicatorState.Red : RelayIndicatorState.Orange,
@@ -275,29 +286,51 @@ internal static class RelayIndicatorLampBehavior
            solid.Color.G < 100 &&
            solid.Color.B < 115;
 
-    private static Brush CreateLampBrush(Color highlight, Color core, Color edge, Color outerRim)
+    private static Brush CreateLampBrush(
+        Color highlight,
+        Color core,
+        Color middle,
+        Color edge,
+        Color outerRim)
     {
         var brush = new RadialGradientBrush
         {
-            Center = new Point(0.5, 0.5),
-            GradientOrigin = new Point(0.29, 0.24),
+            Center = new Point(0.52, 0.54),
+            GradientOrigin = new Point(0.29, 0.23),
             RadiusX = 0.72,
-            RadiusY = 0.72
+            RadiusY = 0.72,
+            MappingMode = BrushMappingMode.RelativeToBoundingBox
         };
-        brush.GradientStops.Add(new GradientStop(highlight, 0));
-        brush.GradientStops.Add(new GradientStop(core, 0.28));
-        brush.GradientStops.Add(new GradientStop(edge, 0.72));
-        brush.GradientStops.Add(new GradientStop(outerRim, 1));
+        brush.GradientStops.Add(new GradientStop(highlight, 0.00));
+        brush.GradientStops.Add(new GradientStop(core, 0.18));
+        brush.GradientStops.Add(new GradientStop(middle, 0.48));
+        brush.GradientStops.Add(new GradientStop(edge, 0.78));
+        brush.GradientStops.Add(new GradientStop(outerRim, 1.00));
         return Freeze(brush);
     }
 
-    private static Effect CreateGlow(Color color, double blurRadius)
+    private static Brush CreateBezelBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            MappingMode = BrushMappingMode.RelativeToBoundingBox
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(232, 238, 241), 0.00));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(127, 141, 149), 0.28));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(48, 58, 65), 0.68));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(8, 12, 15), 1.00));
+        return Freeze(brush);
+    }
+
+    private static Effect CreateGlow(Color color, double blurRadius, double opacity)
         => Freeze(new DropShadowEffect
         {
             BlurRadius = blurRadius,
             Color = color,
             Direction = 0,
-            Opacity = 1,
+            Opacity = opacity,
             ShadowDepth = 0,
             RenderingBias = RenderingBias.Quality
         });
