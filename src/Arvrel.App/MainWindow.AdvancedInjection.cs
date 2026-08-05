@@ -124,6 +124,8 @@ public partial class MainWindow
         {
             Owner = this
         };
+        window.StartInjectionRequested += AdvancedInjectionWindow_StartInjectionRequested;
+        window.StopInjectionRequested += AdvancedInjectionWindow_StopInjectionRequested;
         window.Closing += AdvancedInjectionWindow_Closing;
         window.Closed += AdvancedInjectionWindow_Closed;
 
@@ -140,12 +142,32 @@ public partial class MainWindow
         }
         catch
         {
+            window.StartInjectionRequested -= AdvancedInjectionWindow_StartInjectionRequested;
+            window.StopInjectionRequested -= AdvancedInjectionWindow_StopInjectionRequested;
             window.DetachEditor();
             ReattachMainInjectionEditor();
             _advancedInjectionWindow = null;
             UpdateAdvancedInjectionWorkspaceAvailability();
             throw;
         }
+    }
+
+    private void AdvancedInjectionWindow_StartInjectionRequested(object? sender, EventArgs e)
+    {
+        if (SourceCombo.SelectedIndex != 0)
+            return;
+
+        StartVirtualInjectionSource(announce: true);
+        RefreshAdvancedInjectionPresentation();
+    }
+
+    private void AdvancedInjectionWindow_StopInjectionRequested(object? sender, EventArgs e)
+    {
+        if (SourceCombo.SelectedIndex != 0)
+            return;
+
+        StopVirtualInjectionSource(announce: true);
+        RefreshAdvancedInjectionPresentation();
     }
 
     private void AdvancedInjectionWindow_Closing(object? sender, CancelEventArgs e)
@@ -180,6 +202,8 @@ public partial class MainWindow
     {
         if (sender is AdvancedInjectionWindow window)
         {
+            window.StartInjectionRequested -= AdvancedInjectionWindow_StartInjectionRequested;
+            window.StopInjectionRequested -= AdvancedInjectionWindow_StopInjectionRequested;
             window.Closing -= AdvancedInjectionWindow_Closing;
             window.Closed -= AdvancedInjectionWindow_Closed;
             var editor = window.DetachEditor();
