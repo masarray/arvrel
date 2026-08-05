@@ -10,12 +10,17 @@ public partial class MainWindow
 {
     private const int MaximumRelayFullFaceGlossAttempts = 5;
 
+    // One continuous clear coat follows the complete molded face. There are no
+    // polygons, hard diagonals, or separate reflection patches. Depth comes from
+    // the body gradient and bevel; this layer only supplies a restrained surface
+    // reflection and a gentle lower-right falloff.
     private static readonly Brush RelayBodyFullFaceGloss = CreateDiagonalGradient(
-        ("#30FFFFFF", 0.00),
-        ("#1EFFFFFF", 0.20),
-        ("#12FFFFFF", 0.45),
-        ("#08FFFFFF", 0.72),
-        ("#00FFFFFF", 1.00));
+        ("#24FFFFFF", 0.00),
+        ("#14FFFFFF", 0.18),
+        ("#09FFFFFF", 0.42),
+        ("#03FFFFFF", 0.64),
+        ("#00121B21", 0.78),
+        ("#18121B21", 1.00));
 
     private bool _relayFullFaceGlossApplied;
     private int _relayFullFaceGlossAttempts;
@@ -47,6 +52,9 @@ public partial class MainWindow
             return;
         }
 
+        // Reuse the single sheen created by the hardware shell. Reusing it is
+        // important: two independent gloss layers produced the visible diagonal
+        // noise in the previous implementation.
         var gloss = bodyGrid.Children
             .OfType<Border>()
             .FirstOrDefault(border => ReferenceEquals(border.Background, RelayBodyTopSheen));
@@ -58,10 +66,6 @@ public partial class MainWindow
 
         _relayFullFaceGlossApplied = true;
 
-        // A child without an explicit Grid span occupies only row 0 / column 0.
-        // That produced the narrow white vertical patch visible on the left side
-        // of the relay. Explicitly cover every body-grid cell and keep the
-        // reflection subtle enough to read as molded plastic, not a white film.
         Grid.SetRow(gloss, 0);
         Grid.SetColumn(gloss, 0);
         Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count));
@@ -69,14 +73,18 @@ public partial class MainWindow
 
         gloss.Height = double.NaN;
         gloss.Width = double.NaN;
-        gloss.Margin = new Thickness(2.4);
-        gloss.CornerRadius = new CornerRadius(8.5);
+        gloss.Margin = new Thickness(1.6);
+        gloss.CornerRadius = new CornerRadius(9.2);
         gloss.HorizontalAlignment = HorizontalAlignment.Stretch;
         gloss.VerticalAlignment = VerticalAlignment.Stretch;
         gloss.Background = RelayBodyFullFaceGloss;
         gloss.Opacity = 1.0;
         gloss.IsHitTestVisible = false;
-        Panel.SetZIndex(gloss, -10);
+        gloss.CacheMode = new BitmapCache(1.0);
+
+        // Keep the clear coat above the molded body background but below every
+        // faceplate control and the explicit inner bevel/lower lip overlays.
+        Panel.SetZIndex(gloss, 0);
     }
 
     private void QueueRelayFullFaceGlossRetry()
@@ -84,9 +92,6 @@ public partial class MainWindow
         if (_relayFullFaceGlossAttempts >= MaximumRelayFullFaceGlossAttempts)
             return;
 
-        // SystemIdle runs below the hardware presentation's ApplicationIdle
-        // work item, preventing a fast retry loop from exhausting before the
-        // original body bevel and sheen have been attached.
         Dispatcher.BeginInvoke(
             DispatcherPriority.SystemIdle,
             new Action(ApplyRelayFullFaceGloss));
