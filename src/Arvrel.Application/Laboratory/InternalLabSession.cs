@@ -35,6 +35,12 @@ public sealed class InternalLabSession
             ? Scenario.StartInjection()
             : Scenario.StopInjection();
 
+    public bool ApplyProfile(VirtualInjectionProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        return Scenario.ApplyProfile(profile);
+    }
+
     /// <summary>
     /// Advances one deterministic source frame and evaluates the protection engine.
     /// This method is also used to render the forced-zero output after STOP.
@@ -81,6 +87,22 @@ public sealed class InternalLabSession
 
         _engine.UpdateSettings(settings, keepTripLatch);
         Scenario.Reset();
+        Snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Applies relay settings while preserving the separately configured virtual
+    /// source profile, run state, SMV degradation flag, and source fingerprints.
+    /// Relay timers and the trip latch are reset unless explicitly retained.
+    /// </summary>
+    public void ApplySettingsPreservingSource(
+        ProtectionSettings settings,
+        bool keepTripLatch = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings.Validate();
+
+        _engine.UpdateSettings(settings, keepTripLatch);
         Snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
