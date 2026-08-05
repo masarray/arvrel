@@ -18,9 +18,20 @@ Arvrel.Desktop (Avalonia presentation and UI scheduling)
 
 The shell does not duplicate protection evaluation, virtual-injection source state, capture parsing, or Npcap ownership.
 
+## Toolchain boundary
+
+Avalonia 12.1 uses the current desktop framework generation and the shell targets `net10.0`. The reusable core, process-bus, protection, and current WPF product remain on their existing `net8.0` targets.
+
+Two solutions make that boundary explicit:
+
+- `ARVREL.sln`: current WPF product, portable core, process bus, capture, and established regression suites;
+- `ARVREL.Desktop.sln`: Avalonia migration shell plus its portable dependencies and shell tests.
+
+This prevents the .NET 10 shell toolchain from silently changing the established WPF release build while still allowing the shell to reference the `net8.0` libraries.
+
 ## Delivered shell
 
-`Arvrel.Desktop` targets plain `net8.0` and uses Avalonia Desktop 12.1.0. It provides:
+`Arvrel.Desktop` targets `net10.0` and uses Avalonia Desktop 12.1.0. It provides:
 
 - classic desktop lifetime startup on supported desktop operating systems;
 - a compact dark laboratory layout independent from WPF resources;
@@ -63,7 +74,7 @@ The Avalonia layer does not own:
 
 ## Portability gate
 
-The `Avalonia shell portability` workflow runs on Windows, Ubuntu, and macOS. Each runner:
+The `Avalonia shell portability` workflow uses the .NET 10 SDK and runs on Windows, Ubuntu, and macOS. Each runner:
 
 1. builds the shell in decoder-less capability mode;
 2. runs shell lifecycle tests without a display server;
@@ -74,13 +85,13 @@ The `Avalonia shell portability` workflow runs on Windows, Ubuntu, and macOS. Ea
 
 P5.2 intentionally does not change:
 
-- the WPF executable or its release packaging;
+- `ARVREL.sln` membership or the WPF executable;
+- the established Windows release packaging workflow;
+- core library target frameworks;
 - protection algorithms, settings, timing, trust, or evidence semantics;
 - Npcap filter, buffering, or timeout behavior;
 - PCAP/PCAPNG parsing semantics;
 - release versioning.
-
-Both desktop shells remain in the solution during migration.
 
 ## Deliberately deferred
 
