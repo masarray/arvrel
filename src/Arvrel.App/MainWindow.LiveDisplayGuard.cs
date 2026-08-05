@@ -13,6 +13,7 @@ public partial class MainWindow
 {
     private WaveformFrame? _lastCoherentWaveform;
     private PhasorDisplayFrame? _lastCoherentPhasor;
+    private PhasorDisplayFrame? _lastCoherentRelayCurrentPhasor;
     private string? _displayGuardStreamKey;
     private int _displayGuardPhasorCycle = -1;
     private bool _livePhasorTimerSuspended;
@@ -76,7 +77,7 @@ public partial class MainWindow
 
         // Snapshot/projection work remains throttled, but the last accepted frame is
         // reasserted on every WPF render. This closes the former race where the normal
-        // 40 ms UI timer briefly painted raw/discontinuous data before the 60 ms guard.
+        // 40 ms UI timer briefly painted raw/discontinuous data before the guard.
         var nowTicks = Stopwatch.GetTimestamp();
         var projectionDue = _lastLiveProjectionTicks == 0 ||
                             Stopwatch.GetElapsedTime(_lastLiveProjectionTicks, nowTicks) >= TimeSpan.FromMilliseconds(35);
@@ -93,10 +94,7 @@ public partial class MainWindow
     {
         if (string.IsNullOrWhiteSpace(_selectedStreamKey))
         {
-            _displayGuardStreamKey = null;
-            _lastCoherentWaveform = null;
-            _lastCoherentPhasor = null;
-            _displayGuardPhasorCycle = -1;
+            ClearLiveDisplayProjection();
             return;
         }
 
@@ -118,6 +116,7 @@ public partial class MainWindow
             _displayGuardStreamKey = snapshot.Stream.Key;
             _lastCoherentWaveform = null;
             _lastCoherentPhasor = null;
+            _lastCoherentRelayCurrentPhasor = null;
             _displayGuardPhasorCycle = -1;
         }
 
@@ -128,6 +127,9 @@ public partial class MainWindow
                                snapshot.Waveform.Residual.Count == snapshot.Waveform.PhaseA.Count;
         var coherent = waveformComplete && IsDisplayCoherentTrust(snapshot.Measurement.SmvTrust);
 
+        // Retain the last accepted coherent frame during a temporary stale/gap state.
+        // This mirrors physical relay instruments: an invalid incoming packet must not
+        // visually rotate the last trustworthy phasor.
         if (!coherent)
             return;
 
@@ -142,17 +144,28 @@ public partial class MainWindow
 
         var samplesPerCycle = Math.Max(1, snapshot.SamplesPerCycle);
         var phasorCycle = snapshot.SampleCounter / samplesPerCycle;
-        if (_phasorScope is null ||
-            phasorCycle == _displayGuardPhasorCycle && _lastCoherentPhasor is not null)
+        if (phasorCycle == _displayGuardPhasorCycle &&
+            _lastCoherentPhasor is not null &&
+            _lastCoherentRelayCurrentPhasor is not null)
             return;
 
-        var projected = PhasorDisplayProjector.Project(
+        // The relay LCD is always a current instrument. Keep its accepted frame
+        // independent from the WAVE/DUAL/PHASOR quantity selector in Main Window.
+        var relayCurrent = PhasorDisplayProjector.Project(
             snapshot.Measurement.Phasors,
-            _phasorDisplayMode);
-        if (!projected.IsAvailable)
-            return;
+            PhasorDisplayMode.Current);
+        if (relayCurrent.IsAvailable)
+            _lastCoherentRelayCurrentPhasor = RelayLcdPhasorStabilizer.Canonicalize(relayCurrent);
 
-        _lastCoherentPhasor = projected;
+        if (_phasorScope is not null)
+        {
+            var projected = PhasorDisplayProjector.Project(
+                snapshot.Measurement.Phasors,
+                _phasorDisplayMode);
+            if (projected.IsAvailable)
+                _lastCoherentPhasor = projected;
+        }
+
         _displayGuardPhasorCycle = phasorCycle;
     }
 
@@ -205,11 +218,17 @@ public partial class MainWindow
 
         _phasorRefreshTimer?.Start();
         _livePhasorTimerSuspended = false;
+        ClearLiveDisplayProjection();
+        _lastLiveProjectionTicks = 0;
+    }
+
+    private void ClearLiveDisplayProjection()
+    {
         _displayGuardStreamKey = null;
         _lastCoherentWaveform = null;
         _lastCoherentPhasor = null;
+        _lastCoherentRelayCurrentPhasor = null;
         _displayGuardPhasorCycle = -1;
-        _lastLiveProjectionTicks = 0;
     }
 }
 
