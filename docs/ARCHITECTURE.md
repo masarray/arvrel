@@ -62,9 +62,9 @@ The Avalonia shell owns XAML, styles, dispatcher timing, commands, display forma
 The repository deliberately maintains two solutions during migration:
 
 - `ARVREL.sln` retains the established .NET 8 WPF/core build and release path;
-- `ARVREL.Desktop.sln` owns the .NET 10 Avalonia shell, its portable dependencies, and shell tests.
+- `desktop/ARVREL.Desktop.sln` owns the .NET 10 Avalonia shell, its portable dependencies, and shell tests.
 
-The split prevents the newer presentation toolchain from silently changing Windows release packaging while still preserving one-way references from the shell into the portable core.
+The root `global.json` remains the established .NET 8 selection. `desktop/global.json` selects .NET 10 only for the migration solution. The split prevents the newer presentation toolchain from silently changing Windows release packaging while still preserving one-way references from the shell into the portable core.
 
 ## P1 runtime pipeline
 
