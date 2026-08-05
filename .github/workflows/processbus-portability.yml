@@ -49,6 +49,15 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Build portable capability stub without decoder
+        shell: bash
+        working-directory: arvrel
+        run: >-
+          dotnet build src/Arvrel.ProcessBus/Arvrel.ProcessBus.csproj
+          --configuration Release
+          --framework net8.0
+          -p:HasARIEC61850Sibling=false
+
       - name: Build portable process-bus decoder and replay core
         shell: bash
         working-directory: arvrel
@@ -56,4 +65,5 @@ jobs:
           dotnet build src/Arvrel.ProcessBus/Arvrel.ProcessBus.csproj
           --configuration Release
           --framework net8.0
-          -p:ARIEC61850Root=../ARIEC61850
+          -p:HasARIEC61850Sibling=true
+          -p:ARIEC61850Root="${{ github.workspace }}/ARIEC61850"
