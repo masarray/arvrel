@@ -46,6 +46,7 @@ Make every relay indicator use the same physical LED language as the TRIP indica
 - [x] Static-site validation
 - [x] Changed-file scope review: one WPF presentation partial, one source coverage test, and this progress document
 - [x] Ready-for-review and squash merge through PR #55
+- [x] Main commit `ee2a4ee056d7779263b87ac90754e707754d2c43`
 
 ## Manual Windows QA
 
