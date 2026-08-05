@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
+    <EnableWindowsTargeting Condition="'$(TargetFramework)' == 'net8.0-windows'">true</EnableWindowsTargeting>
     <RootNamespace>Arvrel.ProcessBus</RootNamespace>
     <Description>IEC 61850 Sampled Values source, measurement, trust, and evidence pipeline for ARVREL.</Description>
     <!-- The decoder proves Va/Vb/Vc presence through hasVoltage before accessing
@@ -20,10 +20,17 @@
 
   <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
     <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850\AR.Iec61850.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true' and '$(TargetFramework)' == 'net8.0-windows'">
     <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850.Transports.Npcap\AR.Iec61850.Transports.Npcap.csproj" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
     <DefineConstants>$(DefineConstants);ARIEC61850_SIBLING</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true' and '$(TargetFramework)' == 'net8.0-windows'">
+    <DefineConstants>$(DefineConstants);ARVREL_NPCAP_BACKEND</DefineConstants>
   </PropertyGroup>
 </Project>
