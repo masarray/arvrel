@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -8,105 +9,66 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
-    private const int MaximumRelayFinalRefinementAttempts = 7;
-    private const string RelayFinalGlossTag = "ARVREL_RELAY_FINAL_FULL_FACE_GLOSS";
+    private const int MaximumRelayFinalButtonAttempts = 7;
 
-    private static readonly Brush RelayFinalFasciaGloss = CreateRelayFinalFasciaGloss();
     private static readonly ControlTemplate RelayFinalKeyTemplate =
         ParseTemplate(RelayFinalKeyTemplateXaml);
     private static readonly ControlTemplate RelayFinalResetTemplate =
         ParseTemplate(RelayFinalResetTemplateXaml);
 
-    private bool _relayFinalRefinementApplied;
-    private int _relayFinalRefinementAttempts;
+    private bool _relayFinalButtonsApplied;
+    private int _relayFinalButtonAttempts;
 
     internal void InitializeRelayFaceplateFinalRefinement()
     {
-        if (_relayFinalRefinementApplied ||
-            _relayFinalRefinementAttempts >= MaximumRelayFinalRefinementAttempts)
+        if (_relayFinalButtonsApplied ||
+            _relayFinalButtonAttempts >= MaximumRelayFinalButtonAttempts)
             return;
 
-        // Use two SystemIdle hops. Every earlier Loaded handler gets to enqueue
-        // its hardware/gloss/button work before this final authority is appended.
+        // The relay has several historic presentation bootstraps. Two idle hops
+        // place this bounded button authority after the hardware and premium
+        // templates without creating another fascia or LED presentation owner.
         Dispatcher.BeginInvoke(
             DispatcherPriority.SystemIdle,
-            new Action(DeferRelayFaceplateFinalRefinement));
+            new Action(DeferRelayFinalButtonTuning));
     }
 
-    private void DeferRelayFaceplateFinalRefinement()
+    private void DeferRelayFinalButtonTuning()
     {
         Dispatcher.BeginInvoke(
             DispatcherPriority.SystemIdle,
-            new Action(ApplyRelayFaceplateFinalRefinement));
+            new Action(ApplyRelayFinalButtonTuning));
     }
 
-    private void ApplyRelayFaceplateFinalRefinement()
+    private void ApplyRelayFinalButtonTuning()
     {
-        if (_relayFinalRefinementApplied ||
-            _relayFinalRefinementAttempts >= MaximumRelayFinalRefinementAttempts)
+        if (_relayFinalButtonsApplied ||
+            _relayFinalButtonAttempts >= MaximumRelayFinalButtonAttempts)
             return;
 
-        _relayFinalRefinementAttempts++;
+        _relayFinalButtonAttempts++;
         if (!_relayHardwarePresentationInitialized)
         {
-            QueueRelayFinalRefinementRetry();
+            QueueRelayFinalButtonRetry();
             return;
         }
 
         var relayBody = VisualAncestors<Border>(HealthyLed)
             .FirstOrDefault(border => border.CornerRadius.TopLeft >= 8);
-        if (relayBody?.Child is not Grid bodyGrid ||
-            !string.Equals(bodyGrid.Tag?.ToString(), BodyBevelTag, StringComparison.Ordinal))
+        if (relayBody is null)
         {
-            QueueRelayFinalRefinementRetry();
+            QueueRelayFinalButtonRetry();
             return;
         }
 
-        ApplyFinalFullFasciaGloss(bodyGrid);
         var buttonCount = ApplyFinalRelayButtons(relayBody);
-        ApplyFinalRelayLedDimensions();
-
         if (buttonCount == 0)
         {
-            QueueRelayFinalRefinementRetry();
+            QueueRelayFinalButtonRetry();
             return;
         }
 
-        _relayFinalRefinementApplied = true;
-    }
-
-    private static void ApplyFinalFullFasciaGloss(Grid bodyGrid)
-    {
-        var gloss = bodyGrid.Children
-            .OfType<Border>()
-            .FirstOrDefault(border =>
-                string.Equals(border.Tag?.ToString(), RelayFinalGlossTag, StringComparison.Ordinal));
-
-        if (gloss is null)
-        {
-            gloss = new Border { Tag = RelayFinalGlossTag };
-
-            // Same-Z children paint in collection order. Insert first so the
-            // clear coat is above the molded body but below every control.
-            bodyGrid.Children.Insert(0, gloss);
-        }
-
-        Grid.SetRow(gloss, 0);
-        Grid.SetColumn(gloss, 0);
-        Grid.SetRowSpan(gloss, Math.Max(1, bodyGrid.RowDefinitions.Count));
-        Grid.SetColumnSpan(gloss, Math.Max(1, bodyGrid.ColumnDefinitions.Count));
-
-        gloss.Width = double.NaN;
-        gloss.Height = double.NaN;
-        gloss.Margin = new Thickness(1.1);
-        gloss.CornerRadius = new CornerRadius(9.7);
-        gloss.HorizontalAlignment = HorizontalAlignment.Stretch;
-        gloss.VerticalAlignment = VerticalAlignment.Stretch;
-        gloss.Background = RelayFinalFasciaGloss;
-        gloss.Opacity = 1.0;
-        gloss.IsHitTestVisible = false;
-        gloss.CacheMode = new BitmapCache(1.0);
-        Panel.SetZIndex(gloss, 0);
+        _relayFinalButtonsApplied = true;
     }
 
     private static int ApplyFinalRelayButtons(Border relayBody)
@@ -149,100 +111,14 @@ public partial class MainWindow
         return applied;
     }
 
-    private void ApplyFinalRelayLedDimensions()
+    private void QueueRelayFinalButtonRetry()
     {
-        var relayLeds = new[]
-        {
-            HealthyLed,
-            PickupLed,
-            TripLed,
-            PhaseALed,
-            PhaseBLed,
-            PhaseCLed,
-            EarthLed,
-            BlockLed
-        };
-
-        foreach (var led in relayLeds)
-        {
-            led.Width = 14;
-            led.Height = 14;
-            led.MinWidth = 14;
-            led.MinHeight = 14;
-            led.StrokeThickness = 2;
-            led.UseLayoutRounding = true;
-        }
-    }
-
-    private void QueueRelayFinalRefinementRetry()
-    {
-        if (_relayFinalRefinementAttempts >= MaximumRelayFinalRefinementAttempts)
+        if (_relayFinalButtonAttempts >= MaximumRelayFinalButtonAttempts)
             return;
 
         Dispatcher.BeginInvoke(
             DispatcherPriority.SystemIdle,
-            new Action(ApplyRelayFaceplateFinalRefinement));
-    }
-
-    private static Brush CreateRelayFinalFasciaGloss()
-    {
-        var clearCoat = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, 0),
-            EndPoint = new Point(0, 1)
-        };
-        clearCoat.GradientStops.Add(new GradientStop(Color.FromArgb(31, 255, 255, 255), 0.00));
-        clearCoat.GradientStops.Add(new GradientStop(Color.FromArgb(13, 255, 255, 255), 0.30));
-        clearCoat.GradientStops.Add(new GradientStop(Color.FromArgb(3, 255, 255, 255), 0.68));
-        clearCoat.GradientStops.Add(new GradientStop(Color.FromArgb(10, 18, 30, 38), 1.00));
-        clearCoat.Freeze();
-
-        var broadReflection = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.05, 0),
-            EndPoint = new Point(0.86, 1)
-        };
-        broadReflection.GradientStops.Add(new GradientStop(Color.FromArgb(52, 255, 255, 255), 0.00));
-        broadReflection.GradientStops.Add(new GradientStop(Color.FromArgb(31, 255, 255, 255), 0.38));
-        broadReflection.GradientStops.Add(new GradientStop(Color.FromArgb(15, 255, 255, 255), 0.72));
-        broadReflection.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1.00));
-        broadReflection.Freeze();
-
-        var edgeReflection = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, 0),
-            EndPoint = new Point(1, 1)
-        };
-        edgeReflection.GradientStops.Add(new GradientStop(Color.FromArgb(37, 255, 255, 255), 0.00));
-        edgeReflection.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1.00));
-        edgeReflection.Freeze();
-
-        var drawing = new DrawingGroup();
-        drawing.Children.Add(new GeometryDrawing(
-            clearCoat,
-            null,
-            new RectangleGeometry(new Rect(0, 0, 1, 1))));
-        drawing.Children.Add(new GeometryDrawing(
-            broadReflection,
-            null,
-            Geometry.Parse("M 0,0 L 0.72,0 L 0.24,1 L 0,1 Z")));
-        drawing.Children.Add(new GeometryDrawing(
-            edgeReflection,
-            null,
-            Geometry.Parse("M 0,0 L 0.13,0 L 0,0.34 Z")));
-        drawing.Freeze();
-
-        var brush = new DrawingBrush(drawing)
-        {
-            Viewbox = new Rect(0, 0, 1, 1),
-            ViewboxUnits = BrushMappingMode.Absolute,
-            Viewport = new Rect(0, 0, 1, 1),
-            ViewportUnits = BrushMappingMode.RelativeToBoundingBox,
-            Stretch = Stretch.Fill,
-            TileMode = TileMode.None
-        };
-        brush.Freeze();
-        return brush;
+            new Action(ApplyRelayFinalButtonTuning));
     }
 
     private const string RelayFinalKeyTemplateXaml = """
