@@ -12,7 +12,6 @@ namespace Arvrel.App;
 public partial class MainWindow
 {
     private bool _virtualInjectionIntegrationInitialized;
-    private DispatcherTimer? _virtualInjectionPresentationTimer;
     private Button? _virtualInjectionExportButton;
 
     internal void InitializeVirtualInjectionIntegration()
@@ -32,14 +31,6 @@ public partial class MainWindow
         AddHandler(Button.ClickEvent, new RoutedEventHandler(VirtualInjectionWindowButton_Click), handledEventsToo: true);
         InstallVirtualInjectionExportHandler();
 
-        _virtualInjectionPresentationTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(80)
-        };
-        _virtualInjectionPresentationTimer.Tick += (_, _) => RefreshVirtualInjectionPresentation();
-        _virtualInjectionPresentationTimer.Start();
-        Closed += (_, _) => _virtualInjectionPresentationTimer?.Stop();
-
         SyncVirtualInjectionEditorFromProfile(_scenario.ActiveProfile);
         UpdateAnalysisSourceMode(announce: false);
         RefreshVirtualInjectionPresentation();
@@ -47,8 +38,6 @@ public partial class MainWindow
 
     internal void StopVirtualInjectionIntegration()
     {
-        _virtualInjectionPresentationTimer?.Stop();
-        _virtualInjectionPresentationTimer = null;
         if (_virtualInjectionExportButton is not null)
         {
             _virtualInjectionExportButton.Click -= ExportVirtualInjectionEvidence_Click;
@@ -86,40 +75,11 @@ public partial class MainWindow
         if (!_virtualInjectionInitialized || SourceCombo.SelectedIndex != 0)
             return;
 
-        var profile = _scenario.ActiveProfile;
-        FrequencyText.Text = $"{profile.FrequencyHz:0.000} Hz";
-        SamplesPerCycleText.Text = $"  ·  {DeterministicLabScenario.SamplesPerCycle} samples/nominal cycle · {DeterministicLabScenario.SampleRateHz / 1000:0.###} kHz";
-        SampleCounterText.Text = $"  ·  smpCnt {_scenario.SampleCounter:0000}";
-        SyncText.Text = "  ·  virtual sync";
-        SyncText.Foreground = _scenario.SmvDegraded ? WarningBrush : HealthyBrush;
-        FpsText.Text = "  ·  internal injection";
-        StreamHealthText.Text = _scenario.SmvDegraded
-            ? "  ·  INTERNAL · WARN"
-            : !_scenario.IsRunning
-                ? "  ·  INTERNAL · STOPPED"
-                : _scenario.WindowStatus == "coherent"
-                    ? "  ·  INTERNAL · RUNNING"
-                    : "  ·  INTERNAL · STARTING";
-        StreamHealthText.Foreground = _scenario.SmvDegraded
-            ? WarningBrush
-            : _scenario.IsRunning
-                ? HealthyBrush
-                : BrushFrom("#657586");
-
-        var shortFingerprint = _scenario.InjectionFingerprint[..12];
-        var outputLabel = _scenario.IsRunning ? "OUTPUT ACTIVE" : "OUTPUT ZERO";
-        WaveformSubtitleText.Text = _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection
-            ? $"{profile.Name} · {outputLabel} · {_scenario.OutputState} · {shortFingerprint}"
-            : $"Virtual injection waveform · {outputLabel} · {profile.Name} · {_scenario.NeutralCurrentProvenance} · {_scenario.NeutralVoltageProvenance}";
-        WaveformSubtitleText.ToolTip = $"Configured profile {profile.Name}\nConfigured fingerprint {_scenario.InjectionFingerprint}\nEffective output fingerprint {_scenario.OutputFingerprint}\nOutput state {_scenario.OutputState}\nInjected frequency {profile.FrequencyHz:0.###} Hz\nNominal DFT {DeterministicLabScenario.Frequency:0.###} Hz\nSampling {DeterministicLabScenario.SampleRateHz:0.###} samples/s\nIN {_scenario.NeutralCurrentProvenance}\nVN {_scenario.NeutralVoltageProvenance}";
-        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · injection {shortFingerprint} · {_scenario.OutputState}";
-
-        if (_scenario.IsRunning &&
-            _scenario.WindowStatus == "coherent" &&
-            _virtualInjectionStatusText?.Text.StartsWith("APPLIED", StringComparison.Ordinal) == true)
-        {
-            SetVirtualInjectionStatus("RUNNING · OUTPUT ACTIVE", HealthyBrush, "#EAF5EC", "#B9D8BF");
-        }
+        // Presentation ownership belongs exclusively to the run/stop presenter.
+        // The previous 80 ms integration timer rewrote the same header, subtitle,
+        // source strip, and relay footer as the 250 ms run/stop presenter. Their
+        // different strings caused the remaining STOPPED/smpCnt/fingerprint flicker.
+        RefreshVirtualInjectionRunStopPresentation();
     }
 
     private void InstallVirtualInjectionExportHandler()
