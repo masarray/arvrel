@@ -117,11 +117,22 @@ deb_name="ARVREL-Avalonia-v${version}-linux-x64.deb"
 deb_path="$output_path/$deb_name"
 SOURCE_DATE_EPOCH=1577836800 dpkg-deb --root-owner-group --build "$deb_root" "$deb_path"
 
-tar -tzf "$portable_path" | grep -qx 'ARVREL/Arvrel.Desktop'
+tar_contents="$stage_root/tar-contents.txt"
+deb_contents="$stage_root/deb-contents.txt"
+file_description="$stage_root/file-description.txt"
+elf_header="$stage_root/elf-header.txt"
+
+tar -tzf "$portable_path" > "$tar_contents"
+grep -Fx 'ARVREL/Arvrel.Desktop' "$tar_contents" >/dev/null
+
 dpkg-deb --info "$deb_path" >/dev/null
-dpkg-deb --contents "$deb_path" | grep -q './opt/arvrel/Arvrel.Desktop'
-file "$portable_root/Arvrel.Desktop" | grep -q 'ELF 64-bit'
-readelf -h "$portable_root/Arvrel.Desktop" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
+dpkg-deb --contents "$deb_path" > "$deb_contents"
+grep -F './opt/arvrel/Arvrel.Desktop' "$deb_contents" >/dev/null
+
+file "$portable_root/Arvrel.Desktop" > "$file_description"
+grep -F 'ELF 64-bit' "$file_description" >/dev/null
+readelf -h "$portable_root/Arvrel.Desktop" > "$elf_header"
+grep -E 'Machine:.*Advanced Micro Devices X86-64' "$elf_header" >/dev/null
 
 manifest_name="ARVREL-Avalonia-v${version}-linux-x64-manifest.json"
 manifest_path="$output_path/$manifest_name"
