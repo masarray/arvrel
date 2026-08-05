@@ -36,16 +36,16 @@ Make every relay indicator use the same physical LED language as the TRIP indica
 
 ## Automated validation
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] Relay LED source coverage test
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] Relay LED source coverage test
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] Changed-file scope review: one WPF presentation partial, one source coverage test, and this progress document
+- [x] Ready-for-review and squash merge through PR #55
 
 ## Manual Windows QA
 
