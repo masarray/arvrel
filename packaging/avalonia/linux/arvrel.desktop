@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ARVREL
+GenericName=Virtual Protection Relay Laboratory
+Comment=IEC 61850 virtual relay and deterministic injection laboratory
+Exec=/opt/arvrel/Arvrel.Desktop
+Icon=arvrel
+Terminal=false
+Categories=Education;Science;Engineering;
+Keywords=IEC61850;Protection;Relay;Sampled Values;SMV;
+StartupNotify=true
