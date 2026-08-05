@@ -10,6 +10,20 @@ public partial class MainWindow
 {
     private const int MaximumRelayFullFaceGlossAttempts = 5;
 
+    private static readonly Brush RelayBodyDepthBackground = CreateVerticalGradient(
+        ("#DCE6EB", 0.00),
+        ("#C2CED5", 0.13),
+        ("#AAB9C2", 0.45),
+        ("#93A5B0", 0.76),
+        ("#81939F", 1.00));
+
+    private static readonly Brush RelayBodyDepthBorder = CreateDiagonalGradient(
+        ("#F8FBFC", 0.00),
+        ("#D3DDE2", 0.18),
+        ("#899AA5", 0.56),
+        ("#52636E", 0.82),
+        ("#34434C", 1.00));
+
     // One continuous clear coat follows the complete molded face. There are no
     // polygons, hard diagonals, or separate reflection patches. Depth comes from
     // the body gradient and bevel; this layer only supplies a restrained surface
@@ -65,6 +79,11 @@ public partial class MainWindow
         }
 
         _relayFullFaceGlossApplied = true;
+
+        // Molded depth belongs to the body itself, not to a bright overlay.
+        relayBody.Background = RelayBodyDepthBackground;
+        relayBody.BorderBrush = RelayBodyDepthBorder;
+        relayBody.BorderThickness = new Thickness(1.8);
 
         Grid.SetRow(gloss, 0);
         Grid.SetColumn(gloss, 0);
