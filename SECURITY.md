@@ -38,3 +38,7 @@ Use live process-bus features only on isolated, authorized test networks. Never 
 ## Security-sensitive design requirements
 
 Any future active network-output function must remain disabled by default, expose its destination and armed state, support dry run, preserve independent evidence, and require explicit laboratory arming. Such a function is outside the scope of the v0.1.0 public beta.
+
+## Release provenance and dependency controls
+
+Official release assets are protected by immutable workflow dependencies, blocking vulnerability checks, build-provenance attestations, and SBOM attestations when a CycloneDX SBOM is available. Verification instructions and the exact trust boundary are documented in [Supply-chain security](docs/SUPPLY_CHAIN_SECURITY.md).
