@@ -2,82 +2,92 @@
 
 # ARVREL
 
-### Virtual Protection Relay Laboratory for IEC 61850 Sampled Values
+### IEC 61850 Sampled Values Virtual Protection Relay Laboratory
 
-**Turn process-bus data into trusted measurements, virtual protection decisions, and reviewable engineering evidence.**
+**Observe process-bus evidence. Evaluate protection behavior. Preserve the reason behind every virtual operation.**
 
 [![Windows CI](https://github.com/masarray/arvrel/actions/workflows/dotnet.yml/badge.svg)](https://github.com/masarray/arvrel/actions/workflows/dotnet.yml)
+[![Public site](https://github.com/masarray/arvrel/actions/workflows/pages.yml/badge.svg)](https://masarray.github.io/arvrel/)
 [![Release](https://img.shields.io/github/v/release/masarray/arvrel?include_prereleases&label=public%20beta)](https://github.com/masarray/arvrel/releases)
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-0b7285)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-2563eb)](#current-public-status)
-[![Safety boundary](https://img.shields.io/badge/output-virtual%20only-b45309)](#engineering-and-safety-boundary)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-0b7285)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-2563eb)](#public-beta-status)
+[![Output](https://img.shields.io/badge/output-virtual%20only-b45309)](#engineering-and-safety-boundary)
 
-[Product site](https://masarray.github.io/arvrel/) · [Research and validation](https://masarray.github.io/arvrel/research/) · [Download and verify](https://masarray.github.io/arvrel/download.html) · [Evaluate in five minutes](https://masarray.github.io/arvrel/quick-start.html) · [Documentation](#documentation) · [Release notes](RELEASE-NOTES.md)
+[Product site](https://masarray.github.io/arvrel/) ·
+[Documentation hub](https://masarray.github.io/arvrel/documentation.html) ·
+[Quick start](https://masarray.github.io/arvrel/quick-start.html) ·
+[Research and validation](https://masarray.github.io/arvrel/research/) ·
+[FAQ](https://masarray.github.io/arvrel/faq.html) ·
+[Download and verify](https://masarray.github.io/arvrel/download.html)
 
 </div>
 
-![ARVREL IEC 61850 Sampled Values virtual protection relay laboratory](docs/assets/arvrel-main.webp)
+![ARVREL engineering workspace for IEC 61850 Sampled Values and virtual protection](docs/assets/arvrel-main.webp)
 
-## Why ARVREL
+## Why ARVREL exists
 
-ARVREL makes the complete protection cause-and-effect chain visible in one vendor-neutral Windows workspace.
+Protection engineers often need to explain more than a pickup or trip result. They need to show which Sampled Values stream was accepted, whether identity and continuity were trustworthy, how quantities were derived, which settings were active, why an element operated or restrained, and what evidence can be reviewed later.
+
+ARVREL brings that cause-and-effect chain into one vendor-neutral Windows workspace.
 
 | Observe | Evaluate | Prove |
 |---|---|---|
-| Inspect live or replayed Sampled Values, stream identity, continuity, quality, mapping, scaling, waveform, phasors, and sequence quantities. | Apply configurable protection settings and review pickup, timing, directional decisions, blocking, operation, and the virtual trip latch. | Preserve active settings identity, SMV trust state, pickup and trip timestamps, operating quantity, trip cause, event trace, and exportable evidence. |
+| Inspect live, replayed, or internally generated signals; stream identity; continuity; quality; mapping; scaling; waveform; phasors; and sequence quantities. | Apply native settings and review pickup, timers, directional decisions, blocking, operation, and the virtual trip latch. | Preserve settings identity, trust state, timestamps, operating quantity, trip cause, event trace, fingerprints, and exportable evidence. |
 
-ARVREL is designed for protection engineers, substation-automation engineers, process-bus integration teams, FAT/SAT preparation, university laboratories, and reproducible protection-algorithm research.
+## Who it is for
 
-## Current public status
+- protection and control engineers investigating feeder protection behavior;
+- substation-automation and process-bus engineers validating IEC 61850 Sampled Values integration;
+- FAT/SAT teams preparing repeatable laboratory evidence before site execution;
+- universities teaching process bus, phasors, protection logic, and engineering traceability;
+- researchers who need deterministic scenarios tied to exact source and automated tests;
+- developers reviewing an open, vendor-neutral protection-laboratory architecture.
 
-| Item | Status |
+## Public-beta status
+
+| Item | Current position |
 |---|---|
-| Current version | `v0.1.0-beta.1` |
-| Product maturity | Public engineering beta |
+| Public release | `v0.1.0-beta.1` |
+| Development line | P4 Virtual Injection Laboratory and modeless advanced injection workspace |
 | Supported platform | Windows 10/11 x64 |
 | Official packages | Self-contained installer and portable ZIP |
-| Live process bus | Npcap required separately |
+| Live capture | Npcap required separately |
 | Output authority | Virtual output only |
 | Intended use | Education, source review, controlled laboratory evaluation, FAT/SAT preparation, and research |
+| Not claimed | Certified IED, calibrated relay test set, IEC 61850 conformance result, IEC 60255 type-test evidence, or hard-real-time trip platform |
 
-The beta is not presented as a certified protection IED, calibrated relay test set, IEC 61850 conformance result, or deterministic hard-real-time trip platform.
+The release page is the package source of truth. Features present on `main` become packaged features only after a release tag and integrity assets are published.
 
-### Current source development
+## Engineering capabilities
 
-The `main` development line adds the P4 **Virtual Injection Laboratory** for users without an SMV publisher. It provides an editable 4I+4V source, fixed 4 kHz nominal sampling grid, existing single-bin DFT measurement path, protection presets, phasor/waveform evidence, trust-aware atomic apply, and injection identity in evidence exports. This unreleased capability is included in the next package only after its release tag and integrity assets are published.
+### Signal sources and process bus
 
-## What you can do
+- internal deterministic laboratory scenarios;
+- current-source P4 editable 4I+4V virtual injection with RMS, angle, enable state, frequency, and neutral provenance;
+- live IEC 61850 Sampled Values capture through Npcap;
+- PCAP and PCAPNG replay;
+- SCL-assisted identity, dataset, mapping, scaling, and `confRev` review;
+- APPID, destination MAC, VLAN, `svID`, continuity, freshness, and quality evidence.
 
-- use the current source Virtual Injection Laboratory to edit 4I+4V RMS values, angles, common frequency, and explicit/calculated neutral-channel provenance without an external SV publisher;
-- capture IEC 61850 Sampled Values through Npcap or replay PCAP/PCAPNG files;
-- import SCL and evaluate APPID, destination MAC, VLAN, `svID`, `datSet`, `confRev`, mapping, scaling, quality, freshness, and `smpCnt` evidence;
-- inspect 4I+4V one-cycle RMS phasors, symmetrical components, residual quantities, and complete two-cycle waveform windows;
-- configure native protection settings with familiar practitioner notation, setting groups, revisions, presets, and SHA-256 fingerprints;
-- evaluate virtual 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N elements;
-- review pickup timing, operated-element attribution, latched phase/earth causes, operating quantities, and exported evidence;
-- inspect the exact active standard algorithm source while keeping editable research source shadow-only;
-- hold the last coherent waveform and phasor evidence while an unhealthy live stream recovers;
-- trace public research claims through stable scenario IDs, exact automated test methods, and source files.
+### Measurement and visualization
 
-## Protection coverage
+- complete one-cycle fundamental phasor estimation;
+- 4I+4V RMS phasors;
+- positive-, negative-, and zero-sequence quantities;
+- explicit residual channels with calculated phase-sum fallback;
+- coherent waveform evidence, phasor view, relay faceplate, event trace, and operation record.
 
-| ANSI | Function | Public-beta implementation | Boundary |
-|---|---|---|---|
-| 50P-1 | Instantaneous phase overcurrent | Pickup, dropout, definite delay | Virtual operation only |
-| 51P | Time phase overcurrent | IEC inverse, definite time, TMS, reset modes | No IEC 60255 type-test claim |
-| 50N | Instantaneous earth fault | Explicit IN/3I0 preferred, calculated residual fallback | Virtual operation only |
-| 51N | Time earth fault | IEC inverse, definite time, TMS, reset modes | No IEC 60255 type-test claim |
-| 67P | Directional phase overcurrent | Positive-sequence V1/I1 polarization | No memory polarization |
-| 67N | Directional earth fault | Residual 3V0/3I0 polarization | Negative-sequence and memory polarization deferred |
-| 27 | Undervoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic | Measurement provenance remains trust-gated |
-| 59 | Overvoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic | Measurement provenance remains trust-gated |
-| 59N | Residual overvoltage | 3V0 magnitude and definite delay | Virtual operation only |
+### Protection and evidence
 
-Feeder elements default to disabled until explicitly configured by the operator.
+- native settings, setting groups, revisions, presets, and SHA-256 fingerprints;
+- virtual 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N elements;
+- pickup, definite/inverse timing, directional torque, trust blocking, operated-element attribution, and latched virtual trip;
+- evidence export with settings identity, measurements, timestamps, causes, trust state, and source provenance;
+- deterministic public scenarios mapped to exact source files and automated test methods.
 
 ## Trust before trip
 
-ARVREL separates visibility from authority. A stream can remain inspectable while communication or configuration evidence removes permission for a new virtual trip.
+ARVREL deliberately separates diagnostic visibility from protection authority:
 
 ```text
 AllowsMeasurement  → quantities may enter the measurement and display pipeline
@@ -85,30 +95,45 @@ AllowsPickup       → protection pickup and timing may be evaluated
 AllowsTrip         → an operated element may assert the virtual trip latch
 ```
 
-The trust pipeline evaluates complete measurement windows, live freshness, payload decode, `smpCnt` continuity, quality words, mapping, scaling provenance, SCL binding, address identity, `svID`, dataset, and `confRev` consistency.
+The trust pipeline evaluates complete measurement windows, payload decode, freshness, `smpCnt` continuity, quality words, mapping, scaling provenance, SCL binding, address identity, `svID`, dataset, and `confRev` consistency.
 
-Rejected duplicate and out-of-order frames remain visible in telemetry but their payload samples do not enter RMS, waveform, phasor, or protection buffers.
+Duplicate and out-of-order frames remain visible in telemetry, but their samples are rejected before entering measurement, waveform, phasor, or protection buffers.
 
-A newly accepted virtual-injection profile is also visible immediately while pickup and trip authority remain restrained until a complete coherent nominal measurement cycle has been rebuilt.
+## Protection coverage
 
-## Five-minute evaluation
+| ANSI | Function | Public implementation | Explicit boundary |
+|---|---|---|---|
+| 50P-1 | Instantaneous phase overcurrent | Pickup, dropout, definite delay | Virtual operation only |
+| 51P | Time phase overcurrent | IEC inverse, definite time, TMS, reset modes | No IEC 60255 type-test claim |
+| 50N | Instantaneous earth fault | Explicit IN/3I0 preferred; calculated residual fallback | Virtual operation only |
+| 51N | Time earth fault | IEC inverse, definite time, TMS, reset modes | No IEC 60255 type-test claim |
+| 67P | Directional phase overcurrent | Positive-sequence V1/I1 polarization | No memory polarization |
+| 67N | Directional earth fault | Residual 3V0/3I0 polarization | Negative-sequence and memory polarization deferred |
+| 27 | Undervoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic | Trust-gated measurement provenance |
+| 59 | Overvoltage | Phase-neutral, phase-phase, or V1; 1/2/3-of-3 logic | Trust-gated measurement provenance |
+| 59N | Residual overvoltage | 3V0 magnitude and definite delay | Virtual operation only |
 
-### Use an official Windows package
+Feeder elements default to disabled until explicitly configured.
 
-This is the recommended path for first-time evaluation. The packaged application already includes the compiled ARIEC61850 engine dependency.
+## Evaluate ARVREL
 
-1. Download the Windows installer or portable ZIP from [GitHub Releases](https://github.com/masarray/arvrel/releases).
-2. Launch ARVREL and select **Internal demo**.
-3. Open **Relay settings** and **CT/VT context**.
-4. Use **Inject A-G fault** in `v0.1.0-beta.1`, or use the editable **INJECT** workspace when evaluating a later package that includes P4.
-5. Review the trust state, waveform, phasors, relay LCD, pickup/trip indication, event trace, and operation evidence.
-6. Install Npcap separately only when authorized live Sampled Values capture is required.
+### Official Windows package
+
+Use this path for first evaluation.
+
+1. Download the installer or portable ZIP from [GitHub Releases](https://github.com/masarray/arvrel/releases).
+2. Verify the package using the published `SHA256SUMS.txt`.
+3. Start with **Internal demo**.
+4. Review relay settings and CT/VT context.
+5. Apply the available internal A-G scenario or the editable **INJECT** workspace in a later package that includes P4.
+6. Review trust, waveform, phasors, relay state, pickup/trip timing, event trace, and operation evidence.
+7. Install Npcap only for authorized live capture on an isolated laboratory network.
+
+Follow the [five-minute quick start](https://masarray.github.io/arvrel/quick-start.html) or the complete [user guide](docs/USER_GUIDE.md).
 
 ### Build from source
 
-Source development uses ARVREL beside the sibling ARIEC61850 repository.
-
-Requirements: Windows 10/11 x64, .NET 8 SDK, Git, and Npcap for live capture.
+Source development expects ARVREL beside its pinned ARIEC61850 engine repository.
 
 ```text
 C:\Git\
@@ -130,119 +155,75 @@ dotnet test .\tests\Arvrel.Protection.Tests\Arvrel.Protection.Tests.csproj -c Re
 dotnet test .\tests\Arvrel.ProcessBus.Tests\Arvrel.ProcessBus.Tests.csproj -c Release
 ```
 
-See [Windows build and run](docs/WINDOWS_SETUP.md) for execution-policy-safe commands and troubleshooting.
+See [Windows setup](docs/WINDOWS_SETUP.md) for prerequisites and troubleshooting.
 
 ## Architecture at a glance
 
 ```text
-Internal virtual injection / Live Npcap / PCAP replay
-                         │
-                         ▼
-       synthetic sample source / ARIEC61850 parse + SCL model
-                         │
-                         ▼
-     continuity · mapping · scaling · quality · trust gates
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-      one-cycle measurement    two-cycle evidence
-      RMS + phasors            waveform + coherent hold
-              │                     │
-              ▼                     ▼
-      protection engine        WPF operator workspace
-              │
-              ▼
-  virtual trip latch · operation record · evidence export
+Internal injection / Live Npcap / PCAP replay
+                    │
+                    ▼
+Synthetic source / ARIEC61850 parse + SCL model
+                    │
+                    ▼
+Continuity · quality · identity · mapping · scaling · trust
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+One-cycle measurement    Two-cycle evidence
+RMS · phasors · sequence waveform · coherent hold
+          │                   │
+          ▼                   ▼
+Protection engine        WPF engineering workspace
+          │
+          ▼
+Virtual trip latch · operation record · evidence export
 ```
 
-Protection evaluation occurs when decoded or internally generated measurements arrive, not when WPF renders. Mutable per-stream runtime state is protected independently and exposed to the UI through immutable snapshots.
-
-See [Architecture](docs/ARCHITECTURE.md), [P2 multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md), and [P4 virtual injection laboratory](docs/P4_VIRTUAL_INJECTION.md).
-
-## Research and validation
-
-The current fundamental estimator is a complete one-cycle, arithmetic-mean-removed, nominal-frequency **single-bin DFT** scaled to a complex RMS phasor. ARVREL does not claim a full harmonic-spectrum FFT, adaptive frequency tracking, calibrated phasor accuracy, or IEC 60255 type-test performance.
-
-P3 adds a source-to-test research layer:
-
-- [Research and validation hub](https://masarray.github.io/arvrel/research/)
-- [AN-01: fundamental signal estimation](https://masarray.github.io/arvrel/research/signal-processing.html)
-- [AN-02: SMV continuity and trust](https://masarray.github.io/arvrel/research/smv-continuity.html)
-- [AN-03: directional 67P and 67N](https://masarray.github.io/arvrel/research/directional-protection.html)
-- [Deterministic validation matrix](https://masarray.github.io/arvrel/research/validation.html)
-- [Machine-readable scenario catalog](docs/data/research-scenarios.json)
-- [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html)
-- [Related work and virtual-relay positioning](https://masarray.github.io/arvrel/research/related-work.html)
-- [Public maturity roadmap](https://masarray.github.io/arvrel/roadmap.html)
-- [Repository research guide](RESEARCH.md)
-
-The site quality gate checks scenario version, stable IDs, allowed outcomes, source/test paths, and every named test method. It also verifies the source anchors behind the public signal-processing, continuity, and directional-protection statements.
-
-ARVREL currently covers the IEC 61850 SV → fundamental quantities → feeder protection → trust-gated virtual operation → reviewable evidence chain. It does **not** currently implement 87T or claim CPU-isolated, hard-real-time, deployment-grade virtual-relay performance.
+Protection evaluates when coherent measurements arrive, not when WPF renders. Runtime state is isolated per stream and exposed to the UI through immutable snapshots.
 
 ## Documentation
 
-| Public product routes | Engineering and research detail | Project governance |
+| Start and operate | Engineering detail | Trust, research, and project |
 |---|---|---|
-| [Capabilities](https://masarray.github.io/arvrel/capabilities.html) | [Architecture notes](docs/ARCHITECTURE.md) | [Contributing](CONTRIBUTING.md) |
-| [Engineering workflows](https://masarray.github.io/arvrel/workflows/) | [Multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md) | [Security](SECURITY.md) |
-| [Research and validation](https://masarray.github.io/arvrel/research/) | [Research guide](RESEARCH.md) | [Support](SUPPORT.md) |
-| [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html) | [Deterministic scenario catalog](docs/data/research-scenarios.json) | [Code of conduct](CODE_OF_CONDUCT.md) |
-| [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) | [Dual practitioner/research modes](docs/P1_1_DUAL_MODE.md) | [Third-party notices](THIRD-PARTY-NOTICES.md) |
-| [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Commercial licensing](COMMERCIAL-LICENSING.md) |
-| [Download and verify](https://masarray.github.io/arvrel/download.html) | [P4 virtual injection](docs/P4_VIRTUAL_INJECTION.md) | [Public roadmap](https://masarray.github.io/arvrel/roadmap.html) |
+| [Documentation hub](https://masarray.github.io/arvrel/documentation.html) | [Architecture](docs/ARCHITECTURE.md) | [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html) |
+| [Five-minute quick start](https://masarray.github.io/arvrel/quick-start.html) | [Multifunction feeder protection](docs/P2_MULTIFUNCTION_FEEDER.md) | [Research guide](RESEARCH.md) |
+| [User guide](docs/USER_GUIDE.md) | [Virtual injection laboratory](docs/P4_VIRTUAL_INJECTION.md) | [Validation matrix](https://masarray.github.io/arvrel/research/validation.html) |
+| [FAQ](https://masarray.github.io/arvrel/faq.html) | [Windows setup](docs/WINDOWS_SETUP.md) | [Public-site and SEO maintenance](docs/PUBLIC_SITE.md) |
+| [Download and verify](https://masarray.github.io/arvrel/download.html) | [Capabilities](https://masarray.github.io/arvrel/capabilities.html) | [Roadmap](https://masarray.github.io/arvrel/roadmap.html) |
+| [Workflow router](https://masarray.github.io/arvrel/workflows/) | [Release checklist](docs/RELEASE_CHECKLIST.md) | [Security](SECURITY.md) |
+
+## Research and reproducibility
+
+The current fundamental estimator is a complete one-cycle, arithmetic-mean-removed, nominal-frequency **single-bin DFT** scaled to a complex RMS phasor. ARVREL does not claim a full harmonic-spectrum FFT, adaptive frequency tracking, calibrated phasor accuracy, or IEC 60255 type-test performance.
+
+Public research material includes application notes, deterministic scenario IDs, exact test-method references, laboratory exercises, related-work positioning, and an evidence-gated roadmap:
+
+- [Research and validation hub](https://masarray.github.io/arvrel/research/)
+- [Signal-processing application note](https://masarray.github.io/arvrel/research/signal-processing.html)
+- [SMV continuity and trust](https://masarray.github.io/arvrel/research/smv-continuity.html)
+- [Directional 67P and 67N](https://masarray.github.io/arvrel/research/directional-protection.html)
+- [Deterministic validation matrix](https://masarray.github.io/arvrel/research/validation.html)
+- [Laboratory exercises](https://masarray.github.io/arvrel/laboratory-exercises.html)
+- [Machine-readable scenarios](docs/data/research-scenarios.json)
 
 ## Engineering and safety boundary
 
-ARVREL's standard public build is **virtual-output laboratory software**. It does not provide:
-
-- physical relay contacts;
-- operational GOOSE trip;
-- MMS control;
-- autonomous switching;
-- switching authority or interlocking approval;
-- IEC 61850 conformance certification;
-- IEC 60255 type-test or calibration evidence;
-- deterministic hard-real-time guarantees.
+ARVREL is virtual-output laboratory software. It does not provide physical relay contacts, operational GOOSE trip, MMS control, autonomous switching, switching authority, IEC 61850 conformance certification, IEC 60255 type-test or calibration evidence, or deterministic hard-real-time guarantees.
 
 Use live capture only on isolated, authorized laboratory networks. Do not use ARVREL as the sole basis for operational protection settings, commissioning acceptance, or switching decisions.
 
-## Known beta limitations
+## Privacy, integrity, and licensing
 
-- unsigned community binaries may trigger Windows reputation warnings;
-- live behavior depends on Windows scheduling, Npcap, adapter drivers, publisher behavior, adapter quality, and host load;
-- virtual injection uses a fixed 4 kHz nominal 50 Hz measurement grid and is not a calibrated relay-test source;
-- off-nominal injection intentionally exposes the current nominal-frequency estimator response rather than providing adaptive frequency tracking;
-- 46, 47, 49, 81U/O, 32, 37, 50BF, 79, 25, 86, 74TCS, 60, and 87T are not implemented;
-- negative-sequence and memory polarization for 67N are deferred;
-- CPU-isolated execution, real-time scheduling benchmarks, HIL timing characterization, and deployment-grade virtual-IED availability are not current claims;
-- broad clean-machine, multi-adapter, long-duration, and field-environment validation continues.
+ARVREL stores local preferences and diagnostics under `%LOCALAPPDATA%\ARVREL`. Do not publish customer captures, proprietary SCL files, credentials, IP plans, or employer-confidential information.
 
-## Evidence, privacy, and release integrity
+Official release assets include, when available, installer and portable packages, SHA-256 checksums, dependency reports, a CycloneDX SBOM, and build/engine commit metadata.
 
-ARVREL stores local preferences and diagnostics under `%LOCALAPPDATA%\ARVREL`. Do not publish customer captures, proprietary station SCL files, credentials, IP plans, or employer-confidential information. Use synthetic or contributor-owned fixtures.
-
-Official releases are produced by GitHub Actions and include, when available:
-
-- self-contained Windows x64 installer;
-- self-contained portable ZIP;
-- SHA-256 checksums;
-- NuGet transitive dependency report;
-- CycloneDX SBOM;
-- build and engine commit metadata;
-- GPL, commercial-licensing, security, support, and third-party notices.
-
-## Licensing
-
-ARVREL source is licensed under **GPL-3.0-or-later**. GPL permits commercial use when its obligations are followed.
-
-A separate commercial license may be negotiated for proprietary redistribution, closed-source integration, OEM deployment, contractual support, or other agreed terms. See [Commercial licensing](COMMERCIAL-LICENSING.md).
-
-Third-party components retain their own licenses. See [Third-party notices](THIRD-PARTY-NOTICES.md).
+ARVREL is licensed under **GPL-3.0-or-later**. Separate commercial terms may be negotiated for proprietary redistribution, closed-source integration, OEM deployment, or contractual support. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Third-party notices](THIRD-PARTY-NOTICES.md).
 
 ## Citation
 
-Research and teaching publications may cite the versioned software metadata in [CITATION.cff](CITATION.cff) and should preserve the scenario identifiers and limitations described in [RESEARCH.md](RESEARCH.md).
+Research and teaching publications may cite the versioned metadata in [CITATION.cff](CITATION.cff) and should preserve the scenario identifiers and limitations described in [RESEARCH.md](RESEARCH.md).
 
 ---
 
