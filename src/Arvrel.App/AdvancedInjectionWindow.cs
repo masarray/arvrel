@@ -9,11 +9,22 @@ namespace Arvrel.App;
 public sealed class AdvancedInjectionWindow : Window
 {
     private static readonly SolidColorBrush RunningBrush = CreateBrush("#469A58");
+    private static readonly SolidColorBrush RunningBackgroundBrush = CreateBrush("#EAF5EC");
+    private static readonly SolidColorBrush RunningBorderBrush = CreateBrush("#B9D8BF");
     private static readonly SolidColorBrush StartingBrush = CreateBrush("#C48B2B");
+    private static readonly SolidColorBrush StartingBackgroundBrush = CreateBrush("#FBF2E3");
+    private static readonly SolidColorBrush StartingBorderBrush = CreateBrush("#E2C58F");
     private static readonly SolidColorBrush StoppedBrush = CreateBrush("#657586");
+    private static readonly SolidColorBrush StoppedBackgroundBrush = CreateBrush("#F2F5F7");
+    private static readonly SolidColorBrush StoppedBorderBrush = CreateBrush("#CBD3DA");
     private static readonly SolidColorBrush StopCommandBrush = CreateBrush("#C44946");
+    private static readonly SolidColorBrush SurfaceBrush = CreateBrush("#FFFFFF");
+    private static readonly SolidColorBrush LineBrush = CreateBrush("#D6E0E8");
+    private static readonly SolidColorBrush TextBrush = CreateBrush("#172033");
+    private static readonly SolidColorBrush MutedBrush = CreateBrush("#64748B");
 
     private readonly ContentControl _directHost;
+    private readonly Border _statusBadge;
     private readonly TextBlock _statusText;
     private readonly TextBlock _profileText;
     private readonly Button _startInjectionButton;
@@ -26,127 +37,111 @@ public sealed class AdvancedInjectionWindow : Window
     public AdvancedInjectionWindow()
     {
         Title = "ARVREL — Advanced Injection Laboratory";
-        Width = 1180;
-        Height = 760;
-        MinWidth = 960;
-        MinHeight = 620;
+        Width = 1040;
+        Height = 680;
+        MinWidth = 880;
+        MinHeight = 540;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        // The launcher now lives inside the Main INJECT workspace and is hidden
-        // while this window owns the editor. A taskbar entry keeps the modeless
-        // laboratory accessible if it is minimized or covered by another app.
         ShowInTaskbar = true;
         Background = CreateBrush("#F3F6F9");
         FontFamily = new FontFamily("Segoe UI Variable, Segoe UI");
+        UseLayoutRounding = true;
+        SnapsToDevicePixels = true;
 
-        var root = new Grid();
+        var root = new Grid
+        {
+            UseLayoutRounding = true,
+            SnapsToDevicePixels = true
+        };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         Content = root;
+
+        var headerShell = new Border
+        {
+            Background = SurfaceBrush,
+            BorderBrush = LineBrush,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(12, 8, 12, 8),
+            SnapsToDevicePixels = true
+        };
+        root.Children.Add(headerShell);
 
         var header = new Grid
         {
-            Margin = new Thickness(18, 16, 18, 12)
+            MinHeight = 42,
+            VerticalAlignment = VerticalAlignment.Center
         };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        root.Children.Add(header);
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        headerShell.Child = header;
 
-        var titleBlock = new StackPanel();
+        var titleBlock = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center
+        };
         titleBlock.Children.Add(new TextBlock
         {
             Text = "ADVANCED INJECTION LABORATORY",
-            FontSize = 18,
+            FontSize = 15.5,
             FontWeight = FontWeights.SemiBold,
-            Foreground = CreateBrush("#172033")
+            Foreground = TextBrush
         });
         titleBlock.Children.Add(new TextBlock
         {
             Text = "Virtual secondary-injection workspace",
-            Margin = new Thickness(0, 3, 0, 0),
-            FontSize = 11,
-            Foreground = CreateBrush("#64748B")
+            Margin = new Thickness(0, 1, 0, 0),
+            FontSize = 10,
+            Foreground = MutedBrush
         });
         header.Children.Add(titleBlock);
 
-        var authorityBadge = new Border
+        var profileBlock = new StackPanel
         {
-            Padding = new Thickness(10, 6, 10, 6),
-            CornerRadius = new CornerRadius(5),
-            Background = CreateBrush("#E8F1F8"),
-            BorderBrush = CreateBrush("#B9D2E5"),
-            BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock
-            {
-                Text = "EDITOR ACTIVE",
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = CreateBrush("#2E6F9E")
-            }
+            MinWidth = 132,
+            MaxWidth = 210
         };
-        Grid.SetColumn(authorityBadge, 1);
-        header.Children.Add(authorityBadge);
-
-        _directHost = new ContentControl
+        profileBlock.Children.Add(new TextBlock
         {
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            VerticalContentAlignment = VerticalAlignment.Stretch,
-            Margin = new Thickness(12)
-        };
-
-        _tabs = new TabControl
-        {
-            Margin = new Thickness(18, 0, 18, 12),
-            Background = Brushes.White,
-            BorderBrush = CreateBrush("#D6E0E8"),
-            BorderThickness = new Thickness(1)
-        };
-        _tabs.Items.Add(CreateTab("DIRECT", _directHost, true));
-        _tabs.Items.Add(CreateTab("SYMMETRICAL", Placeholder("Sequence-component injection is scheduled for P4.2.2."), false));
-        _tabs.Items.Add(CreateTab("IMPEDANCE", Placeholder("R–X plane and loop solving are scheduled for P4.2.3."), false));
-        _tabs.Items.Add(CreateTab("RAMP", Placeholder("Step and continuous ramp execution are scheduled for P4.2.4."), false));
-        _tabs.Items.Add(CreateTab("SEQUENCER", Placeholder("Prefault/fault/post-fault state sequencing is scheduled for P4.2.5."), false));
-        _tabs.Items.Add(CreateTab("WAVEFORM", Placeholder("Advanced transient waveform models are scheduled for P4.2.6."), false));
-        _tabs.SelectedIndex = 0;
-        Grid.SetRow(_tabs, 1);
-        root.Children.Add(_tabs);
-
-        var footer = new Grid
-        {
-            Margin = new Thickness(18, 0, 18, 16)
-        };
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetRow(footer, 2);
-        root.Children.Add(footer);
-
+            Text = "PROFILE",
+            FontSize = 8.5,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = MutedBrush
+        });
         _profileText = new TextBlock
         {
             Text = "No configured profile",
+            Margin = new Thickness(0, 1, 0, 0),
             FontSize = 10.5,
-            Foreground = CreateBrush("#64748B"),
-            VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = TextBrush,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
-        footer.Children.Add(_profileText);
+        profileBlock.Children.Add(_profileText);
+        Grid.SetColumn(profileBlock, 1);
+        header.Children.Add(profileBlock);
 
         var outputCommands = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetColumn(outputCommands, 1);
-        footer.Children.Add(outputCommands);
+        Grid.SetColumn(outputCommands, 3);
+        header.Children.Add(outputCommands);
 
         _startInjectionButton = CreateOutputCommandButton(
             LucideIconKind.Play,
             RunningBrush,
             "Start injection",
             "Start virtual injection output");
-        _startInjectionButton.Margin = new Thickness(0, 0, 6, 0);
+        _startInjectionButton.Margin = new Thickness(0, 0, 5, 0);
         _startInjectionButton.Click += (_, _) => StartInjectionRequested?.Invoke(this, EventArgs.Empty);
         outputCommands.Children.Add(_startInjectionButton);
 
@@ -161,13 +156,71 @@ public sealed class AdvancedInjectionWindow : Window
         _statusText = new TextBlock
         {
             Text = "STOPPED",
-            FontSize = 10.5,
+            FontSize = 9.5,
             FontWeight = FontWeights.SemiBold,
             Foreground = StoppedBrush,
             VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetColumn(_statusText, 3);
-        footer.Children.Add(_statusText);
+        _statusBadge = new Border
+        {
+            Padding = new Thickness(8, 4, 8, 4),
+            MinWidth = 72,
+            CornerRadius = new CornerRadius(4),
+            Background = StoppedBackgroundBrush,
+            BorderBrush = StoppedBorderBrush,
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = _statusText
+        };
+        Grid.SetColumn(_statusBadge, 5);
+        header.Children.Add(_statusBadge);
+
+        var authorityBadge = new Border
+        {
+            Padding = new Thickness(8, 4, 8, 4),
+            CornerRadius = new CornerRadius(4),
+            Background = CreateBrush("#E8F1F8"),
+            BorderBrush = CreateBrush("#B9D2E5"),
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "This modeless window currently owns the shared Direct injection editor.",
+            Child = new TextBlock
+            {
+                Text = "EDITOR",
+                FontSize = 9.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = CreateBrush("#2E6F9E")
+            }
+        };
+        Grid.SetColumn(authorityBadge, 7);
+        header.Children.Add(authorityBadge);
+
+        _directHost = new ContentControl
+        {
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            Margin = new Thickness(6)
+        };
+
+        _tabs = new TabControl
+        {
+            Margin = new Thickness(10, 8, 10, 10),
+            Background = SurfaceBrush,
+            BorderBrush = LineBrush,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(0),
+            UseLayoutRounding = true,
+            SnapsToDevicePixels = true
+        };
+        _tabs.Items.Add(CreateTab("DIRECT", _directHost, true));
+        _tabs.Items.Add(CreateTab("SYMMETRICAL", Placeholder("Sequence-component injection is scheduled for P4.2.2."), false));
+        _tabs.Items.Add(CreateTab("IMPEDANCE", Placeholder("R–X plane and loop solving are scheduled for P4.2.3."), false));
+        _tabs.Items.Add(CreateTab("RAMP", Placeholder("Step and continuous ramp execution are scheduled for P4.2.4."), false));
+        _tabs.Items.Add(CreateTab("SEQUENCER", Placeholder("Prefault/fault/post-fault state sequencing is scheduled for P4.2.5."), false));
+        _tabs.Items.Add(CreateTab("WAVEFORM", Placeholder("Advanced transient waveform models are scheduled for P4.2.6."), false));
+        _tabs.SelectedIndex = 0;
+        Grid.SetRow(_tabs, 1);
+        root.Children.Add(_tabs);
 
         UpdateCommandAvailability("stopped");
     }
@@ -221,19 +274,31 @@ public sealed class AdvancedInjectionWindow : Window
         if (string.Equals(_lastOutputState, outputState, StringComparison.Ordinal))
             return;
 
-        _statusText.Text = outputState switch
+        switch (outputState)
         {
-            "running" => "RUNNING",
-            "starting" => "STARTING",
-            _ => "STOPPED"
-        };
-        _statusText.Foreground = outputState switch
-        {
-            "running" => RunningBrush,
-            "starting" => StartingBrush,
-            _ => StoppedBrush
-        };
+            case "running":
+                SetStatusPresentation("RUNNING", RunningBrush, RunningBackgroundBrush, RunningBorderBrush);
+                break;
+            case "starting":
+                SetStatusPresentation("STARTING", StartingBrush, StartingBackgroundBrush, StartingBorderBrush);
+                break;
+            default:
+                SetStatusPresentation("STOPPED", StoppedBrush, StoppedBackgroundBrush, StoppedBorderBrush);
+                break;
+        }
         _lastOutputState = outputState;
+    }
+
+    private void SetStatusPresentation(string text, Brush foreground, Brush background, Brush border)
+    {
+        if (!string.Equals(_statusText.Text, text, StringComparison.Ordinal))
+            _statusText.Text = text;
+        if (!ReferenceEquals(_statusText.Foreground, foreground))
+            _statusText.Foreground = foreground;
+        if (!ReferenceEquals(_statusBadge.Background, background))
+            _statusBadge.Background = background;
+        if (!ReferenceEquals(_statusBadge.BorderBrush, border))
+            _statusBadge.BorderBrush = border;
     }
 
     private void UpdateCommandAvailability(string outputState)
@@ -244,12 +309,22 @@ public sealed class AdvancedInjectionWindow : Window
         if (_stopInjectionButton.IsEnabled != outputActive)
             _stopInjectionButton.IsEnabled = outputActive;
 
-        _startInjectionButton.ToolTip = outputActive
-            ? "Virtual injection output is already energized."
-            : "Start virtual injection output using the validated values currently shown in the editor.";
-        _stopInjectionButton.ToolTip = outputActive
-            ? "Stop virtual injection output at 0 V / 0 A while retaining the configured values."
-            : "Virtual injection output is already stopped.";
+        SetToolTipIfChanged(
+            _startInjectionButton,
+            outputActive
+                ? "Virtual injection output is already energized."
+                : "Start virtual injection output using the validated values currently shown in the editor.");
+        SetToolTipIfChanged(
+            _stopInjectionButton,
+            outputActive
+                ? "Stop virtual injection output at 0 V / 0 A while retaining the configured values."
+                : "Virtual injection output is already stopped.");
+    }
+
+    private static void SetToolTipIfChanged(FrameworkElement element, string value)
+    {
+        if (!Equals(element.ToolTip, value))
+            element.ToolTip = value;
     }
 
     private static Button CreateOutputCommandButton(
@@ -261,17 +336,17 @@ public sealed class AdvancedInjectionWindow : Window
         var button = new Button
         {
             Style = Application.Current?.TryFindResource("IconOnlyButton") as Style,
-            Width = 34,
-            Height = 32,
-            MinWidth = 34,
-            MinHeight = 32,
+            Width = 32,
+            Height = 30,
+            MinWidth = 32,
+            MinHeight = 30,
             Padding = new Thickness(0),
             VerticalAlignment = VerticalAlignment.Center,
             Content = new LucideIcon
             {
                 Kind = iconKind,
-                Width = 15,
-                Height = 15,
+                Width = 14,
+                Height = 14,
                 Foreground = iconBrush,
                 Filled = iconKind == LucideIconKind.CircleStop
             }
@@ -288,26 +363,28 @@ public sealed class AdvancedInjectionWindow : Window
             Header = header,
             Content = content,
             IsEnabled = enabled,
-            Padding = new Thickness(12, 6, 12, 6)
+            Padding = new Thickness(10, 4, 10, 4),
+            FontSize = 10.5,
+            MinHeight = 28
         };
 
     private static FrameworkElement Placeholder(string text)
         => new Border
         {
-            Margin = new Thickness(18),
-            Padding = new Thickness(24),
+            Margin = new Thickness(10),
+            Padding = new Thickness(16),
             Background = CreateBrush("#F8FAFC"),
             BorderBrush = CreateBrush("#D9E3EA"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(6),
             Child = new TextBlock
             {
                 Text = text,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Center,
-                FontSize = 13,
-                Foreground = CreateBrush("#64748B"),
+                FontSize = 12,
+                Foreground = MutedBrush,
                 TextWrapping = TextWrapping.Wrap
             }
         };
