@@ -335,7 +335,7 @@ public sealed class AdvancedInjectionWindow : Window
     {
         var button = new Button
         {
-            Style = Application.Current?.TryFindResource("IconOnlyButton") as Style,
+            Style = System.Windows.Application.Current?.TryFindResource("IconOnlyButton") as Style,
             Width = 32,
             Height = 30,
             MinWidth = 32,
