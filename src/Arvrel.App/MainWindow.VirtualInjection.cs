@@ -200,6 +200,7 @@ public partial class MainWindow
             IsReadOnly = true,
             Binding = new Binding(nameof(VirtualInjectionRow.Provenance))
         });
+        InitializeVirtualInjectionAngleContextMenu(table);
         Grid.SetRow(table, 1);
         root.Children.Add(table);
 
