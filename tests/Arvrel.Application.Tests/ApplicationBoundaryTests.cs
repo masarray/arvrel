@@ -29,7 +29,6 @@ public sealed class ApplicationBoundaryTests
     public void InternalLabSession_AdvancesProtectionOnlyWhileRunning()
     {
         var session = new InternalLabSession(new ProtectionSettings());
-        session.Scenario.StartInjection();
 
         Assert.AreEqual(0, session.Advance(TimeSpan.FromMilliseconds(5), 8).Count);
 
@@ -39,6 +38,23 @@ public sealed class ApplicationBoundaryTests
         Assert.AreEqual(8, ticks.Count);
         Assert.AreSame(ticks[^1].Protection, session.Snapshot);
         Assert.AreEqual(160L, session.Scenario.SampleCounter);
+        Assert.IsTrue(session.Scenario.IsRunning);
+    }
+
+    [TestMethod]
+    public void InternalLabSession_ResetProtection_PreservesSourceAuthority()
+    {
+        var session = new InternalLabSession(new ProtectionSettings());
+        session.Scenario.ApplyPreset("A-G fault");
+        session.SetRunning(true);
+        session.Advance(TimeSpan.FromMilliseconds(5), 8);
+
+        session.ResetProtection();
+
+        Assert.IsTrue(session.IsRunning);
+        Assert.AreEqual("A-G fault", session.Scenario.ActiveProfile.Name);
+        Assert.AreEqual("READY", session.Snapshot.ActiveElement);
+        Assert.IsFalse(session.Snapshot.TripLatched);
     }
 
     [TestMethod]
