@@ -34,8 +34,10 @@ Updated: 2026-08-05
 - [x] Relay-reset source-retention regression test
 - [x] Persistent-fault re-trip regression test
 - [x] NuGet vulnerability audit
+- [x] Static-site validation
 - [x] Changed-file scope review: one WPF authority, one test file, this progress document
-- [ ] Ready-for-review and squash merge
+- [x] Ready-for-review and squash merge through PR #46
+- [x] Main commit `cb90b178d836ca97ae3a186229acb67673e44dc3`
 
 ## Manual Windows QA
 
