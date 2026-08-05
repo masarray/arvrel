@@ -13,6 +13,8 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }]
   ],
   use: {
+    browserName: 'chromium',
+    channel: 'chrome',
     baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
@@ -24,8 +26,8 @@ export default defineConfig({
     timeout: 30_000
   },
   projects: [
-    { name: 'desktop-chromium', use: { browserName: 'chromium', viewport: { width: 1280, height: 800 } } },
-    { name: 'tablet-chromium', use: { browserName: 'chromium', viewport: { width: 768, height: 1024 } } },
-    { name: 'mobile-chromium', use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }
+    { name: 'desktop-chrome', use: { viewport: { width: 1280, height: 800 } } },
+    { name: 'tablet-chrome', use: { viewport: { width: 768, height: 1024 } } },
+    { name: 'mobile-chrome', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }
   ]
 });
