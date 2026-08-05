@@ -26,7 +26,7 @@ Provide Quick CMC-style right-click engineering operations on the Direct injecti
 - [x] One validated profile apply occurs after each menu operation
 - [x] Running output follows the existing coherent-cycle rebuild
 - [x] Last valid source remains active when an operation or paste is invalid
-- [x] Preset selector clears to Custom injection after a successful manual operation
+- [x] Preset selection clears and the pending profile name becomes `Custom injection` after a successful manual operation
 - [x] No direct writes to waveform, measurement, phasor, protection, process-bus, or evidence state
 - [x] P4.3-A relay/source separation remains unchanged
 - [x] P4.3-B Start/Stop authority remains unchanged
@@ -36,26 +36,26 @@ Provide Quick CMC-style right-click engineering operations on the Direct injecti
 
 - [x] Standard line-angle mapping tests
 - [x] Selected-phase anchor balancing tests
-- [x] angle normalization boundary test
-- [x] arbitrary-angle reverse-rotation test
-- [x] neutral rejection test
+- [x] Angle normalization boundary test
+- [x] Arbitrary-angle reverse-rotation test
+- [x] Neutral rejection test
 - [x] TSV serialize/parse round-trip test
-- [x] spreadsheet alias test
-- [x] incomplete-table rejection test
-- [x] duplicate-signal rejection test
-- [x] frequency-range rejection test
+- [x] Spreadsheet alias test
+- [x] Incomplete-table rejection test
+- [x] Duplicate-signal rejection test
+- [x] Frequency-range rejection test
 
 ## Automated gates
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] Changed-file scope review: one Direct-grid hook, one WPF context-menu partial, two deterministic domain helpers, two test files, and this progress document
+- [x] Ready-for-review and squash merge through PR #51
 
 ## Manual Windows QA
 
@@ -68,6 +68,6 @@ Provide Quick CMC-style right-click engineering operations on the Direct injecti
 - [ ] VN/IN disable Balanced and Reverse Rotation
 - [ ] Copy Table pastes cleanly into a spreadsheet
 - [ ] Paste Table restores frequency and all eight channels
-- [ ] malformed clipboard text leaves the current editor/source untouched
-- [ ] operations while RUNNING trigger coherent rebuild without stopping injection
-- [ ] context menu works in both Main INJECT workspace and modeless Advanced Injection Window
+- [ ] Malformed clipboard text leaves the current editor/source untouched
+- [ ] Operations while RUNNING trigger coherent rebuild without stopping injection
+- [ ] Context menu works in both Main INJECT workspace and modeless Advanced Injection Window
