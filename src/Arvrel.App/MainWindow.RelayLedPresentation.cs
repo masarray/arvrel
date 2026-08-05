@@ -9,21 +9,25 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
+    private const double RelayLedActiveBlurRadius = 9.5;
+    private const double RelayLedActiveGlowOpacity = 0.80;
+
     private static readonly DependencyPropertyDescriptor? RelayLedFillDescriptor =
         DependencyPropertyDescriptor.FromProperty(Shape.FillProperty, typeof(Shape));
 
     private static readonly Brush RelayLedLensOpacityMask = CreateLensOpacityMask();
     private static readonly Brush RelayLedOffStroke = CreateFrozenBrush("#768691");
-    private static readonly Brush RelayLedHealthyStroke = CreateFrozenBrush("#9BD7A6");
-    private static readonly Brush RelayLedWarningStroke = CreateFrozenBrush("#E8C37E");
-    private static readonly Brush RelayLedTripStroke = CreateFrozenBrush("#E99A97");
-    private static readonly Brush RelayLedPhaseStroke = CreateFrozenBrush("#94C4E4");
+    private static readonly Brush RelayLedActiveStroke = CreateFrozenBrush("#D6E0E6");
 
     private static readonly Effect RelayLedOffEffect = CreateGlow("#26343D", 3.5, 0.32);
-    private static readonly Effect RelayLedHealthyEffect = CreateGlow("#46C766", 11.5, 0.86);
-    private static readonly Effect RelayLedWarningEffect = CreateGlow("#E5A935", 11.5, 0.86);
-    private static readonly Effect RelayLedTripEffect = CreateGlow("#EF514D", 11.5, 0.92);
-    private static readonly Effect RelayLedPhaseEffect = CreateGlow("#4A9FD6", 11.5, 0.86);
+    private static readonly Effect RelayLedHealthyEffect = CreateGlow(
+        "#46C766", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
+    private static readonly Effect RelayLedWarningEffect = CreateGlow(
+        "#E5A935", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
+    private static readonly Effect RelayLedTripEffect = CreateGlow(
+        "#EF514D", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
+    private static readonly Effect RelayLedPhaseEffect = CreateGlow(
+        "#4A9FD6", RelayLedActiveBlurRadius, RelayLedActiveGlowOpacity);
 
     private readonly List<Ellipse> _relayLedIndicators = new();
     private bool _relayLedPresentationInitialized;
@@ -45,7 +49,7 @@ public partial class MainWindow
         ConfigureRelayLed(BlockLed);
 
         // Keep the top application-health indicator compact while giving it the
-        // same circular lens, edge, and state-matched glow behavior.
+        // same circular lens, bezel and state-matched glow geometry.
         ConfigureRelayLed(TopHealthLed, compact: true);
 
         Closed += (_, _) => ReleaseRelayLedPresentation();
@@ -60,9 +64,11 @@ public partial class MainWindow
         led.Height = diameter;
         led.MinWidth = diameter;
         led.MinHeight = diameter;
+        led.Stretch = Stretch.Fill;
         led.StrokeThickness = compact ? 1d : 1.25d;
         led.OpacityMask = RelayLedLensOpacityMask;
         led.SnapsToDevicePixels = false;
+        led.UseLayoutRounding = true;
         RenderOptions.SetEdgeMode(led, EdgeMode.Unspecified);
 
         RelayLedFillDescriptor?.AddValueChanged(led, RelayLedFillChanged);
@@ -104,13 +110,13 @@ public partial class MainWindow
         return color.Value switch
         {
             { R: 70, G: 154, B: 88 } =>
-                new RelayLedPresentation(RelayLedHealthyStroke, RelayLedHealthyEffect, 1.0),
+                new RelayLedPresentation(RelayLedActiveStroke, RelayLedHealthyEffect, 1.0),
             { R: 196, G: 139, B: 43 } =>
-                new RelayLedPresentation(RelayLedWarningStroke, RelayLedWarningEffect, 1.0),
+                new RelayLedPresentation(RelayLedActiveStroke, RelayLedWarningEffect, 1.0),
             { R: 199, G: 71, B: 67 } =>
-                new RelayLedPresentation(RelayLedTripStroke, RelayLedTripEffect, 1.0),
+                new RelayLedPresentation(RelayLedActiveStroke, RelayLedTripEffect, 1.0),
             { R: 65, G: 139, B: 191 } =>
-                new RelayLedPresentation(RelayLedPhaseStroke, RelayLedPhaseEffect, 1.0),
+                new RelayLedPresentation(RelayLedActiveStroke, RelayLedPhaseEffect, 1.0),
             _ => new RelayLedPresentation(RelayLedOffStroke, RelayLedOffEffect, 0.92)
         };
     }
