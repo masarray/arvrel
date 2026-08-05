@@ -56,6 +56,7 @@ Provide Quick CMC-style right-click engineering operations on the Direct injecti
 - [x] Static-site validation
 - [x] Changed-file scope review: one Direct-grid hook, one WPF context-menu partial, two deterministic domain helpers, two test files, and this progress document
 - [x] Ready-for-review and squash merge through PR #51
+- [x] Main commit `22c35e1755975dbaced6daab57e70574e093cf45`
 
 ## Manual Windows QA
 
