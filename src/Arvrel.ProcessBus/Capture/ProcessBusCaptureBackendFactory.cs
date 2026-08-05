@@ -1,8 +1,8 @@
-using System.Globalization;
-using System.Runtime.CompilerServices;
 using Arvrel.Capture;
 
-#if ARIEC61850_SIBLING
+#if ARVREL_NPCAP_BACKEND
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using AR.Iec61850.Transports;
 using AR.Iec61850.Transports.Npcap;
 #endif
@@ -19,18 +19,18 @@ internal static class ProcessBusCaptureBackendFactory
 
     public static ILiveCaptureBackend CreateDefault()
     {
-#if ARIEC61850_SIBLING
+#if ARVREL_NPCAP_BACKEND
         return new NpcapLiveCaptureBackend();
 #else
         return new UnavailableLiveCaptureBackend(
             "unavailable",
             "Live capture unavailable",
-            "Live capture requires the sibling ARIEC61850 engine and a supported native capture backend.");
+            "No supported native live-capture backend is available for this target. PCAP replay remains available when the IEC 61850 decoder is present.");
 #endif
     }
 }
 
-#if ARIEC61850_SIBLING
+#if ARVREL_NPCAP_BACKEND
 internal sealed class NpcapLiveCaptureBackend : ILiveCaptureBackend
 {
     public string BackendId => "npcap";
