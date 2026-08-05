@@ -24,10 +24,6 @@ public partial class MainWindow
         ("#52636E", 0.82),
         ("#34434C", 1.00));
 
-    // One continuous clear coat follows the complete molded face. There are no
-    // polygons, hard diagonals, or separate reflection patches. Depth comes from
-    // the body gradient and bevel; this layer only supplies a restrained surface
-    // reflection and a gentle lower-right falloff.
     private static readonly Brush RelayBodyFullFaceGloss = CreateDiagonalGradient(
         ("#24FFFFFF", 0.00),
         ("#14FFFFFF", 0.18),
@@ -66,9 +62,8 @@ public partial class MainWindow
             return;
         }
 
-        // Reuse the single sheen created by the hardware shell. Reusing it is
-        // important: two independent gloss layers produced the visible diagonal
-        // noise in the previous implementation.
+        // Reuse the one sheen created by the hardware shell. A second overlay was
+        // the direct source of the large diagonal wedge seen in manual QA.
         var gloss = bodyGrid.Children
             .OfType<Border>()
             .FirstOrDefault(border => ReferenceEquals(border.Background, RelayBodyTopSheen));
@@ -80,7 +75,7 @@ public partial class MainWindow
 
         _relayFullFaceGlossApplied = true;
 
-        // Molded depth belongs to the body itself, not to a bright overlay.
+        // Molded depth belongs to the body itself, not to a bright reflection.
         relayBody.Background = RelayBodyDepthBackground;
         relayBody.BorderBrush = RelayBodyDepthBorder;
         relayBody.BorderThickness = new Thickness(1.8);
@@ -101,9 +96,10 @@ public partial class MainWindow
         gloss.IsHitTestVisible = false;
         gloss.CacheMode = new BitmapCache(1.0);
 
-        // Keep the clear coat above the molded body background but below every
-        // faceplate control and the explicit inner bevel/lower lip overlays.
-        Panel.SetZIndex(gloss, 0);
+        // The body background belongs to the parent Border. A negative child
+        // Z-index therefore remains visible above that background while staying
+        // behind every LCD, label, LED, button, and bezel in the body Grid.
+        Panel.SetZIndex(gloss, -10);
     }
 
     private void QueueRelayFullFaceGlossRetry()
