@@ -6,34 +6,41 @@ namespace Arvrel.Protection.Tests;
 public sealed class RelayLedPresentationSourceTests
 {
     [TestMethod]
-    public void UnifiedPresentation_CoversEveryRelayFaceplateIndicator()
+    public void FaceplateIndicators_AreOwnedOnlyByCompositeLampBehavior()
     {
-        var source = File.ReadAllText(SourcePath());
-        var expectedIndicators = new[]
+        var behavior = File.ReadAllText(ControlSourcePath());
+        var presentation = File.ReadAllText(PresentationSourcePath());
+
+        foreach (var indicator in new[]
+                 {
+                     "HealthyLed", "PickupLed", "TripLed", "BlockLed",
+                     "PhaseALed", "PhaseBLed", "PhaseCLed", "EarthLed"
+                 })
         {
-            "HealthyLed",
-            "PickupLed",
-            "TripLed",
-            "PhaseALed",
-            "PhaseBLed",
-            "PhaseCLed",
-            "EarthLed",
-            "BlockLed",
-            "TopHealthLed"
-        };
+            StringAssert.Contains(behavior, indicator);
+            Assert.IsFalse(presentation.Contains(indicator, StringComparison.Ordinal));
+        }
 
-        foreach (var indicator in expectedIndicators)
-            StringAssert.Contains(source, $"ConfigureRelayLed({indicator}");
+        StringAssert.Contains(behavior, "LampVisualParts");
+        StringAssert.Contains(behavior, "RelayLampBezelBrush");
+        StringAssert.Contains(behavior, "RelayLampCavityBrush");
+        StringAssert.Contains(behavior, "parts.Halo.Effect = visual.Glow");
+        StringAssert.Contains(behavior, "FillDescriptor.AddValueChanged");
 
-        StringAssert.Contains(source, "RelayLedHealthyEffect");
-        StringAssert.Contains(source, "RelayLedWarningEffect");
-        StringAssert.Contains(source, "RelayLedTripEffect");
-        StringAssert.Contains(source, "RelayLedPhaseEffect");
-        StringAssert.Contains(source, "RelayLedLensOpacityMask");
-        StringAssert.Contains(source, "DependencyPropertyDescriptor.FromProperty(Shape.FillProperty");
+        StringAssert.Contains(presentation, "ConfigureToolbarHealthLed(TopHealthLed)");
+        Assert.IsFalse(presentation.Contains("DependencyPropertyDescriptor", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("FillDescriptor", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("RelayLedHealthyEffect", StringComparison.Ordinal));
+        Assert.IsFalse(presentation.Contains("RelayLedTripEffect", StringComparison.Ordinal));
     }
 
-    private static string SourcePath()
+    private static string ControlSourcePath()
+        => Locate("src", "Arvrel.App", "Controls", "RelayIndicatorLampBehavior.cs");
+
+    private static string PresentationSourcePath()
+        => Locate("src", "Arvrel.App", "MainWindow.RelayLedPresentation.cs");
+
+    private static string Locate(params string[] segments)
     {
         var starts = new[]
         {
@@ -45,17 +52,12 @@ public sealed class RelayLedPresentationSourceTests
         {
             for (var current = start; current is not null; current = current.Parent)
             {
-                var candidate = Path.Combine(
-                    current.FullName,
-                    "src",
-                    "Arvrel.App",
-                    "MainWindow.RelayLedPresentation.cs");
+                var candidate = Path.Combine(new[] { current.FullName }.Concat(segments).ToArray());
                 if (File.Exists(candidate))
                     return candidate;
             }
         }
 
-        throw new FileNotFoundException(
-            "Unable to locate src/Arvrel.App/MainWindow.RelayLedPresentation.cs from the test workspace.");
+        throw new FileNotFoundException($"Unable to locate {Path.Combine(segments)} from the test workspace.");
     }
 }
