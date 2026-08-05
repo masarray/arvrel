@@ -58,16 +58,17 @@ The P4.3-F presentation added static shadows and gradients, but the controls sti
 
 ## Automated validation
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Runtime template/source validation
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] Embedded button-template XML validation
+- [x] Layer/source coverage validation
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] Changed-file scope review: one WPF presentation partial, one source-validation test, and this document
+- [x] Ready-for-review and squash merge through PR #59
 
 ## Manual Windows QA
 
