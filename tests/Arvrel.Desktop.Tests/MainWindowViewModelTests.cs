@@ -15,6 +15,7 @@ public sealed class MainWindowViewModelTests
         Assert.IsFalse(viewModel.IsRunning);
         Assert.IsFalse(viewModel.FaultActive);
         Assert.IsFalse(viewModel.SmvDegraded);
+        Assert.AreEqual("RUN", viewModel.RunButtonText);
         Assert.IsNotNull(viewModel.Waveform);
         Assert.AreEqual(160, viewModel.Waveform.PhaseA.Length);
         Assert.AreEqual(4, viewModel.ProtectionElements.Count);
@@ -32,8 +33,8 @@ public sealed class MainWindowViewModelTests
         viewModel.Tick();
 
         Assert.IsTrue(viewModel.IsRunning);
+        Assert.AreEqual("PAUSE", viewModel.RunButtonText);
         Assert.AreNotEqual(initialCounter, viewModel.SampleCounterText);
-        Assert.AreEqual("RUN" is not null, true);
         Assert.IsTrue(viewModel.Events.Count >= 2);
     }
 
@@ -71,6 +72,6 @@ public sealed class MainWindowViewModelTests
         Assert.IsFalse(viewModel.FaultActive);
         Assert.IsFalse(viewModel.SmvDegraded);
         Assert.IsFalse(viewModel.TripLatched);
-        Assert.AreEqual("PAUSE" is not null, true);
+        Assert.AreEqual("RUN", viewModel.RunButtonText);
     }
 }
