@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Arvrel.Application</AssemblyName>
+    <RootNamespace>Arvrel.Application</RootNamespace>
+    <Description>Platform-neutral application orchestration for ARVREL workspaces and deterministic laboratories.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arvrel.Protection\Arvrel.Protection.csproj" />
+  </ItemGroup>
+</Project>
