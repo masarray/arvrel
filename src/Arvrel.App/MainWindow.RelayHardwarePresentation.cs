@@ -9,6 +9,8 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
+    private const int MaximumRelayHardwarePresentationAttempts = 4;
+
     private static readonly Brush RelayPanelBackground = CreateHardwareGradient(
         "#E7ECF0", "#CCD5DC", "#B8C4CC");
     private static readonly Brush RelayBodyBackground = CreateHardwareGradient(
@@ -39,10 +41,12 @@ public partial class MainWindow
     };
 
     private bool _relayHardwarePresentationInitialized;
+    private int _relayHardwarePresentationAttempts;
 
     internal void InitializeRelayHardwarePresentation()
     {
-        if (_relayHardwarePresentationInitialized)
+        if (_relayHardwarePresentationInitialized ||
+            _relayHardwarePresentationAttempts >= MaximumRelayHardwarePresentationAttempts)
             return;
 
         // Other faceplate partials build/reparent the LCD at Loaded priority.
@@ -54,9 +58,11 @@ public partial class MainWindow
 
     private void ApplyRelayHardwarePresentation()
     {
-        if (_relayHardwarePresentationInitialized)
+        if (_relayHardwarePresentationInitialized ||
+            _relayHardwarePresentationAttempts >= MaximumRelayHardwarePresentationAttempts)
             return;
 
+        _relayHardwarePresentationAttempts++;
         var borderAncestors = VisualAncestors<Border>(HealthyLed).ToArray();
         var indicatorPanel = borderAncestors.FirstOrDefault();
         var relayBody = borderAncestors.FirstOrDefault(border => border.CornerRadius.TopLeft >= 8);
@@ -66,9 +72,12 @@ public partial class MainWindow
 
         if (indicatorPanel is null || relayBody is null || relayPanel is null)
         {
-            Dispatcher.BeginInvoke(
-                DispatcherPriority.ApplicationIdle,
-                new Action(ApplyRelayHardwarePresentation));
+            if (_relayHardwarePresentationAttempts < MaximumRelayHardwarePresentationAttempts)
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.ContextIdle,
+                    new Action(ApplyRelayHardwarePresentation));
+            }
             return;
         }
 
