@@ -40,16 +40,16 @@ Keep the small relay-LCD current phasor as stable as the coherent Main Window in
 
 ## Automated validation
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] Relay LCD phasor stabilizer tests
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] Relay LCD phasor stabilizer tests
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] Changed-file scope review: coherent display guard, relay LCD presenter, hardware presentation partial, deterministic stabilizer, tests, and this document
+- [x] Ready-for-review and squash merge through PR #57
 
 ## Manual Windows QA
 
