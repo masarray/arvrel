@@ -37,17 +37,18 @@ Make HEALTHY and SMV BLOCK use the same physical LED lens language as PICKUP, TR
 
 ## Automated validation
 
-- [ ] Restore
-- [ ] Windows application build
-- [ ] LED consistency source test
-- [ ] Full-face gloss source test
-- [ ] Protection tests
-- [ ] Process-bus tests
-- [ ] Virtual-injection tests
-- [ ] NuGet vulnerability audit
-- [ ] Static-site validation
-- [ ] Changed-file scope review
-- [ ] Ready-for-review and squash merge
+- [x] Restore
+- [x] Windows application build
+- [x] LED consistency source test
+- [x] Full-face gloss source test
+- [x] Protection tests
+- [x] Process-bus tests
+- [x] Virtual-injection tests
+- [x] NuGet vulnerability audit
+- [x] Static-site validation
+- [x] CodeQL C# analysis
+- [x] Changed-file scope review: LED presentation, full-face gloss partial, deterministic source tests, and this document
+- [x] Ready-for-review and squash merge through PR #66
 
 ## Manual Windows QA
 
