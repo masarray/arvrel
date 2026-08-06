@@ -38,7 +38,9 @@ public sealed record DesktopPresentationSnapshot(
             "Portable deterministic 4I + 4V profile",
             Array.Empty<string>());
 
-    public static DesktopPresentationSnapshot FromProcessBus(SmvRuntimeSnapshot snapshot)
+    public static DesktopPresentationSnapshot FromProcessBus(
+        SmvRuntimeSnapshot snapshot,
+        bool replay)
     {
         var waveform = snapshot.Waveform;
         var projectedWaveform = new ScenarioWaveform(
@@ -51,7 +53,7 @@ public sealed record DesktopPresentationSnapshot(
             waveform.FrequencyHz * waveform.SamplesPerCycle);
 
         return new DesktopPresentationSnapshot(
-            snapshot.IsReplaySource() ? "PCAP / PCAPNG REPLAY" : "LIVE PROCESS BUS",
+            replay ? "PCAP / PCAPNG REPLAY" : "LIVE PROCESS BUS",
             snapshot.Stream.DisplayName,
             snapshot.Measurement,
             snapshot.Protection,
@@ -62,10 +64,4 @@ public sealed record DesktopPresentationSnapshot(
             snapshot.MappingSummary,
             snapshot.Diagnostics);
     }
-}
-
-internal static class SmvRuntimeSnapshotPresentationExtensions
-{
-    internal static bool IsReplaySource(this SmvRuntimeSnapshot snapshot)
-        => snapshot.SourceSummary.Contains("replay", StringComparison.OrdinalIgnoreCase);
 }
