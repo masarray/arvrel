@@ -1,9 +1,7 @@
 using System.ComponentModel;
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Arvrel.Application.Laboratory;
 using Arvrel.Desktop.ViewModels;
 using Arvrel.Protection;
 
@@ -35,13 +33,10 @@ public sealed partial class VirtualRelayControl : UserControl
     public static readonly StyledProperty<RelayLampTone> EarthToneProperty =
         AvaloniaProperty.Register<VirtualRelayControl, RelayLampTone>(nameof(EarthTone), RelayLampTone.Amber);
 
-    private static readonly FieldInfo? CurrentTickField = typeof(MainWindowViewModel).GetField(
-        "_currentTick",
-        BindingFlags.Instance | BindingFlags.NonPublic);
-
     private readonly RelayAnnunciationLatch _annunciationLatch = new();
     private readonly RelayLcdControl? _relayLcd;
     private MainWindowViewModel? _viewModel;
+    private string? _annunciationSourceIdentity;
 
     public VirtualRelayControl()
     {
@@ -120,6 +115,7 @@ public sealed partial class VirtualRelayControl : UserControl
         if (_viewModel is not null)
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         _viewModel = null;
+        _annunciationSourceIdentity = null;
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -127,14 +123,21 @@ public sealed partial class VirtualRelayControl : UserControl
 
     private void RefreshAnnunciation()
     {
-        if (_viewModel is null ||
-            CurrentTickField?.GetValue(_viewModel) is not InternalLabTick tick)
+        if (_viewModel is null)
         {
             ClearAnnunciation();
             return;
         }
 
-        var indication = _annunciationLatch.Observe(tick.Protection);
+        var presentation = _viewModel.CurrentPresentationSnapshot;
+        var sourceIdentity = $"{presentation.SourceMode}|{presentation.SourceIdentity}";
+        if (!string.Equals(_annunciationSourceIdentity, sourceIdentity, StringComparison.Ordinal))
+        {
+            _annunciationSourceIdentity = sourceIdentity;
+            _annunciationLatch.Reset();
+        }
+
+        var indication = _annunciationLatch.Observe(_viewModel.CurrentProtectionSnapshot);
         ApplyLamp(indication.PhaseA, value => PhaseAActive = value, value => PhaseATone = value);
         ApplyLamp(indication.PhaseB, value => PhaseBActive = value, value => PhaseBTone = value);
         ApplyLamp(indication.PhaseC, value => PhaseCActive = value, value => PhaseCTone = value);
