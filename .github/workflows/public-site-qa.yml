@@ -1,0 +1,130 @@
+name: Public site browser and quality QA
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "Asset/icon/**"
+      - "tests/site/**"
+      - "scripts/prepare-public-site.py"
+      - "scripts/validate-public-site.py"
+      - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.config.mjs"
+      - "lighthouserc.json"
+      - ".github/workflows/pages.yml"
+      - ".github/workflows/public-site-qa.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "Asset/icon/**"
+      - "tests/site/**"
+      - "scripts/prepare-public-site.py"
+      - "scripts/validate-public-site.py"
+      - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.config.mjs"
+      - "lighthouserc.json"
+      - ".github/workflows/pages.yml"
+      - ".github/workflows/public-site-qa.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-site-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-quality:
+    name: browser-axe-lighthouse
+    if: github.event_name != 'schedule'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install deterministic site QA tools
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify GitHub-hosted Chrome
+        run: google-chrome --version
+
+      - name: Prepare public site
+        run: python scripts/prepare-public-site.py
+
+      - name: Validate static, SEO, and quality contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv docs/404.html "$RUNNER_TEMP/ARVREL-404.html"
+          python scripts/validate-public-site.py
+          python scripts/validate-public-seo.py
+          mv "$RUNNER_TEMP/ARVREL-404.html" docs/404.html
+          python scripts/validate-public-quality.py
+
+      - name: Run Playwright and Axe
+        run: npx playwright test
+
+      - name: Run Lighthouse budgets
+        run: npx lhci autorun --config=lighthouserc.json
+
+      - name: Upload browser and Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-site-quality-reports
+          path: |
+            playwright-report
+            test-results
+            .lighthouseci
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+
+  external-links:
+    name: weekly-external-link-audit
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Audit external links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8
+        with:
+          args: >-
+            --verbose
+            --no-progress
+            --max-retries 3
+            --retry-wait-time 2
+            --accept 200,206,429
+            --exclude-loopback
+            --exclude-mail
+            "docs/**/*.html"
+            "README.md"
+          fail: true

@@ -6,15 +6,19 @@ on:
     paths:
       - "docs/**"
       - "Asset/icon/**"
+      - "scripts/prepare-public-site.py"
       - "scripts/validate-public-site.py"
       - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "docs/**"
       - "Asset/icon/**"
+      - "scripts/prepare-public-site.py"
       - "scripts/validate-public-site.py"
       - "scripts/validate-public-seo.py"
+      - "scripts/validate-public-quality.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -37,23 +41,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Stage ARVREL brand icons
+      - name: Prepare public site
+        run: python scripts/prepare-public-site.py
+
+      - name: Validate legacy public-site contracts
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p docs/assets/icon
-          cp Asset/icon/favicon.ico docs/assets/icon/
-          cp Asset/icon/favicon.svg docs/assets/icon/
-          cp Asset/icon/favicon-96x96.png docs/assets/icon/
-          cp Asset/icon/apple-touch-icon.png docs/assets/icon/
-          cp Asset/icon/web-app-manifest-192x192.png docs/assets/icon/
-          cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
-          cp Asset/icon/site.webmanifest docs/assets/icon/
-
-      - name: Validate public site and SEO
-        run: |
+          mv docs/404.html "$RUNNER_TEMP/ARVREL-404.html"
           python scripts/validate-public-site.py
           python scripts/validate-public-seo.py
+          mv "$RUNNER_TEMP/ARVREL-404.html" docs/404.html
+
+      - name: Validate professional public-site quality
+        run: python scripts/validate-public-quality.py
 
   deploy:
     name: deploy-static-site
@@ -73,18 +74,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Stage ARVREL brand icons
-        shell: bash
+      - name: Prepare and verify deploy artifact
         run: |
-          set -euo pipefail
-          mkdir -p docs/assets/icon
-          cp Asset/icon/favicon.ico docs/assets/icon/
-          cp Asset/icon/favicon.svg docs/assets/icon/
-          cp Asset/icon/favicon-96x96.png docs/assets/icon/
-          cp Asset/icon/apple-touch-icon.png docs/assets/icon/
-          cp Asset/icon/web-app-manifest-192x192.png docs/assets/icon/
-          cp Asset/icon/web-app-manifest-512x512.png docs/assets/icon/
-          cp Asset/icon/site.webmanifest docs/assets/icon/
+          python scripts/prepare-public-site.py
+          python scripts/validate-public-quality.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

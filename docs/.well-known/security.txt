@@ -1,0 +1,5 @@
+Contact: https://github.com/masarray/arvrel/security/policy
+Expires: 2028-08-06T00:00:00Z
+Preferred-Languages: en, id
+Canonical: https://masarray.github.io/arvrel/.well-known/security.txt
+Policy: https://github.com/masarray/arvrel/security/policy
