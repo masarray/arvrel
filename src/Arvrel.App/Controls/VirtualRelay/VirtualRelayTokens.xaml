@@ -38,10 +38,14 @@
         <GradientStop Color="#10171B" Offset="1" />
     </LinearGradientBrush>
 
-    <LinearGradientBrush x:Key="VrFrontFaceBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#39454C" Offset="0" />
-        <GradientStop Color="#303A41" Offset="0.36" />
-        <GradientStop Color="#273138" Offset="0.72" />
+    <!-- P1: broad edge-to-edge fascia gloss integrated into the material brush.
+         It follows the complete front-face bounds instead of a small overlay patch. -->
+    <LinearGradientBrush x:Key="VrFrontFaceBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#536067" Offset="0" />
+        <GradientStop Color="#46535A" Offset="0.18" />
+        <GradientStop Color="#39454C" Offset="0.42" />
+        <GradientStop Color="#303A41" Offset="0.58" />
+        <GradientStop Color="#273138" Offset="0.78" />
         <GradientStop Color="#222B31" Offset="1" />
     </LinearGradientBrush>
 
@@ -92,8 +96,8 @@
 
     <LinearGradientBrush x:Key="VrLampBezelBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#F0F4F6" Offset="0" />
-        <GradientStop Color="#9DA9B0" Offset="0.27" />
-        <GradientStop Color="#4B5961" Offset="0.62" />
+        <GradientStop Color="#AAB5BB" Offset="0.25" />
+        <GradientStop Color="#536169" Offset="0.62" />
         <GradientStop Color="#11181C" Offset="1" />
     </LinearGradientBrush>
 
@@ -102,8 +106,8 @@
                          GradientOrigin="0.34,0.28"
                          RadiusX="0.72"
                          RadiusY="0.72">
-        <GradientStop Color="#6D7C84" Offset="0" />
-        <GradientStop Color="#2D383E" Offset="0.56" />
+        <GradientStop Color="#74838B" Offset="0" />
+        <GradientStop Color="#2D383E" Offset="0.55" />
         <GradientStop Color="#070B0D" Offset="1" />
     </RadialGradientBrush>
 
@@ -113,9 +117,9 @@
                          RadiusX="0.76"
                          RadiusY="0.76">
         <GradientStop Color="#00FFFFFF" Offset="0" />
-        <GradientStop Color="#06000000" Offset="0.42" />
-        <GradientStop Color="#62000000" Offset="0.82" />
-        <GradientStop Color="#A8000000" Offset="1" />
+        <GradientStop Color="#04000000" Offset="0.40" />
+        <GradientStop Color="#4A000000" Offset="0.80" />
+        <GradientStop Color="#92000000" Offset="1" />
     </RadialGradientBrush>
 
     <DropShadowEffect x:Key="VrShellShadow"
@@ -143,8 +147,12 @@
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -187,24 +195,25 @@
                                 <Border x:Name="HoverLayer" CornerRadius="5" Background="Transparent" />
                                 <ContentPresenter HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
+                                                  Focusable="False"
                                                   RecognizesAccessKey="True" />
                             </Grid>
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="HoverLayer" Property="Background" Value="#0CFFFFFF" />
+                            <Setter TargetName="HoverLayer" Property="Background" Value="#0AFFFFFF" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Root" Property="RenderTransform">
                                 <Setter.Value>
-                                    <TranslateTransform Y="0.6" />
+                                    <TranslateTransform Y="0.25" />
                                 </Setter.Value>
                             </Setter>
-                            <Setter TargetName="Face" Property="Margin" Value="1,0.6,1,3.4" />
-                            <Setter TargetName="TopHighlight" Property="Opacity" Value="0.55" />
-                            <Setter TargetName="Depth" Property="Opacity" Value="0.72" />
-                            <Setter TargetName="HoverLayer" Property="Background" Value="#0B000000" />
+                            <Setter TargetName="Face" Property="Margin" Value="1,0.25,1,3.75" />
+                            <Setter TargetName="TopHighlight" Property="Opacity" Value="0.72" />
+                            <Setter TargetName="Depth" Property="Opacity" Value="0.86" />
+                            <Setter TargetName="HoverLayer" Property="Background" Value="#06000000" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Root" Property="Opacity" Value="0.45" />
