@@ -145,7 +145,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
         _workspace.InternalLab.Scenario.ActiveProfile.Name,
         "A-G fault",
         StringComparison.Ordinal);
-    public bool SmvDegraded => _workspace.InternalLab.Scenario.SmvDegraded;
+    public bool SmvDegraded => IsProcessBusDisplayActive
+        ? !DisplayProtection.SmvTrust.AllowsTrip
+        : _workspace.InternalLab.Scenario.SmvDegraded;
     public bool AllowsTrip => DisplayProtection.SmvTrust.AllowsTrip;
     public bool TripLatched => DisplayAnnunciation.TripLatched;
     public bool PickupActive => DisplayAnnunciation.PickupActive;
@@ -154,7 +156,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
         ? _processBus.IsRunning ? "STOP PROCESS BUS" : "START LIVE SOURCE"
         : IsRunning ? "STOP INJECTION" : "START INJECTION";
     public string FaultButtonText => "LOAD + START A-G FAULT";
-    public string SmvButtonText => SmvDegraded ? "RESTORE SMV TRUST" : "DEGRADE SMV";
+    public string SmvButtonText => _workspace.InternalLab.Scenario.SmvDegraded
+        ? "RESTORE SMV TRUST"
+        : "DEGRADE SMV";
     public string OutputStateText => _workspace.InternalLab.Scenario.OutputState.ToUpperInvariant();
     public string ProfileNameText => _workspace.InternalLab.Scenario.ActiveProfile.Name;
     public string InjectionFingerprintText => $"INJ {_workspace.InternalLab.Scenario.InjectionFingerprint[..12]}";
