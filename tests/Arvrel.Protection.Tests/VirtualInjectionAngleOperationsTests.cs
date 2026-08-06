@@ -61,7 +61,7 @@ public sealed class VirtualInjectionAngleOperationsTests
     public void ThreePhaseOperations_RejectNeutralSignals()
     {
         Assert.IsFalse(VirtualInjectionAngleOperations.IsThreePhaseSignal(VirtualInjectionSignal.NeutralVoltage));
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
             VirtualInjectionAngleOperations.BalancedAngles(VirtualInjectionSignal.NeutralVoltage, 0));
     }
 }
