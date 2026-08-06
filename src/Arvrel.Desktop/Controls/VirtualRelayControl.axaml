@@ -1,0 +1,338 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Arvrel.Desktop.Controls"
+             xmlns:vm="using:Arvrel.Desktop.ViewModels"
+             x:Class="Arvrel.Desktop.Controls.VirtualRelayControl"
+             x:DataType="vm:MainWindowViewModel"
+             Background="Transparent">
+  <UserControl.Styles>
+    <Style Selector="Button.relay-key">
+      <Setter Property="Width" Value="50" />
+      <Setter Property="Height" Value="42" />
+      <Setter Property="Margin" Value="3" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="#303B42" />
+      <Setter Property="BorderBrush" Value="#65737B" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Foreground" Value="#EEF4F6" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.relay-key:pointerover">
+      <Setter Property="Background" Value="#39464E" />
+      <Setter Property="BorderBrush" Value="#7B8991" />
+    </Style>
+    <Style Selector="Button.relay-key:pressed">
+      <Setter Property="Background" Value="#263138" />
+      <Setter Property="BorderBrush" Value="#53616A" />
+    </Style>
+    <Style Selector="Button.function-key">
+      <Setter Property="Width" Value="62" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Margin" Value="0,0,0,7" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="#303B42" />
+      <Setter Property="BorderBrush" Value="#65737B" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Foreground" Value="#EEF4F6" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.function-key:pointerover">
+      <Setter Property="Background" Value="#39464E" />
+    </Style>
+    <Style Selector="TextBlock.relay-label">
+      <Setter Property="Foreground" Value="#DDE7EB" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.micro">
+      <Setter Property="Foreground" Value="#82939C" />
+      <Setter Property="FontSize" Value="8" />
+    </Style>
+  </UserControl.Styles>
+
+  <Viewbox Stretch="Uniform">
+    <Grid Width="560" Height="700" Margin="8">
+      <Border CornerRadius="25"
+              Background="#20292F"
+              BorderBrush="#6C787F"
+              BorderThickness="2" />
+
+      <Border Margin="11"
+              CornerRadius="21"
+              Background="#11181C"
+              BorderBrush="#A8B1B6"
+              BorderThickness="1" />
+
+      <Border Margin="19"
+              CornerRadius="16"
+              BorderBrush="#57656D"
+              BorderThickness="1.5">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Color="#48545B" Offset="0" />
+            <GradientStop Color="#37434A" Offset="0.34" />
+            <GradientStop Color="#29343B" Offset="0.72" />
+            <GradientStop Color="#222B31" Offset="1" />
+          </LinearGradientBrush>
+        </Border.Background>
+
+        <Grid Margin="18" RowDefinitions="62,306,14,172,48">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="ARVREL"
+                           FontSize="19"
+                           FontWeight="SemiBold"
+                           Foreground="#EDF3F5" />
+                <TextBlock Text="650"
+                           FontSize="19"
+                           FontWeight="SemiBold"
+                           Foreground="#3699D2" />
+              </StackPanel>
+              <TextBlock Classes="micro" Text="PROCESS BUS PROTECTION RELAY" />
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    Padding="10,6"
+                    VerticalAlignment="Center"
+                    CornerRadius="5"
+                    Background="#202A30"
+                    BorderBrush="#69767E"
+                    BorderThickness="1">
+              <StackPanel Spacing="1">
+                <TextBlock Text="ARV-650"
+                           FontFamily="Cascadia Mono,Consolas,monospace"
+                           FontSize="10.5"
+                           FontWeight="SemiBold"
+                           Foreground="#EDF3F5" />
+                <TextBlock Classes="micro" Text="IEC 61850 SV" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Grid Grid.Row="1" ColumnDefinitions="110,12,252,12,86">
+            <Border Grid.Column="0"
+                    CornerRadius="10"
+                    Background="#273138"
+                    BorderBrush="#4E5D65"
+                    BorderThickness="1.2">
+              <Grid Margin="10,8" ColumnDefinitions="*,22"
+                    RowDefinitions="28,32,32,32,32,32,32,32,32">
+                <TextBlock Grid.ColumnSpan="2"
+                           Text="STATUS"
+                           Classes="micro"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Row="1" Text="HEALTHY" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="1" Grid.Column="1"
+                                           IsActive="{Binding AllowsTrip}"
+                                           Tone="Green" />
+
+                <TextBlock Grid.Row="2" Text="PICKUP" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="2" Grid.Column="1"
+                                           IsActive="{Binding PickupActive}"
+                                           Tone="Amber" />
+
+                <TextBlock Grid.Row="3" Text="TRIP" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="3" Grid.Column="1"
+                                           IsActive="{Binding TripLatched}"
+                                           Tone="Red" />
+
+                <TextBlock Grid.Row="4" Text="PHASE A" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="4" Grid.Column="1" Tone="Red" />
+
+                <TextBlock Grid.Row="5" Text="PHASE B" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="5" Grid.Column="1" Tone="Red" />
+
+                <TextBlock Grid.Row="6" Text="PHASE C" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="6" Grid.Column="1" Tone="Red" />
+
+                <TextBlock Grid.Row="7" Text="EARTH" Classes="relay-label" />
+                <controls:RelayLampControl Grid.Row="7" Grid.Column="1" Tone="Red" />
+
+                <TextBlock Grid.Row="8" Text="SMV BLOCK" Classes="relay-label" FontSize="8.8" />
+                <controls:RelayLampControl Grid.Row="8" Grid.Column="1"
+                                           IsActive="{Binding AllowsTrip}"
+                                           Invert="True"
+                                           Tone="Amber" />
+
+                <Border Grid.ColumnSpan="2"
+                        Width="3"
+                        Margin="-10,29,0,4"
+                        HorizontalAlignment="Left"
+                        Background="#3699D2"
+                        CornerRadius="2"
+                        Opacity="0.72" />
+              </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    CornerRadius="8"
+                    Background="#10171B"
+                    BorderBrush="#65737B"
+                    BorderThickness="1.3"
+                    Padding="7">
+              <Border CornerRadius="4"
+                      Background="#E1E8E2"
+                      BorderBrush="#0C1114"
+                      BorderThickness="1">
+                <Grid RowDefinitions="27,*,28">
+                  <Border Background="#4B7086" Padding="8,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="BAY 12 · FEEDER"
+                                 Foreground="#F3F7F8"
+                                 FontSize="8.5"
+                                 FontWeight="SemiBold"
+                                 VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1"
+                                 Text="SV READY"
+                                 Foreground="#DCE8ED"
+                                 FontFamily="Cascadia Mono,Consolas,monospace"
+                                 FontSize="7.5"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+
+                  <StackPanel Grid.Row="1" Margin="11,9,11,7" Spacing="7">
+                    <TextBlock Text="{Binding TripStateText}"
+                               Foreground="#30444B"
+                               FontFamily="Cascadia Mono,Consolas,monospace"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="78,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                      <TextBlock Grid.Row="0" Text="IA" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding PhaseAText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="1" Text="IB" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PhaseBText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="2" Text="IC" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhaseCText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="3" Text="3I0" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ResidualText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
+                    </Grid>
+                    <Border Height="1" Background="#8EA09A" Margin="0,3,0,1" />
+                    <TextBlock Text="{Binding TrustStateText}"
+                               Foreground="#62777D"
+                               FontFamily="Cascadia Mono,Consolas,monospace"
+                               FontSize="7.6"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*">
+                    <Border Grid.Column="0" Background="#426F8C" BorderBrush="#294E65" BorderThickness="0,1,1,0">
+                      <TextBlock Text="MEASURE" Foreground="White" FontSize="7" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="1" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
+                      <TextBlock Text="EVENTS" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="2" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
+                      <TextBlock Text="RECORDS" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="3" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,0,0">
+                      <TextBlock Text="SETUP" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                  </Grid>
+                </Grid>
+              </Border>
+            </Border>
+
+            <Border Grid.Column="4"
+                    CornerRadius="9"
+                    Background="#273138"
+                    BorderBrush="#4E5D65"
+                    BorderThickness="1.2">
+              <StackPanel Margin="12,10" HorizontalAlignment="Center">
+                <Button Classes="function-key" Content="F1" />
+                <Button Classes="function-key" Content="F2" />
+                <Button Classes="function-key" Content="F3" />
+                <Button Classes="function-key" Content="F4" />
+                <Button Classes="function-key" Content="F5" />
+                <Button Classes="function-key"
+                        Content="RESET"
+                        Foreground="#5DB7E2"
+                        Command="{Binding ResetRelayCommand}" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Border Grid.Row="3"
+                  CornerRadius="11"
+                  Background="#273138"
+                  BorderBrush="#4E5D65"
+                  BorderThickness="1.2">
+            <Grid Margin="14,10" ColumnDefinitions="98,*,98">
+              <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Button Classes="relay-key" Content="⌂" FontSize="18" />
+                <Button Classes="relay-key" Content="☰" FontSize="18" />
+              </StackPanel>
+
+              <Border Grid.Column="1"
+                      Width="184"
+                      Height="148"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      CornerRadius="18"
+                      BorderBrush="#426E88"
+                      BorderThickness="2"
+                      Background="#1A2328">
+                <Grid HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      ColumnDefinitions="56,56,56"
+                      RowDefinitions="48,48,48">
+                  <Button Grid.Row="0" Grid.Column="1" Classes="relay-key" Content="⌃" />
+                  <Button Grid.Row="1" Grid.Column="0" Classes="relay-key" Content="‹" FontSize="20" />
+                  <Button Grid.Row="1" Grid.Column="1" Classes="relay-key" Content="OK" />
+                  <Button Grid.Row="1" Grid.Column="2" Classes="relay-key" Content="›" FontSize="20" />
+                  <Button Grid.Row="2" Grid.Column="1" Classes="relay-key" Content="⌄" />
+                </Grid>
+              </Border>
+
+              <Grid Grid.Column="2" RowDefinitions="54,54,*">
+                <Button Grid.Row="0" Classes="relay-key" Content="↶" FontSize="18" />
+                <Button Grid.Row="1" Classes="relay-key" Content="☆" FontSize="20" />
+                <Border Grid.Row="2"
+                        Width="48"
+                        Height="28"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        CornerRadius="4"
+                        Background="#171F24"
+                        BorderBrush="#69767D"
+                        BorderThickness="1">
+                  <Grid>
+                    <Border Height="3" Margin="7,4,7,0" VerticalAlignment="Top" Background="#3699D2" CornerRadius="2" />
+                    <TextBlock Text="USB" Foreground="#74858F" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,0" />
+                  </Grid>
+                </Border>
+              </Grid>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="4" Margin="2,8,2,0" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Classes="micro" Text="VIRTUAL TRIP OUTPUT ONLY" />
+              <TextBlock Text="{Binding SettingsGroupText}"
+                         Foreground="#82939C"
+                         FontFamily="Cascadia Mono,Consolas,monospace"
+                         FontSize="8"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Grid.Column="1"
+                    Width="94"
+                    Height="4"
+                    VerticalAlignment="Center"
+                    CornerRadius="2"
+                    Background="#3699D2"
+                    Opacity="0.68" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Viewbox>
+</UserControl>
