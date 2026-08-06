@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Arvrel.Desktop.ViewModels"
+             x:Class="Arvrel.Desktop.Controls.ProcessBusWorkspace"
+             x:DataType="vm:MainWindowViewModel">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="10" Margin="4,10,4,4">
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="PROCESS-BUS SOURCE" />
+              <TextBlock FontWeight="Bold" Foreground="#8ED5E8" Text="{Binding ProcessBusModeText}" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Classes="caption" Text="{Binding ProcessBusBackendText}" VerticalAlignment="Center" />
+          </Grid>
+          <TextBlock Classes="caption" Text="{Binding ProcessBusCapabilityText}" TextWrapping="Wrap" />
+          <TextBlock FontWeight="SemiBold" Text="{Binding ProcessBusStatus}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="7">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="section" Text="LIVE CAPTURE ADAPTER" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Command="{Binding RefreshAdaptersCommand}" Content="REFRESH" Padding="10,5" />
+          </Grid>
+          <ComboBox ItemsSource="{Binding ProcessBusAdapters}"
+                    SelectedItem="{Binding SelectedProcessBusAdapter, Mode=TwoWay}"
+                    MinHeight="34"
+                    PlaceholderText="No adapter discovered" />
+          <TextBlock Classes="caption" Text="{Binding SelectedAdapterSummary}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+            <Button Grid.Column="0" Classes="primary" Command="{Binding StartLiveCaptureCommand}" Content="START LIVE" />
+            <Button Grid.Column="1" Command="{Binding StopProcessBusCommand}" Content="STOP SOURCE" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="7">
+          <TextBlock Classes="section" Text="PCAP / PCAPNG REPLAY" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
+            <TextBox Text="{Binding ReplayPath, Mode=TwoWay}"
+                     Watermark="Select capture file"
+                     TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Click="BrowseReplay_Click" Content="BROWSE" Padding="10,5" />
+          </Grid>
+          <Button Classes="primary" Command="{Binding ReplayCaptureCommand}" Content="REPLAY CAPTURE" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="7">
+          <TextBlock Classes="section" Text="SCL STREAM BINDING" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
+            <TextBox Text="{Binding SclPath, Mode=TwoWay}"
+                     Watermark="Select SCD / CID / ICD / IID"
+                     TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Click="BrowseScl_Click" Content="BROWSE" Padding="10,5" />
+          </Grid>
+          <Button Command="{Binding LoadSclCommand}" Content="LOAD SCL PROFILES" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusSclSummary}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="7">
+          <TextBlock Classes="section" Text="DISCOVERED SV STREAM" />
+          <ComboBox ItemsSource="{Binding ProcessBusStreams}"
+                    SelectedItem="{Binding SelectedProcessBusStream, Mode=TwoWay}"
+                    MinHeight="34"
+                    PlaceholderText="No Sampled Values stream discovered" />
+          <TextBlock FontWeight="SemiBold" Foreground="#8ED5E8" Text="{Binding SelectedStreamSummary}" TextWrapping="Wrap" />
+          <TextBlock Classes="caption" Text="{Binding SelectedStreamAddress}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="section" Text="STREAM TELEMETRY" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="FRAME RATE" Classes="caption" />
+            <TextBlock Grid.Column="1" Text="{Binding ProcessBusFrameRateText}" FontWeight="SemiBold" />
+          </Grid>
+          <TextBlock Classes="caption" Text="{Binding ProcessBusCounterText}" TextWrapping="Wrap" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusContinuityText}" TextWrapping="Wrap" />
+          <Border Height="1" Background="#223541" Margin="0,2" />
+          <TextBlock FontWeight="SemiBold" Text="TRUST" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusTrustText}" TextWrapping="Wrap" />
+          <TextBlock FontWeight="SemiBold" Text="MAPPING" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusMappingText}" TextWrapping="Wrap" />
+          <TextBlock FontWeight="SemiBold" Text="SCALING" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusScalingText}" TextWrapping="Wrap" />
+          <TextBlock FontWeight="SemiBold" Text="SOURCE" />
+          <TextBlock Classes="caption" Text="{Binding ProcessBusSourceText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
