@@ -1,0 +1,75 @@
+<UserControl x:Class="Arvrel.App.Controls.VirtualRelay.RelayLampControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="19"
+             Height="19"
+             SnapsToDevicePixels="False"
+             UseLayoutRounding="True"
+             IsHitTestVisible="False">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="VirtualRelayTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Width="19" Height="19">
+        <!-- Emitted light remains behind the physical ring. -->
+        <Ellipse x:Name="Halo"
+                 Width="13"
+                 Height="13"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Opacity="0" />
+
+        <Ellipse Width="19"
+                 Height="19"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Fill="{StaticResource VrLampBezelBrush}">
+            <Ellipse.Effect>
+                <DropShadowEffect Color="#11181D"
+                                  BlurRadius="4"
+                                  Direction="315"
+                                  ShadowDepth="1.2"
+                                  Opacity="0.72"
+                                  RenderingBias="Quality" />
+            </Ellipse.Effect>
+        </Ellipse>
+
+        <Ellipse Width="14.5"
+                 Height="14.5"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Fill="{StaticResource VrLampCavityBrush}" />
+
+        <!-- MainWindow keeps writing logical state colours to this exact lens. -->
+        <Ellipse x:Name="Lens"
+                 x:FieldModifier="public"
+                 Width="10.5"
+                 Height="10.5"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Fill="{StaticResource VrOffBrush}" />
+
+        <Ellipse Width="10.5"
+                 Height="10.5"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Fill="{StaticResource VrLampShadeBrush}" />
+
+        <Ellipse x:Name="Highlight"
+                 Width="3.4"
+                 Height="2.3"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Fill="#D8FFFFFF"
+                 Opacity="0.34"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform>
+                <TranslateTransform X="-2.1" Y="-2.3" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Grid>
+</UserControl>
