@@ -35,7 +35,7 @@ public sealed class VirtualInjectionRuntimeTests
         var originalFingerprint = runtime.InjectionFingerprint;
         var invalid = VirtualInjectionPresets.Create("A-G fault") with { FrequencyHz = 100 };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => runtime.Apply(invalid));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => runtime.Apply(invalid));
 
         Assert.AreEqual(originalFingerprint, runtime.InjectionFingerprint);
         Assert.AreEqual("Normal balanced", runtime.ActiveProfile.Name);

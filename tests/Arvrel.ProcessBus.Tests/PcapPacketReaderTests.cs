@@ -84,7 +84,7 @@ public sealed class PcapPacketReaderTests
                 WriteUInt32(stream, 101);
             }
 
-            Assert.ThrowsException<InvalidDataException>(() => PcapPacketReader.Read(path).ToArray());
+            Assert.ThrowsExactly<InvalidDataException>(() => PcapPacketReader.Read(path).ToArray());
         }
         finally
         {
