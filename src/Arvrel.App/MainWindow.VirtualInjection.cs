@@ -14,7 +14,6 @@ namespace Arvrel.App;
 public partial class MainWindow
 {
     private readonly ObservableCollection<VirtualInjectionRow> _virtualInjectionRows = new();
-    private readonly Dictionary<VirtualInjectionSignal, VirtualInjectionChannel> _virtualInjectionTransientChannels = new();
     private bool _virtualInjectionInitialized;
     private bool _virtualInjectionEditorSync;
     private Grid? _virtualInjectionView;
@@ -25,7 +24,6 @@ public partial class MainWindow
     private TextBlock? _virtualInjectionProvenanceText;
     private DispatcherTimer? _virtualInjectionApplyTimer;
     private string _pendingInjectionName = "Custom injection";
-    private CtSaturationSettings _virtualInjectionCtSettings = CtSaturationSettings.Disabled;
 
     private void InitializeVirtualInjectionEditor()
     {
@@ -337,15 +335,6 @@ public partial class MainWindow
                 SetVirtualInjectionInvalid(error);
                 return false;
             }
-
-            if (_virtualInjectionTransientChannels.TryGetValue(row.Signal, out var previous))
-            {
-                channel = channel with
-                {
-                    DcOffsetPercent = previous.DcOffsetPercent,
-                    DcTimeConstantMilliseconds = previous.DcTimeConstantMilliseconds
-                };
-            }
             channels[row.Signal] = channel;
         }
 
@@ -361,10 +350,7 @@ public partial class MainWindow
                 channels[VirtualInjectionSignal.PhaseACurrent],
                 channels[VirtualInjectionSignal.PhaseBCurrent],
                 channels[VirtualInjectionSignal.PhaseCCurrent],
-                channels[VirtualInjectionSignal.NeutralCurrent])
-            {
-                CurrentTransformer = _virtualInjectionCtSettings
-            }.Normalize();
+                channels[VirtualInjectionSignal.NeutralCurrent]).Normalize();
 
             var changed = _scenario.ApplyProfile(profile);
             UpdateVirtualInjectionProvenance();
@@ -409,11 +395,7 @@ public partial class MainWindow
         RenderInitialFrame();
         RefreshPhasorFrame();
         if (announce)
-        {
-            StatusText.Text = profile.CurrentTransformer.Enabled
-                ? $"Virtual injection preset '{preset}' applied with nonlinear CT study parameters. RMS and angle edits retain burden, remanence, and fault asymmetry."
-                : $"Virtual injection preset '{preset}' applied. Values remain editable and auto-apply after validation.";
-        }
+            StatusText.Text = $"Virtual injection preset '{preset}' applied. Values remain editable and auto-apply after validation.";
     }
 
     private void SyncVirtualInjectionEditorFromProfile(VirtualInjectionProfile profile)
@@ -424,14 +406,8 @@ public partial class MainWindow
         _virtualInjectionEditorSync = true;
         try
         {
-            _virtualInjectionTransientChannels.Clear();
             foreach (var row in _virtualInjectionRows)
-            {
-                var channel = profile.Channel(row.Signal);
-                row.Apply(channel);
-                _virtualInjectionTransientChannels[row.Signal] = channel;
-            }
-            _virtualInjectionCtSettings = profile.CurrentTransformer;
+                row.Apply(profile.Channel(row.Signal));
             if (_virtualInjectionFrequencyText is not null)
                 _virtualInjectionFrequencyText.Text = profile.FrequencyHz.ToString("0.###", CultureInfo.InvariantCulture);
             if (_virtualInjectionPresetCombo is not null)
@@ -460,16 +436,7 @@ public partial class MainWindow
         var voltage = _virtualInjectionRows.FirstOrDefault(row => row.Signal == VirtualInjectionSignal.NeutralVoltage);
         var currentText = current?.IsEnabled == true ? "IN explicit" : "3I0 = IA+IB+IC";
         var voltageText = voltage?.IsEnabled == true ? "VN explicit" : "3V0 = VA+VB+VC";
-        var remanenceText = _virtualInjectionCtSettings.RemanencePercent.ToString(
-            "+0.#;-0.#;0",
-            CultureInfo.InvariantCulture);
-        var ctText = _virtualInjectionCtSettings.Enabled
-            ? $"CT nonlinear · Vk {_virtualInjectionCtSettings.KneePointVoltageRms:0.#} V · burden {_virtualInjectionCtSettings.BurdenResistanceOhm:0.###} Ω · rem {remanenceText}%"
-            : "CT ideal";
-        _virtualInjectionProvenanceText.Text = $"{currentText} · {voltageText} · {ctText}";
-        _virtualInjectionProvenanceText.ToolTip = _virtualInjectionCtSettings.Enabled
-            ? "CT equivalent-circuit study model is active. Direct RMS and angle edits retain the preset knee point, burden, remanence, excitation curve, and decaying DC fault component."
-            : "Unchecked IN or VN uses IA+IB+IC or VA+VB+VC. Checked neutral rows become explicit virtual channels. CT transformation is ideal."
+        _virtualInjectionProvenanceText.Text = $"{currentText} · {voltageText} · common synchronous frequency";
     }
 
     private void SetVirtualInjectionInvalid(string error)
