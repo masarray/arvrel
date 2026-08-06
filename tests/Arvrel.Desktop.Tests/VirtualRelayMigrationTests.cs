@@ -53,7 +53,7 @@ public sealed class VirtualRelayMigrationTests
     }
 
     [TestMethod]
-    public void Faceplate_PhaseAndEarthLampsUsePortableAnnunciationLatch()
+    public void Faceplate_PhaseAndEarthLampsUsePortableAnnunciationLatchAndExplicitSnapshot()
     {
         var xaml = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml");
         var code = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml.cs");
@@ -68,11 +68,14 @@ public sealed class VirtualRelayMigrationTests
         }
 
         StringAssert.Contains(code, "private readonly RelayAnnunciationLatch _annunciationLatch = new()");
-        StringAssert.Contains(code, "_annunciationLatch.Observe(tick.Protection)");
+        StringAssert.Contains(code, "_annunciationLatch.Observe(_viewModel.CurrentProtectionSnapshot)");
+        StringAssert.Contains(code, "presentation.SourceMode");
+        StringAssert.Contains(code, "presentation.SourceIdentity");
         StringAssert.Contains(code, "state == RelayLampState.Trip ? RelayLampTone.Red : RelayLampTone.Amber");
         StringAssert.Contains(code, "_annunciationLatch.Reset()");
+        Assert.IsFalse(code.Contains("System.Reflection", StringComparison.Ordinal));
+        Assert.IsFalse(code.Contains("CurrentTickField", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("ProtectionEngine", StringComparison.Ordinal));
-        Assert.IsFalse(code.Contains("VirtualInjectionPresets", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -139,6 +142,57 @@ public sealed class VirtualRelayMigrationTests
     }
 
     [TestMethod]
+    public void ProcessBusWorkspace_UsesCrossPlatformPickerAndPortableReplayController()
+    {
+        var xaml = Read("src", "Arvrel.Desktop", "Controls", "ProcessBusSourceControl.axaml");
+        var control = Read("src", "Arvrel.Desktop", "Controls", "ProcessBusSourceControl.axaml.cs");
+        var viewModel = Read("src", "Arvrel.Desktop", "ViewModels", "MainWindowViewModel.cs");
+        _ = XDocument.Parse(xaml, LoadOptions.PreserveWhitespace);
+
+        StringAssert.Contains(xaml, "OPEN + REPLAY PCAP / PCAPNG");
+        StringAssert.Contains(xaml, "{Binding ExternalStreams}");
+        StringAssert.Contains(xaml, "{Binding SelectedExternalStream, Mode=TwoWay}");
+        StringAssert.Contains(xaml, "{Binding StreamTrustText}");
+        StringAssert.Contains(xaml, "{Binding StreamMappingText}");
+        StringAssert.Contains(xaml, "{Binding StreamDiagnosticsText}");
+
+        StringAssert.Contains(control, "Avalonia.Platform.Storage");
+        StringAssert.Contains(control, "*.pcap");
+        StringAssert.Contains(control, "*.pcapng");
+        StringAssert.Contains(control, "OpenFilePickerAsync");
+        StringAssert.Contains(control, "viewModel.ReplayCaptureAsync(path)");
+        StringAssert.Contains(control, "viewModel.SelectInternalSourceAsync()");
+
+        StringAssert.Contains(viewModel, "_processBus.ReplayAsync(path)");
+        StringAssert.Contains(viewModel, "_processBus.GetStreams()");
+        StringAssert.Contains(viewModel, "_processBus.GetSnapshot(");
+        StringAssert.Contains(viewModel, "WorkspaceSourceMode.CaptureReplay");
+        StringAssert.Contains(viewModel, "DesktopPresentationSnapshot.FromProcessBus");
+        Assert.IsFalse(viewModel.Contains("new PcapFileReplaySource", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void DesktopProjection_IsExplicitImmutableAndSharedByInternalAndReplaySources()
+    {
+        var projection = Read("src", "Arvrel.Desktop", "ViewModels", "DesktopPresentationSnapshot.cs");
+        var viewModel = Read("src", "Arvrel.Desktop", "ViewModels", "MainWindowViewModel.cs");
+
+        StringAssert.Contains(projection, "public sealed record DesktopPresentationSnapshot");
+        StringAssert.Contains(projection, "FromInternal(");
+        StringAssert.Contains(projection, "FromProcessBus(");
+        StringAssert.Contains(projection, "MeasurementFrame Measurement");
+        StringAssert.Contains(projection, "ProtectionSnapshot Protection");
+        StringAssert.Contains(projection, "ScenarioWaveform Waveform");
+
+        StringAssert.Contains(viewModel, "public DesktopPresentationSnapshot CurrentPresentationSnapshot");
+        StringAssert.Contains(viewModel, "public ProtectionSnapshot CurrentProtectionSnapshot");
+        StringAssert.Contains(viewModel, "_presentation.Measurement.PhaseA");
+        StringAssert.Contains(viewModel, "_presentation.Protection.SmvTrust.AllowsTrip");
+        StringAssert.Contains(viewModel, "_presentation.Waveform");
+        Assert.IsFalse(viewModel.Contains("System.Reflection", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void Lamp_UsesOneReusablePhysicalAssemblyAndNoPlatformSpecificApi()
     {
         var xaml = Read("src", "Arvrel.Desktop", "Controls", "RelayLampControl.axaml");
@@ -161,15 +215,18 @@ public sealed class VirtualRelayMigrationTests
     }
 
     [TestMethod]
-    public void MainWindow_MountsFaceplateAsFirstRelayWorkspaceTab()
+    public void MainWindow_MountsFaceplateAndProcessBusWorkspaces()
     {
         var source = Read("src", "Arvrel.Desktop", "MainWindow.axaml.cs");
 
         StringAssert.Contains(source, "InstallVirtualRelayFaceplate()");
-        StringAssert.Contains(source, "GetVisualDescendants()");
-        StringAssert.Contains(source, "string.Equals(tab.Header?.ToString(), \"RELAY\"");
+        StringAssert.Contains(source, "InstallProcessBusWorkspace()");
+        StringAssert.Contains(source, "FindTabControl(\"RELAY\")");
+        StringAssert.Contains(source, "FindTabControl(\"SOURCE\")");
         StringAssert.Contains(source, "relayTabs.Items.Insert(0");
         StringAssert.Contains(source, "Header = \"FACEPLATE\"");
+        StringAssert.Contains(source, "sourceTabs.Items.Insert(1");
+        StringAssert.Contains(source, "Header = \"PROCESS BUS\"");
         StringAssert.Contains(source, "relayTabs.SelectedIndex = 0");
         StringAssert.Contains(source, "DataContext = DataContext");
     }
