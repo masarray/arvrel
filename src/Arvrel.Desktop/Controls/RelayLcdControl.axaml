@@ -55,8 +55,9 @@
                        FontSize="8.5"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1"
-                       Text="{Binding LcdHeaderStateText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            <TextBlock x:Name="HeaderStateText"
+                       Grid.Column="1"
+                       Text="SV READY"
                        Foreground="#DCE8ED"
                        FontFamily="Cascadia Mono,Consolas,monospace"
                        FontSize="7.2"
