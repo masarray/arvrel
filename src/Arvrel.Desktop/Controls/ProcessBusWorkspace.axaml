@@ -42,8 +42,7 @@
           <TextBlock Classes="section" Text="PCAP / PCAPNG REPLAY" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
             <TextBox Text="{Binding ReplayPath, Mode=TwoWay}"
-                     Watermark="Select capture file"
-                     TextTrimming="CharacterEllipsis" />
+                     PlaceholderText="Select capture file" />
             <Button Grid.Column="1" Click="BrowseReplay_Click" Content="BROWSE" Padding="10,5" />
           </Grid>
           <Button Classes="primary" Command="{Binding ReplayCaptureCommand}" Content="REPLAY CAPTURE" />
@@ -55,8 +54,7 @@
           <TextBlock Classes="section" Text="SCL STREAM BINDING" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
             <TextBox Text="{Binding SclPath, Mode=TwoWay}"
-                     Watermark="Select SCD / CID / ICD / IID"
-                     TextTrimming="CharacterEllipsis" />
+                     PlaceholderText="Select SCD / CID / ICD / IID" />
             <Button Grid.Column="1" Click="BrowseScl_Click" Content="BROWSE" Padding="10,5" />
           </Grid>
           <Button Command="{Binding LoadSclCommand}" Content="LOAD SCL PROFILES" />
