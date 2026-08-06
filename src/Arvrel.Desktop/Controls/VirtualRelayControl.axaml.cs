@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Arvrel.Application.Laboratory;
 using Arvrel.Desktop.ViewModels;
 using Arvrel.Protection;
@@ -39,11 +40,13 @@ public sealed partial class VirtualRelayControl : UserControl
         BindingFlags.Instance | BindingFlags.NonPublic);
 
     private readonly RelayAnnunciationLatch _annunciationLatch = new();
+    private readonly RelayLcdControl? _relayLcd;
     private MainWindowViewModel? _viewModel;
 
     public VirtualRelayControl()
     {
         InitializeComponent();
+        _relayLcd = this.FindControl<RelayLcdControl>("RelayLcd");
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) => DetachViewModel();
         AttachViewModel(DataContext as MainWindowViewModel);
@@ -159,4 +162,40 @@ public sealed partial class VirtualRelayControl : UserControl
         setActive(state != RelayLampState.Off);
         setTone(state == RelayLampState.Trip ? RelayLampTone.Red : RelayLampTone.Amber);
     }
+
+    private void F1Button_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Measure);
+
+    private void F2Button_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Events);
+
+    private void F3Button_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Records);
+
+    private void F4Button_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Setup);
+
+    private void F5Button_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Diagnostics);
+
+    private void HomeButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Measure);
+
+    private void MenuButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Setup);
+
+    private void BackButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Measure);
+
+    private void StarButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.ShowPage(RelayLcdPage.Records);
+
+    private void PreviousPageButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.PreviousPage();
+
+    private void NextPageButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.NextPage();
+
+    private void OkButton_Click(object? sender, RoutedEventArgs e)
+        => _relayLcd?.NextPage();
 }
