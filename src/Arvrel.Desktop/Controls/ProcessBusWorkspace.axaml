@@ -19,6 +19,34 @@
         </StackPanel>
       </Border>
 
+      <Border Classes="subtle" BorderBrush="#3D8EB8">
+        <StackPanel Spacing="7">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="OPERATOR DISPLAY SOURCE" />
+              <TextBlock FontWeight="Bold" Foreground="#8ED5E8" Text="{Binding ActiveDisplaySourceText}" />
+            </StackPanel>
+            <Border Grid.Column="1" Background="#13232C" CornerRadius="5" Padding="8,4">
+              <TextBlock Text="GUARDED" Foreground="#8ED5E8" FontSize="9" FontWeight="Bold" />
+            </Border>
+          </Grid>
+          <TextBlock Classes="caption" Text="{Binding ProcessBusDisplayReadinessText}" TextWrapping="Wrap" />
+          <TextBlock FontWeight="SemiBold" Text="{Binding DisplayHandoverStatus}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+            <Button Grid.Column="0"
+                    Classes="primary"
+                    Command="{Binding ActivateProcessBusDisplayCommand}"
+                    Content="DISPLAY SELECTED STREAM" />
+            <Button Grid.Column="1"
+                    Command="{Binding ActivateInternalDisplayCommand}"
+                    Content="RETURN TO INTERNAL" />
+          </Grid>
+          <TextBlock Classes="caption"
+                     Text="Only a coherent two-cycle SV window can replace the internal display. Temporary packet gaps retain the last accepted waveform while trust status continues to update."
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
       <Border Classes="subtle">
         <StackPanel Spacing="7">
           <Grid ColumnDefinitions="*,Auto">

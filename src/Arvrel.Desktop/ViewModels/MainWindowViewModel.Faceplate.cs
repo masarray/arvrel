@@ -36,10 +36,10 @@ public sealed partial class MainWindowViewModel
     private RelayCommand? _faceplateNextCommand;
     private RelayCommand? _faceplateOkCommand;
 
-    public RelayLampState PhaseAAnnunciation => _relayAnnunciation.PhaseA;
-    public RelayLampState PhaseBAnnunciation => _relayAnnunciation.PhaseB;
-    public RelayLampState PhaseCAnnunciation => _relayAnnunciation.PhaseC;
-    public RelayLampState EarthAnnunciation => _relayAnnunciation.Earth;
+    public RelayLampState PhaseAAnnunciation => DisplayAnnunciation.PhaseA;
+    public RelayLampState PhaseBAnnunciation => DisplayAnnunciation.PhaseB;
+    public RelayLampState PhaseCAnnunciation => DisplayAnnunciation.PhaseC;
+    public RelayLampState EarthAnnunciation => DisplayAnnunciation.Earth;
 
     public string FaceplatePageName => _faceplatePage.ToString().ToUpperInvariant();
     public string FaceplateNavigationText => _faceplateNavigationText;
@@ -64,7 +64,7 @@ public sealed partial class MainWindowViewModel
     {
         FaceplatePage.Measure => "IC",
         FaceplatePage.Events => "E3",
-        FaceplatePage.Records => "INJ",
+        FaceplatePage.Records => "SOURCE",
         _ => "FREQ"
     };
 
@@ -88,15 +88,15 @@ public sealed partial class MainWindowViewModel
     {
         FaceplatePage.Measure => PhaseBText,
         FaceplatePage.Events => EventAt(1),
-        FaceplatePage.Records => Compact(_currentTick.Protection.ActiveElement, 24),
-        _ => Compact(ProfileNameText, 24)
+        FaceplatePage.Records => Compact(DisplayActiveElement, 24),
+        _ => Compact(DisplayProfileNameText, 24)
     };
 
     public string FaceplateRow3Value => _faceplatePage switch
     {
         FaceplatePage.Measure => PhaseCText,
         FaceplatePage.Events => EventAt(2),
-        FaceplatePage.Records => InjectionFingerprintText,
+        FaceplatePage.Records => DisplayFingerprintText,
         _ => FrequencyTextDisplay
     };
 
@@ -114,8 +114,8 @@ public sealed partial class MainWindowViewModel
         FaceplatePage.Events => $"{Events.Count} recent operator events · newest first",
         FaceplatePage.Records => TripLatched
             ? DecisionReason
-            : "No latched operation evidence. Pickup and trip causes are captured by the portable relay core.",
-        _ => $"{SourceModeText} · {ProvenanceText}"
+            : "No latched operation evidence. Pickup and trip causes are captured by the selected portable relay core.",
+        _ => $"{SourceModeText} · {DisplayProvenanceText}"
     };
 
     public ICommand FaceplateMeasureCommand =>
@@ -171,7 +171,7 @@ public sealed partial class MainWindowViewModel
     private void ConfirmFaceplatePage()
     {
         _faceplateNavigationText = $"{FaceplatePageName} · VIEW CONFIRMED";
-        AddEvent("FACEPLATE", $"{FaceplatePageName} operator view selected");
+        AddEvent("FACEPLATE", $"{FaceplatePageName} operator view selected on {ActiveDisplaySourceText}");
         OnPropertyChanged(string.Empty);
     }
 

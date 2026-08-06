@@ -46,6 +46,7 @@ public sealed partial class MainWindowViewModel
             if (Equals(_selectedProcessBusStream, value))
                 return;
             _selectedProcessBusStream = value;
+            PrepareProcessBusDisplayStream(value?.Key);
             UpdateProcessBusSnapshot();
             OnPropertyChanged(string.Empty);
         }
@@ -142,6 +143,8 @@ public sealed partial class MainWindowViewModel
         UpdateProcessBusSnapshot();
         OnPropertyChanged(nameof(ProcessBusRunning));
         OnPropertyChanged(nameof(ProcessBusModeText));
+        OnPropertyChanged(nameof(ActiveDisplaySourceText));
+        OnPropertyChanged(nameof(RunButtonText));
     }
 
     public void RefreshProcessBusAdapters()
@@ -173,6 +176,7 @@ public sealed partial class MainWindowViewModel
 
         try
         {
+            ClearProcessBusSelectionForNewSource();
             SetProcessBusStatus($"Starting live capture on {SelectedProcessBusAdapter.DisplayName}...");
             await _processBus.StartLiveAsync(SelectedProcessBusAdapter.Selector);
             SetProcessBusStatus($"Listening on {SelectedProcessBusAdapter.DisplayName}. Waiting for IEC 61850-9-2 Sampled Values.");
@@ -193,7 +197,7 @@ public sealed partial class MainWindowViewModel
         try
         {
             await _processBus.StopAsync();
-            SetProcessBusStatus("Process-bus source stopped. Discovered stream telemetry is retained for inspection.");
+            SetProcessBusStatus("Process-bus source stopped. Last coherent display and discovered stream telemetry are retained for inspection.");
         }
         catch (Exception ex)
         {
@@ -222,6 +226,7 @@ public sealed partial class MainWindowViewModel
 
         try
         {
+            ClearProcessBusSelectionForNewSource();
             SetProcessBusStatus($"Replaying {Path.GetFileName(ReplayPath)}...");
             var frames = await _processBus.ReplayAsync(ReplayPath);
             RefreshProcessBusStreams();
@@ -289,7 +294,10 @@ public sealed partial class MainWindowViewModel
 
     private void UpdateProcessBusSnapshot()
     {
-        _processBusSnapshot = _processBus.GetSnapshot(SelectedProcessBusStream?.Key, primaryDisplay: true);
+        _processBusSnapshot = SelectedProcessBusStream is null
+            ? SmvRuntimeSnapshot.Empty
+            : _processBus.GetSnapshot(SelectedProcessBusStream.Key, primaryDisplay: true);
+        ObserveProcessBusDisplaySnapshot(_processBusSnapshot);
         OnPropertyChanged(nameof(SelectedStreamSummary));
         OnPropertyChanged(nameof(SelectedStreamAddress));
         OnPropertyChanged(nameof(ProcessBusFrameRateText));
@@ -300,6 +308,14 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ProcessBusScalingText));
         OnPropertyChanged(nameof(ProcessBusSourceText));
         OnPropertyChanged(nameof(ProcessBusSclSummary));
+    }
+
+    private void ClearProcessBusSelectionForNewSource()
+    {
+        SelectedProcessBusStream = null;
+        ProcessBusStreams.Clear();
+        _processBusSnapshot = SmvRuntimeSnapshot.Empty;
+        PrepareProcessBusDisplayStream(null);
     }
 
     private void ProcessBus_EventRaised(object? sender, ProcessBusEventArgs e)
@@ -322,5 +338,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ProcessBusStatus));
         OnPropertyChanged(nameof(ProcessBusRunning));
         OnPropertyChanged(nameof(ProcessBusModeText));
+        OnPropertyChanged(nameof(ActiveDisplaySourceText));
+        OnPropertyChanged(nameof(RunButtonText));
     }
 }
