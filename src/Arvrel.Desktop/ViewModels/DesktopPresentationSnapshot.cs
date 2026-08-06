@@ -21,15 +21,19 @@ public sealed record DesktopPresentationSnapshot(
     string MappingSummary,
     IReadOnlyList<string> Diagnostics)
 {
-    public static DesktopPresentationSnapshot FromInternal(InternalLabTick tick, long sampleCounter)
+    public static DesktopPresentationSnapshot FromInternal(
+        InternalLabTick tick,
+        long sampleCounter,
+        string sourceIdentity,
+        string sourceSummary)
         => new(
             "INTERNAL VIRTUAL TEST SET",
-            tick.Scenario.Profile.Name,
+            sourceIdentity,
             tick.Scenario.Measurement,
             tick.Protection,
             tick.Scenario.Waveform,
             sampleCounter,
-            tick.Scenario.OutputState,
+            sourceSummary,
             $"{tick.Protection.SmvTrust.Code} · {tick.Protection.SmvTrust.Detail}",
             "Portable deterministic 4I + 4V profile",
             Array.Empty<string>());
