@@ -94,7 +94,7 @@ public sealed class VirtualInjectionTests
     {
         var profile = VirtualInjectionPresets.Create("Normal balanced") with { FrequencyHz = 75 };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
             VirtualInjectionGenerator.Generate(profile, DateTimeOffset.UtcNow, SmvTrustState.Healthy));
     }
 
