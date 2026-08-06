@@ -18,7 +18,7 @@ public sealed class VirtualRelayP6SourceTests
         _ = XDocument.Parse(tokens, LoadOptions.PreserveWhitespace);
 
         StringAssert.Contains(relay, "<Viewbox Stretch=\"Uniform\"");
-        StringAssert.Contains(relay, "<Grid Width=\"520\" Height=\"680\"");
+        StringAssert.Contains(relay, "<Grid Width=\"560\" Height=\"710\" Margin=\"8\"");
         StringAssert.Contains(relay, "ARVREL");
         StringAssert.Contains(relay, "PROCESS BUS PROTECTION RELAY");
         StringAssert.Contains(relay, "BAY 12 · FEEDER");
@@ -49,12 +49,48 @@ public sealed class VirtualRelayP6SourceTests
         StringAssert.Contains(relay, "x:Name=\"LcdContentHost\"");
         StringAssert.Contains(relay, "x:Name=\"RelayFooterText\"");
         StringAssert.Contains(relay, "Style=\"{StaticResource VrFunctionKeyStyle}\"");
+        StringAssert.Contains(relay, "Style=\"{StaticResource VrResetKeyStyle}\"");
         StringAssert.Contains(relay, "Style=\"{StaticResource VrHardwareKeyStyle}\"");
         StringAssert.Contains(relay, "ToolTip=\"Up\"");
         StringAssert.Contains(relay, "ToolTip=\"Down\"");
         StringAssert.Contains(relay, "ToolTip=\"Enter\"");
         StringAssert.Contains(relay, "ToolTip=\"Next\"");
         StringAssert.Contains(relay, "ToolTip=\"Cancel\"");
+    }
+
+    [TestMethod]
+    public void P6P0Layout_ProvidesRealSpaceForFunctionRailAndNavigationDeck()
+    {
+        var relay = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml");
+        var tokens = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayTokens.xaml");
+        var adapter = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+
+        foreach (var column in new[]
+                 {
+                     "<ColumnDefinition Width=\"112\" />",
+                     "<ColumnDefinition Width=\"12\" />",
+                     "<ColumnDefinition Width=\"250\" />",
+                     "<ColumnDefinition Width=\"95\" />"
+                 })
+        {
+            StringAssert.Contains(relay, column);
+        }
+
+        StringAssert.Contains(relay, "<RowDefinition Height=\"314\" />");
+        StringAssert.Contains(relay, "<RowDefinition Height=\"174\" />");
+        StringAssert.Contains(relay, "<StackPanel Margin=\"12,10\" HorizontalAlignment=\"Center\"");
+        StringAssert.Contains(relay, "Height=\"148\"");
+        Assert.AreEqual(3, Count(relay, "<RowDefinition Height=\"48\" />"));
+        Assert.AreEqual(5, Count(relay, "Margin=\"2\" Tag=\"P6_NATIVE\""));
+
+        StringAssert.Contains(tokens, "<Setter Property=\"Width\" Value=\"64\" />");
+        StringAssert.Contains(tokens, "x:Key=\"VrResetKeyStyle\"");
+
+        Assert.IsFalse(relay.Contains("Margin=\"19\"", StringComparison.Ordinal));
+        StringAssert.Contains(adapter, "CalmP6WorkspaceChrome(relayHost)");
+        StringAssert.Contains(adapter, "workspaceFrame.BorderThickness = new Thickness(0)");
+        StringAssert.Contains(adapter, "workspaceFrame.Padding = new Thickness(0)");
+        StringAssert.Contains(adapter, "workspaceFrame.Effect = null");
     }
 
     [TestMethod]
