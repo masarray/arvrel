@@ -1,8 +1,6 @@
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
 using Arvrel.App.Controls.VirtualRelay;
 
 namespace Arvrel.App;
@@ -10,18 +8,35 @@ namespace Arvrel.App;
 public partial class MainWindow
 {
     private bool _p6VirtualRelayInstalled;
+    private bool _p6VirtualRelayLoadHooked;
 
     internal void InitializeP6VirtualRelay()
     {
         if (_p6VirtualRelayInstalled)
             return;
 
-        // The LCD and measurement presenters initialize synchronously at Loaded.
-        // Install P6 one dispatcher tier later, then bind those state presenters
-        // to the new native control.
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.ContextIdle,
-            new Action(InstallP6VirtualRelay));
+        // StartupUri may activate the application before the MainWindow visual
+        // tree is fully loaded. Use the window's own lifecycle as the fallback,
+        // not a module initializer or class-handler side channel.
+        if (!IsLoaded)
+        {
+            if (!_p6VirtualRelayLoadHooked)
+            {
+                _p6VirtualRelayLoadHooked = true;
+                Loaded += P6Window_Loaded;
+            }
+
+            return;
+        }
+
+        InstallP6VirtualRelay();
+    }
+
+    private void P6Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= P6Window_Loaded;
+        _p6VirtualRelayLoadHooked = false;
+        InstallP6VirtualRelay();
     }
 
     private void InstallP6VirtualRelay()
@@ -31,7 +46,12 @@ public partial class MainWindow
 
         var relayHost = ResolveP6RelayWorkspaceCard(HealthyLed);
         if (relayHost is null)
+        {
+            const string failure = "P6 native relay host was not found; legacy faceplate remains active.";
+            StatusText.Text = failure;
+            AddEvent("P6 ERROR", failure);
             return;
+        }
 
         var relay = new VirtualRelayControl();
         relay.ResetRequested += P6Relay_ResetRequested;
@@ -76,6 +96,12 @@ public partial class MainWindow
 
         _p6VirtualRelayInstalled = true;
         RebindRelayStatePresentersToP6();
+
+        if (!EngineModeText.Text.Contains("P6", StringComparison.Ordinal))
+            EngineModeText.Text = $"{EngineModeText.Text} · P6";
+
+        AddEvent("P6", "Native virtual relay faceplate mounted");
+        StatusText.Text = "P6 native virtual relay faceplate active.";
     }
 
     private void RebindRelayStatePresentersToP6()
@@ -120,23 +146,5 @@ public partial class MainWindow
             if (current is T match)
                 yield return match;
         }
-    }
-}
-
-internal static class P6VirtualRelayBootstrap
-{
-    [ModuleInitializer]
-    internal static void Initialize()
-    {
-        EventManager.RegisterClassHandler(
-            typeof(MainWindow),
-            FrameworkElement.LoadedEvent,
-            new RoutedEventHandler(OnLoaded));
-    }
-
-    private static void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is MainWindow window)
-            window.InitializeP6VirtualRelay();
     }
 }
