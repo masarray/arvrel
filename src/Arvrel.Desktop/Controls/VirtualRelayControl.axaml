@@ -3,6 +3,7 @@
              xmlns:controls="using:Arvrel.Desktop.Controls"
              xmlns:vm="using:Arvrel.Desktop.ViewModels"
              x:Class="Arvrel.Desktop.Controls.VirtualRelayControl"
+             x:Name="Root"
              x:DataType="vm:MainWindowViewModel"
              Background="Transparent">
   <UserControl.Styles>
@@ -145,16 +146,24 @@
                                            Tone="Red" />
 
                 <TextBlock Grid.Row="4" Text="PHASE A" Classes="relay-label" />
-                <controls:RelayLampControl Grid.Row="4" Grid.Column="1" Tone="Red" />
+                <controls:RelayLampControl Grid.Row="4" Grid.Column="1"
+                                           IsActive="{Binding PhaseAActive, ElementName=Root}"
+                                           Tone="{Binding PhaseATone, ElementName=Root}" />
 
                 <TextBlock Grid.Row="5" Text="PHASE B" Classes="relay-label" />
-                <controls:RelayLampControl Grid.Row="5" Grid.Column="1" Tone="Red" />
+                <controls:RelayLampControl Grid.Row="5" Grid.Column="1"
+                                           IsActive="{Binding PhaseBActive, ElementName=Root}"
+                                           Tone="{Binding PhaseBTone, ElementName=Root}" />
 
                 <TextBlock Grid.Row="6" Text="PHASE C" Classes="relay-label" />
-                <controls:RelayLampControl Grid.Row="6" Grid.Column="1" Tone="Red" />
+                <controls:RelayLampControl Grid.Row="6" Grid.Column="1"
+                                           IsActive="{Binding PhaseCActive, ElementName=Root}"
+                                           Tone="{Binding PhaseCTone, ElementName=Root}" />
 
                 <TextBlock Grid.Row="7" Text="EARTH" Classes="relay-label" />
-                <controls:RelayLampControl Grid.Row="7" Grid.Column="1" Tone="Red" />
+                <controls:RelayLampControl Grid.Row="7" Grid.Column="1"
+                                           IsActive="{Binding EarthActive, ElementName=Root}"
+                                           Tone="{Binding EarthTone, ElementName=Root}" />
 
                 <TextBlock Grid.Row="8" Text="SMV BLOCK" Classes="relay-label" FontSize="8.8" />
                 <controls:RelayLampControl Grid.Row="8" Grid.Column="1"
