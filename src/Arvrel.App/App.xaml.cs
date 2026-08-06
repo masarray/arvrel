@@ -13,6 +13,17 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
     }
 
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+
+        // StartupUri owns MainWindow creation. Activation is the first explicit
+        // application lifecycle point at which that instance is guaranteed to
+        // exist. MainWindow handles the rare not-yet-loaded case itself.
+        if (MainWindow is Arvrel.App.MainWindow window)
+            window.InitializeP6VirtualRelay();
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         DispatcherUnhandledException -= App_DispatcherUnhandledException;
