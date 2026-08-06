@@ -1,0 +1,50 @@
+name: Export Avalonia snapshot
+
+on:
+  push:
+    branches:
+      - archive/avalonia-p5.8-before-p6-release
+    paths:
+      - .github/workflows/export-avalonia-snapshot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout snapshot
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare clean repository package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .git bin obj artifacts TestResults
+          find . -type d \( -name bin -o -name obj -o -name artifacts -o -name TestResults \) -prune -exec rm -rf {} +
+          cat > AVALONIA-MIGRATION-SNAPSHOT.md <<'EOF'
+          # ARVREL Avalonia Migration Snapshot
+
+          This source package preserves the ARVREL Avalonia migration state from branch
+          `archive/avalonia-p5.8-before-p6-release` before the public WPF P6 release became
+          the main product line.
+
+          Recommended destination repository: `masarray/arvrel-avalonia`.
+
+          Status: development preview. The WPF repository remains the stable public release.
+          EOF
+          cd ..
+          zip -r arvrel-avalonia-p5.8-ready-to-push.zip arvrel \
+            -x 'arvrel/.git/*' 'arvrel/**/bin/*' 'arvrel/**/obj/*' 'arvrel/artifacts/*' 'arvrel/**/TestResults/*'
+
+      - name: Upload clean source ZIP
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: arvrel-avalonia-p5.8-ready-to-push
+          path: ../arvrel-avalonia-p5.8-ready-to-push.zip
+          if-no-files-found: error
+          retention-days: 30
