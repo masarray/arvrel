@@ -149,7 +149,7 @@ public sealed class WaveformScope : Control
         for (var index = 1; index < samples.Count; index++)
         {
             var current = new Point(
-                viewport.Left + viewport.Width * index / (samples.Count - 1d),
+                viewport.Left + viewport.Width * WaveformAxisLayout.NormalizeSamplePosition(index, samples.Count),
                 center - samples[index] * scale);
             context.DrawLine(pen, previous, current);
             previous = current;
