@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Arvrel.Application.Laboratory;
 
 /// <summary>
-/// Framework-neutral waveform time-axis contract shared by the WPF and Avalonia shells.
+/// Framework-neutral waveform time-axis contract used by the public WPF shell.
 /// The horizontal axis always represents elapsed time on the sampling grid. Signal-cycle
 /// markers are derived from the waveform frequency, while the nominal estimator cycle is
 /// retained separately for off-nominal diagnostics.
