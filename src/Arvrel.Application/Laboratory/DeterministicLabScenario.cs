@@ -68,7 +68,10 @@ public sealed class DeterministicLabScenario
             ActiveProfile.FrequencyHz,
             injection.SamplesPerCycle,
             injection.SampleRateHz);
-        return new ScenarioStep(injection.Measurement, waveform);
+        return new ScenarioStep(injection.Measurement, waveform)
+        {
+            CtSaturation = injection.CtSaturation
+        };
     }
 
     public void Restart(bool keepProfile)
@@ -93,4 +96,7 @@ public sealed record ScenarioWaveform(
 
 public sealed record ScenarioStep(
     MeasurementFrame Measurement,
-    ScenarioWaveform Waveform);
+    ScenarioWaveform Waveform)
+{
+    public CtSaturationFrameDiagnostics CtSaturation { get; init; } = CtSaturationFrameDiagnostics.Disabled;
+}
