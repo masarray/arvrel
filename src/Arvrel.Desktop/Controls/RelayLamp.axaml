@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Arvrel.Desktop.Controls.RelayLamp"
+             Width="22"
+             Height="22"
+             IsHitTestVisible="False">
+  <Grid Width="22" Height="22">
+    <Ellipse x:Name="Halo"
+             Width="20"
+             Height="20"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Opacity="0" />
+
+    <Ellipse Width="22"
+             Height="22"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+      <Ellipse.Fill>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#F2F5F6" Offset="0" />
+          <GradientStop Color="#9EABB2" Offset="0.28" />
+          <GradientStop Color="#4A5961" Offset="0.64" />
+          <GradientStop Color="#11181C" Offset="1" />
+        </LinearGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <Ellipse Width="17"
+             Height="17"
+             Fill="#0B1115"
+             Stroke="#64727A"
+             StrokeThickness="0.8"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+
+    <Ellipse x:Name="Lens"
+             Width="12.5"
+             Height="12.5"
+             Fill="#52636D"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+
+    <Ellipse Width="12.5"
+             Height="12.5"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+      <Ellipse.Fill>
+        <RadialGradientBrush Center="50%,50%" GradientOrigin="30%,24%" Radius="75%">
+          <GradientStop Color="#8AFFFFFF" Offset="0" />
+          <GradientStop Color="#18FFFFFF" Offset="0.30" />
+          <GradientStop Color="#16000000" Offset="0.68" />
+          <GradientStop Color="#98000000" Offset="1" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <Ellipse Width="4.2"
+             Height="2.8"
+             Fill="#E8FFFFFF"
+             Opacity="0.68"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Margin="-4,-5,0,0" />
+  </Grid>
+</UserControl>
