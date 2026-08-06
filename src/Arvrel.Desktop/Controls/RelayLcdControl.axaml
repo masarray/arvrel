@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Arvrel.Desktop.ViewModels"
+             x:Class="Arvrel.Desktop.Controls.RelayLcdControl"
+             x:DataType="vm:MainWindowViewModel"
+             Background="Transparent">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.lcd-title">
+      <Setter Property="Foreground" Value="#30444B" />
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="9.4" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.lcd-body">
+      <Setter Property="Foreground" Value="#30444B" />
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="8.1" />
+    </Style>
+    <Style Selector="TextBlock.lcd-muted">
+      <Setter Property="Foreground" Value="#62777D" />
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="7.4" />
+    </Style>
+    <Style Selector="Button.lcd-tab">
+      <Setter Property="Padding" Value="2,0" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Background" Value="#CAD4D1" />
+      <Setter Property="BorderBrush" Value="#899995" />
+      <Setter Property="BorderThickness" Value="0,1,1,0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Foreground" Value="#30444B" />
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="6.8" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.lcd-tab:pointerover">
+      <Setter Property="Background" Value="#D8E0DC" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border CornerRadius="8"
+          Background="#10171B"
+          BorderBrush="#65737B"
+          BorderThickness="1.3"
+          Padding="7">
+    <Border CornerRadius="4"
+            Background="#E1E8E2"
+            BorderBrush="#0C1114"
+            BorderThickness="1">
+      <Grid RowDefinitions="27,*,28">
+        <Border Background="#4B7086" Padding="8,0">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="BAY 12 · FEEDER"
+                       Foreground="#F3F7F8"
+                       FontSize="8.5"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="{Binding LcdHeaderStateText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                       Foreground="#DCE8ED"
+                       FontFamily="Cascadia Mono,Consolas,monospace"
+                       FontSize="7.2"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="11,9,11,7">
+          <StackPanel x:Name="MeasurePage" Spacing="7">
+            <TextBlock Classes="lcd-title" Text="MEASUREMENTS · SECONDARY" />
+            <Grid ColumnDefinitions="72,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="lcd-muted" Text="IA" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Classes="lcd-body" Text="{Binding PhaseAText}" />
+              <TextBlock Grid.Row="1" Classes="lcd-muted" Text="IB" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="lcd-body" Text="{Binding PhaseBText}" />
+              <TextBlock Grid.Row="2" Classes="lcd-muted" Text="IC" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Classes="lcd-body" Text="{Binding PhaseCText}" />
+              <TextBlock Grid.Row="3" Classes="lcd-muted" Text="3I0" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Classes="lcd-body" Text="{Binding ResidualText}" />
+              <TextBlock Grid.Row="4" Classes="lcd-muted" Text="FREQ" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Classes="lcd-body" Text="{Binding FrequencyTextDisplay}" />
+            </Grid>
+            <Border Height="1" Background="#8EA09A" />
+            <TextBlock Classes="lcd-muted" Text="{Binding TrustStateText}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel x:Name="EventsPage" IsVisible="False" Spacing="6">
+            <TextBlock Classes="lcd-title" Text="EVENT LOG · OPERATOR TRACE" />
+            <ScrollViewer Height="178" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Events}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Classes="lcd-body"
+                               Text="{Binding}"
+                               Margin="0,0,0,4"
+                               TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </StackPanel>
+
+          <StackPanel x:Name="RecordPage" IsVisible="False" Spacing="7">
+            <TextBlock Classes="lcd-title" Text="TRIP RECORD · LAST OPERATION" />
+            <TextBlock Classes="lcd-body" Text="{Binding TripStateText}" TextWrapping="Wrap" />
+            <TextBlock Classes="lcd-muted" Text="{Binding DecisionReason}" TextWrapping="Wrap" />
+            <Border Height="1" Background="#8EA09A" />
+            <Grid ColumnDefinitions="76,*" RowDefinitions="Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="lcd-muted" Text="PROFILE" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Classes="lcd-body" Text="{Binding ProfileNameText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Classes="lcd-muted" Text="GROUP" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="lcd-body" Text="{Binding SettingsGroupText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Classes="lcd-muted" Text="SOURCE" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Classes="lcd-body" Text="{Binding InjectionFingerprintText}" />
+              <TextBlock Grid.Row="3" Classes="lcd-muted" Text="SETTINGS" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Classes="lcd-body" Text="{Binding SettingsFingerprintText}" />
+            </Grid>
+          </StackPanel>
+
+          <StackPanel x:Name="SetupPage" IsVisible="False" Spacing="7">
+            <TextBlock Classes="lcd-title" Text="ACTIVE CONFIGURATION" />
+            <Grid ColumnDefinitions="74,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="lcd-muted" Text="SOURCE" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Classes="lcd-body" Text="{Binding SourceModeText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Classes="lcd-muted" Text="PROFILE" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="lcd-body" Text="{Binding ProfileNameText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Classes="lcd-muted" Text="GROUP" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Classes="lcd-body" Text="{Binding SettingsGroupText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Classes="lcd-muted" Text="NEUTRAL" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Classes="lcd-body" Text="{Binding ProvenanceText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Classes="lcd-muted" Text="WINDOW" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Classes="lcd-body" Text="{Binding WindowText}" TextWrapping="Wrap" />
+            </Grid>
+            <Border Height="1" Background="#8EA09A" />
+            <TextBlock Classes="lcd-muted" Text="{Binding SettingsEditorStatus}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel x:Name="DiagnosticsPage" IsVisible="False" Spacing="7">
+            <TextBlock Classes="lcd-title" Text="PROCESS-BUS DIAGNOSTICS" />
+            <TextBlock Classes="lcd-muted" Text="PLATFORM" />
+            <TextBlock Classes="lcd-body" Text="{Binding PlatformText}" TextWrapping="Wrap" />
+            <TextBlock Classes="lcd-muted" Text="LIVE CAPTURE" />
+            <TextBlock Classes="lcd-body" Text="{Binding LiveCaptureStatus}" TextWrapping="Wrap" />
+            <TextBlock Classes="lcd-muted" Text="CAPTURE REPLAY" />
+            <TextBlock Classes="lcd-body" Text="{Binding ReplayStatus}" TextWrapping="Wrap" />
+            <Border Height="1" Background="#8EA09A" />
+            <TextBlock Classes="lcd-muted" Text="{Binding SampleCounterText}" />
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*">
+          <Button Grid.Column="0" Classes="lcd-tab" Content="MEASURE" Click="MeasureTab_Click" />
+          <Button Grid.Column="1" Classes="lcd-tab" Content="EVENTS" Click="EventsTab_Click" />
+          <Button Grid.Column="2" Classes="lcd-tab" Content="RECORDS" Click="RecordsTab_Click" />
+          <Button Grid.Column="3" Classes="lcd-tab" Content="SETUP" Click="SetupTab_Click" BorderThickness="0,1,0,0" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Border>
+</UserControl>
