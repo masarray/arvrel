@@ -51,6 +51,29 @@ public sealed class VirtualRelayMigrationTests
     }
 
     [TestMethod]
+    public void Faceplate_PhaseAndEarthLampsUsePortableAnnunciationLatch()
+    {
+        var xaml = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml");
+        var code = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml.cs");
+
+        StringAssert.Contains(xaml, "x:Name=\"Root\"");
+        foreach (var name in new[] { "PhaseA", "PhaseB", "PhaseC", "Earth" })
+        {
+            StringAssert.Contains(xaml, $"IsActive=\"{{Binding {name}Active, ElementName=Root}}\"");
+            StringAssert.Contains(xaml, $"Tone=\"{{Binding {name}Tone, ElementName=Root}}\"");
+            StringAssert.Contains(code, $"StyledProperty<bool> {name}ActiveProperty");
+            StringAssert.Contains(code, $"StyledProperty<RelayLampTone> {name}ToneProperty");
+        }
+
+        StringAssert.Contains(code, "private readonly RelayAnnunciationLatch _annunciationLatch = new()");
+        StringAssert.Contains(code, "_annunciationLatch.Observe(tick.Protection)");
+        StringAssert.Contains(code, "state == RelayLampState.Trip ? RelayLampTone.Red : RelayLampTone.Amber");
+        StringAssert.Contains(code, "_annunciationLatch.Reset()");
+        Assert.IsFalse(code.Contains("ProtectionEngine", StringComparison.Ordinal));
+        Assert.IsFalse(code.Contains("VirtualInjectionPresets", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void Lamp_UsesOneReusablePhysicalAssemblyAndNoPlatformSpecificApi()
     {
         var xaml = Read("src", "Arvrel.Desktop", "Controls", "RelayLampControl.axaml");
