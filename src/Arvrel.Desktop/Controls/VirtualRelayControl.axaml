@@ -181,75 +181,8 @@
               </Grid>
             </Border>
 
-            <Border Grid.Column="2"
-                    CornerRadius="8"
-                    Background="#10171B"
-                    BorderBrush="#65737B"
-                    BorderThickness="1.3"
-                    Padding="7">
-              <Border CornerRadius="4"
-                      Background="#E1E8E2"
-                      BorderBrush="#0C1114"
-                      BorderThickness="1">
-                <Grid RowDefinitions="27,*,28">
-                  <Border Background="#4B7086" Padding="8,0">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="BAY 12 · FEEDER"
-                                 Foreground="#F3F7F8"
-                                 FontSize="8.5"
-                                 FontWeight="SemiBold"
-                                 VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1"
-                                 Text="SV READY"
-                                 Foreground="#DCE8ED"
-                                 FontFamily="Cascadia Mono,Consolas,monospace"
-                                 FontSize="7.5"
-                                 VerticalAlignment="Center" />
-                    </Grid>
-                  </Border>
-
-                  <StackPanel Grid.Row="1" Margin="11,9,11,7" Spacing="7">
-                    <TextBlock Text="{Binding TripStateText}"
-                               Foreground="#30444B"
-                               FontFamily="Cascadia Mono,Consolas,monospace"
-                               FontSize="10"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
-                    <Grid ColumnDefinitions="78,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                      <TextBlock Grid.Row="0" Text="IA" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding PhaseAText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="1" Text="IB" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PhaseBText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="2" Text="IC" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhaseCText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="3" Text="3I0" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ResidualText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" />
-                    </Grid>
-                    <Border Height="1" Background="#8EA09A" Margin="0,3,0,1" />
-                    <TextBlock Text="{Binding TrustStateText}"
-                               Foreground="#62777D"
-                               FontFamily="Cascadia Mono,Consolas,monospace"
-                               FontSize="7.6"
-                               TextWrapping="Wrap" />
-                  </StackPanel>
-
-                  <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*">
-                    <Border Grid.Column="0" Background="#426F8C" BorderBrush="#294E65" BorderThickness="0,1,1,0">
-                      <TextBlock Text="MEASURE" Foreground="White" FontSize="7" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="1" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
-                      <TextBlock Text="EVENTS" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="2" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
-                      <TextBlock Text="RECORDS" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="3" Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,0,0">
-                      <TextBlock Text="SETUP" Foreground="#30444B" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                  </Grid>
-                </Grid>
-              </Border>
-            </Border>
+            <controls:RelayLcdControl x:Name="RelayLcd"
+                                      Grid.Column="2" />
 
             <Border Grid.Column="4"
                     CornerRadius="9"
@@ -257,15 +190,16 @@
                     BorderBrush="#4E5D65"
                     BorderThickness="1.2">
               <StackPanel Margin="12,10" HorizontalAlignment="Center">
-                <Button Classes="function-key" Content="F1" />
-                <Button Classes="function-key" Content="F2" />
-                <Button Classes="function-key" Content="F3" />
-                <Button Classes="function-key" Content="F4" />
-                <Button Classes="function-key" Content="F5" />
+                <Button Classes="function-key" Content="F1" Click="F1Button_Click" ToolTip.Tip="Measurements" />
+                <Button Classes="function-key" Content="F2" Click="F2Button_Click" ToolTip.Tip="Events" />
+                <Button Classes="function-key" Content="F3" Click="F3Button_Click" ToolTip.Tip="Trip record" />
+                <Button Classes="function-key" Content="F4" Click="F4Button_Click" ToolTip.Tip="Setup" />
+                <Button Classes="function-key" Content="F5" Click="F5Button_Click" ToolTip.Tip="Diagnostics" />
                 <Button Classes="function-key"
                         Content="RESET"
                         Foreground="#5DB7E2"
-                        Command="{Binding ResetRelayCommand}" />
+                        Command="{Binding ResetRelayCommand}"
+                        ToolTip.Tip="Reset relay latch and timers" />
               </StackPanel>
             </Border>
           </Grid>
@@ -277,8 +211,8 @@
                   BorderThickness="1.2">
             <Grid Margin="14,10" ColumnDefinitions="98,*,98">
               <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <Button Classes="relay-key" Content="⌂" FontSize="18" />
-                <Button Classes="relay-key" Content="☰" FontSize="18" />
+                <Button Classes="relay-key" Content="⌂" FontSize="18" Click="HomeButton_Click" ToolTip.Tip="Measurements home" />
+                <Button Classes="relay-key" Content="☰" FontSize="18" Click="MenuButton_Click" ToolTip.Tip="Setup menu" />
               </StackPanel>
 
               <Border Grid.Column="1"
@@ -294,17 +228,17 @@
                       VerticalAlignment="Center"
                       ColumnDefinitions="56,56,56"
                       RowDefinitions="48,48,48">
-                  <Button Grid.Row="0" Grid.Column="1" Classes="relay-key" Content="⌃" />
-                  <Button Grid.Row="1" Grid.Column="0" Classes="relay-key" Content="‹" FontSize="20" />
-                  <Button Grid.Row="1" Grid.Column="1" Classes="relay-key" Content="OK" />
-                  <Button Grid.Row="1" Grid.Column="2" Classes="relay-key" Content="›" FontSize="20" />
-                  <Button Grid.Row="2" Grid.Column="1" Classes="relay-key" Content="⌄" />
+                  <Button Grid.Row="0" Grid.Column="1" Classes="relay-key" Content="⌃" Click="PreviousPageButton_Click" ToolTip.Tip="Previous LCD page" />
+                  <Button Grid.Row="1" Grid.Column="0" Classes="relay-key" Content="‹" FontSize="20" Click="PreviousPageButton_Click" ToolTip.Tip="Previous LCD page" />
+                  <Button Grid.Row="1" Grid.Column="1" Classes="relay-key" Content="OK" Click="OkButton_Click" ToolTip.Tip="Open next LCD page" />
+                  <Button Grid.Row="1" Grid.Column="2" Classes="relay-key" Content="›" FontSize="20" Click="NextPageButton_Click" ToolTip.Tip="Next LCD page" />
+                  <Button Grid.Row="2" Grid.Column="1" Classes="relay-key" Content="⌄" Click="NextPageButton_Click" ToolTip.Tip="Next LCD page" />
                 </Grid>
               </Border>
 
               <Grid Grid.Column="2" RowDefinitions="54,54,*">
-                <Button Grid.Row="0" Classes="relay-key" Content="↶" FontSize="18" />
-                <Button Grid.Row="1" Classes="relay-key" Content="☆" FontSize="20" />
+                <Button Grid.Row="0" Classes="relay-key" Content="↶" FontSize="18" Click="BackButton_Click" ToolTip.Tip="Return to measurements" />
+                <Button Grid.Row="1" Classes="relay-key" Content="☆" FontSize="20" Click="StarButton_Click" ToolTip.Tip="Trip record shortcut" />
                 <Border Grid.Row="2"
                         Width="48"
                         Height="28"
