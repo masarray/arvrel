@@ -64,7 +64,11 @@ public sealed class DeterministicLabScenario
             step.Waveform.Residual,
             step.Waveform.FrequencyHz,
             pickupPosition,
-            tripPosition);
+            tripPosition)
+        {
+            SampleRateHz = step.Waveform.SampleRateHz,
+            NominalSamplesPerCycle = step.Waveform.SamplesPerCycle
+        };
         return new ScenarioStep(step.Measurement, waveform);
     }
 
