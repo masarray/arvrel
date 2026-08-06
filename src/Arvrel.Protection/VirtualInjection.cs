@@ -21,6 +21,14 @@ public sealed record VirtualInjectionChannel(
     double Rms,
     double AngleDegrees)
 {
+    /// <summary>
+    /// Decaying unidirectional component expressed as a percentage of sinusoidal
+    /// peak. This represents fault-current asymmetry at the selected inception angle.
+    /// </summary>
+    public double DcOffsetPercent { get; init; }
+
+    public double DcTimeConstantMilliseconds { get; init; } = 60;
+
     public VirtualInjectionChannel Normalize()
         => this with { AngleDegrees = NormalizeAngle(AngleDegrees) };
 
@@ -30,6 +38,10 @@ public sealed record VirtualInjectionChannel(
             throw new ArgumentOutOfRangeException(name, "RMS value must be finite and between 0 and 1e9.");
         if (!double.IsFinite(AngleDegrees))
             throw new ArgumentOutOfRangeException(name, "Angle must be finite.");
+        if (!double.IsFinite(DcOffsetPercent) || DcOffsetPercent is < -100 or > 100)
+            throw new ArgumentOutOfRangeException(name, "DC offset must be finite and between -100% and 100% of sinusoidal peak.");
+        if (!double.IsFinite(DcTimeConstantMilliseconds) || DcTimeConstantMilliseconds is < 1 or > 10_000)
+            throw new ArgumentOutOfRangeException(name, "DC time constant must be finite and between 1 ms and 10,000 ms.");
     }
 
     public static double NormalizeAngle(double angle)
@@ -60,6 +72,8 @@ public sealed record VirtualInjectionProfile(
     public const double MinimumFrequencyHz = 40;
     public const double MaximumFrequencyHz = 70;
 
+    public CtSaturationSettings CurrentTransformer { get; init; } = CtSaturationSettings.Disabled;
+
     public bool ExplicitNeutralVoltage => NeutralVoltage.Enabled;
     public bool ExplicitNeutralCurrent => NeutralCurrent.Enabled;
 
@@ -78,6 +92,7 @@ public sealed record VirtualInjectionProfile(
         PhaseBCurrent.Validate(nameof(PhaseBCurrent));
         PhaseCCurrent.Validate(nameof(PhaseCCurrent));
         NeutralCurrent.Validate(nameof(NeutralCurrent));
+        CurrentTransformer.Validate();
     }
 
     public VirtualInjectionProfile Normalize()
@@ -93,7 +108,8 @@ public sealed record VirtualInjectionProfile(
             PhaseACurrent = PhaseACurrent.Normalize(),
             PhaseBCurrent = PhaseBCurrent.Normalize(),
             PhaseCCurrent = PhaseCCurrent.Normalize(),
-            NeutralCurrent = NeutralCurrent.Normalize()
+            NeutralCurrent = NeutralCurrent.Normalize(),
+            CurrentTransformer = CurrentTransformer.Normalize()
         };
     }
 
@@ -113,17 +129,30 @@ public sealed record VirtualInjectionProfile(
     public string Fingerprint()
     {
         var normalized = Normalize();
+        var ct = normalized.CurrentTransformer;
         var canonical = ProtectionSettings.CanonicalJoin(
             normalized.Name,
             normalized.FrequencyHz,
-            normalized.PhaseAVoltage.Enabled, normalized.PhaseAVoltage.Rms, normalized.PhaseAVoltage.AngleDegrees,
-            normalized.PhaseBVoltage.Enabled, normalized.PhaseBVoltage.Rms, normalized.PhaseBVoltage.AngleDegrees,
-            normalized.PhaseCVoltage.Enabled, normalized.PhaseCVoltage.Rms, normalized.PhaseCVoltage.AngleDegrees,
-            normalized.NeutralVoltage.Enabled, normalized.NeutralVoltage.Rms, normalized.NeutralVoltage.AngleDegrees,
-            normalized.PhaseACurrent.Enabled, normalized.PhaseACurrent.Rms, normalized.PhaseACurrent.AngleDegrees,
-            normalized.PhaseBCurrent.Enabled, normalized.PhaseBCurrent.Rms, normalized.PhaseBCurrent.AngleDegrees,
-            normalized.PhaseCCurrent.Enabled, normalized.PhaseCCurrent.Rms, normalized.PhaseCCurrent.AngleDegrees,
-            normalized.NeutralCurrent.Enabled, normalized.NeutralCurrent.Rms, normalized.NeutralCurrent.AngleDegrees);
+            normalized.PhaseAVoltage.Enabled, normalized.PhaseAVoltage.Rms, normalized.PhaseAVoltage.AngleDegrees, normalized.PhaseAVoltage.DcOffsetPercent, normalized.PhaseAVoltage.DcTimeConstantMilliseconds,
+            normalized.PhaseBVoltage.Enabled, normalized.PhaseBVoltage.Rms, normalized.PhaseBVoltage.AngleDegrees, normalized.PhaseBVoltage.DcOffsetPercent, normalized.PhaseBVoltage.DcTimeConstantMilliseconds,
+            normalized.PhaseCVoltage.Enabled, normalized.PhaseCVoltage.Rms, normalized.PhaseCVoltage.AngleDegrees, normalized.PhaseCVoltage.DcOffsetPercent, normalized.PhaseCVoltage.DcTimeConstantMilliseconds,
+            normalized.NeutralVoltage.Enabled, normalized.NeutralVoltage.Rms, normalized.NeutralVoltage.AngleDegrees, normalized.NeutralVoltage.DcOffsetPercent, normalized.NeutralVoltage.DcTimeConstantMilliseconds,
+            normalized.PhaseACurrent.Enabled, normalized.PhaseACurrent.Rms, normalized.PhaseACurrent.AngleDegrees, normalized.PhaseACurrent.DcOffsetPercent, normalized.PhaseACurrent.DcTimeConstantMilliseconds,
+            normalized.PhaseBCurrent.Enabled, normalized.PhaseBCurrent.Rms, normalized.PhaseBCurrent.AngleDegrees, normalized.PhaseBCurrent.DcOffsetPercent, normalized.PhaseBCurrent.DcTimeConstantMilliseconds,
+            normalized.PhaseCCurrent.Enabled, normalized.PhaseCCurrent.Rms, normalized.PhaseCCurrent.AngleDegrees, normalized.PhaseCCurrent.DcOffsetPercent, normalized.PhaseCCurrent.DcTimeConstantMilliseconds,
+            normalized.NeutralCurrent.Enabled, normalized.NeutralCurrent.Rms, normalized.NeutralCurrent.AngleDegrees, normalized.NeutralCurrent.DcOffsetPercent, normalized.NeutralCurrent.DcTimeConstantMilliseconds,
+            ct.Enabled,
+            ct.RatedSecondaryCurrentA,
+            ct.KneePointVoltageRms,
+            ct.SecondaryWindingResistanceOhm,
+            ct.BurdenResistanceOhm,
+            ct.BurdenInductanceMilliHenries,
+            ct.ExcitationCurrentAtKneeA,
+            ct.ExcitationCurrentAtTwiceKneeA,
+            ct.SaturationExponent,
+            ct.RemanencePercent,
+            ct.MaximumFluxPerUnit,
+            ct.MaximumExcitationCurrentA);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 }
@@ -144,6 +173,8 @@ public sealed record VirtualInjectionFrame(
     double NominalFrequencyHz,
     double SampleRateHz)
 {
+    public CtSaturationFrameDiagnostics CtSaturation { get; init; } = CtSaturationFrameDiagnostics.Disabled;
+
     public string NeutralCurrentProvenance => Profile.ExplicitNeutralCurrent
         ? "explicit-virtual-channel"
         : "calculated-phase-sum";
@@ -180,11 +211,22 @@ public static class VirtualInjectionGenerator
         var vb = GenerateChannel(profile.PhaseBVoltage, count, sampleRateHz, profile.FrequencyHz);
         var vc = GenerateChannel(profile.PhaseCVoltage, count, sampleRateHz, profile.FrequencyHz);
         var vnExplicit = GenerateChannel(profile.NeutralVoltage, count, sampleRateHz, profile.FrequencyHz);
-        var ia = GenerateChannel(profile.PhaseACurrent, count, sampleRateHz, profile.FrequencyHz);
-        var ib = GenerateChannel(profile.PhaseBCurrent, count, sampleRateHz, profile.FrequencyHz);
-        var ic = GenerateChannel(profile.PhaseCCurrent, count, sampleRateHz, profile.FrequencyHz);
-        var inExplicit = GenerateChannel(profile.NeutralCurrent, count, sampleRateHz, profile.FrequencyHz);
+        var iaIdeal = GenerateChannel(profile.PhaseACurrent, count, sampleRateHz, profile.FrequencyHz);
+        var ibIdeal = GenerateChannel(profile.PhaseBCurrent, count, sampleRateHz, profile.FrequencyHz);
+        var icIdeal = GenerateChannel(profile.PhaseCCurrent, count, sampleRateHz, profile.FrequencyHz);
+        var inIdeal = GenerateChannel(profile.NeutralCurrent, count, sampleRateHz, profile.FrequencyHz);
 
+        var iaCt = CtSaturationModel.Apply(iaIdeal, sampleRateHz, profile.FrequencyHz, profile.CurrentTransformer);
+        var ibCt = CtSaturationModel.Apply(ibIdeal, sampleRateHz, profile.FrequencyHz, profile.CurrentTransformer);
+        var icCt = CtSaturationModel.Apply(icIdeal, sampleRateHz, profile.FrequencyHz, profile.CurrentTransformer);
+        var inCt = profile.ExplicitNeutralCurrent
+            ? CtSaturationModel.Apply(inIdeal, sampleRateHz, profile.FrequencyHz, profile.CurrentTransformer)
+            : CtSaturationChannelResult.PassThrough(inIdeal);
+
+        var ia = iaCt.SecondaryCurrentA;
+        var ib = ibCt.SecondaryCurrentA;
+        var ic = icCt.SecondaryCurrentA;
+        var inExplicit = inCt.SecondaryCurrentA;
         var residualCurrent = profile.ExplicitNeutralCurrent
             ? inExplicit
             : Sum(ia, ib, ic);
@@ -243,7 +285,14 @@ public static class VirtualInjectionGenerator
             samplesPerCycle,
             cycles,
             nominalFrequencyHz,
-            sampleRateHz);
+            sampleRateHz)
+        {
+            CtSaturation = new CtSaturationFrameDiagnostics(
+                iaCt.Diagnostics,
+                ibCt.Diagnostics,
+                icCt.Diagnostics,
+                inCt.Diagnostics)
+        };
     }
 
     private static double[] GenerateChannel(
@@ -258,13 +307,18 @@ public static class VirtualInjectionGenerator
         var result = new double[count];
         var peak = channel.Rms * Math.Sqrt(2);
         var phase = VirtualInjectionChannel.NormalizeAngle(channel.AngleDegrees) * Math.PI / 180;
+        var dcFraction = channel.DcOffsetPercent / 100d;
+        var dcTimeConstantSeconds = channel.DcTimeConstantMilliseconds / 1_000d;
         for (var index = 0; index < count; index++)
         {
-            var angle = 2 * Math.PI * injectedFrequencyHz * index / sampleRateHz;
+            var timeSeconds = index / sampleRateHz;
+            var angle = 2 * Math.PI * injectedFrequencyHz * timeSeconds;
             // Cosine convention keeps the entered engineering angle aligned with
             // the estimator at nominal frequency. Off-nominal signals deliberately
             // expose the response of the fixed nominal-frequency DFT window.
-            result[index] = peak * Math.Cos(angle + phase);
+            var sinusoidal = peak * Math.Cos(angle + phase);
+            var decayingDc = peak * dcFraction * Math.Exp(-timeSeconds / dcTimeConstantSeconds);
+            result[index] = sinusoidal + decayingDc;
         }
         return result;
     }
@@ -289,6 +343,7 @@ public static class VirtualInjectionPresets
         "A-B fault",
         "A-B-G fault",
         "Three-phase fault",
+        "CT saturation - A-G asymmetrical",
         "27 undervoltage",
         "59 overvoltage",
         "59N residual voltage",
@@ -308,6 +363,7 @@ public static class VirtualInjectionPresets
             "A-B fault" => PhaseFault(name, frequencyHz, ground: false),
             "A-B-G fault" => PhaseFault(name, frequencyHz, ground: true),
             "Three-phase fault" => Balanced(name, frequencyHz, 25, 8.4),
+            "CT saturation - A-G asymmetrical" => CtSaturationGroundFault(name, frequencyHz),
             "27 undervoltage" => Balanced(name, frequencyHz, 40, 1),
             "59 overvoltage" => Balanced(name, frequencyHz, 125, 1),
             "59N residual voltage" => WithExplicitResidualVoltage(Balanced(name, frequencyHz, 63.5, 1), 12, 0),
@@ -364,6 +420,31 @@ public static class VirtualInjectionPresets
         };
     }
 
+    private static VirtualInjectionProfile CtSaturationGroundFault(string name, double frequency)
+    {
+        var profile = Balanced(name, frequency, 63.5, 1) with
+        {
+            PhaseAVoltage = On(12, 0),
+            PhaseACurrent = OnAsymmetrical(20, 0, 100, 60),
+            CurrentTransformer = new CtSaturationSettings
+            {
+                Enabled = true,
+                RatedSecondaryCurrentA = 5,
+                KneePointVoltageRms = 70,
+                SecondaryWindingResistanceOhm = 1,
+                BurdenResistanceOhm = 3.5,
+                BurdenInductanceMilliHenries = 0.2,
+                ExcitationCurrentAtKneeA = 0.03,
+                ExcitationCurrentAtTwiceKneeA = 50,
+                SaturationExponent = 2,
+                RemanencePercent = 60,
+                MaximumFluxPerUnit = 2.5,
+                MaximumExcitationCurrentA = 200
+            }
+        };
+        return profile.Normalize();
+    }
+
     private static VirtualInjectionProfile PhaseFault(string name, double frequency, bool ground)
     {
         var profile = Balanced(name, frequency, 63.5, 1) with
@@ -401,6 +482,17 @@ public static class VirtualInjectionPresets
 
     private static VirtualInjectionChannel On(double rms, double angle)
         => new(true, rms, angle);
+
+    private static VirtualInjectionChannel OnAsymmetrical(
+        double rms,
+        double angle,
+        double dcOffsetPercent,
+        double dcTimeConstantMilliseconds)
+        => new VirtualInjectionChannel(true, rms, angle)
+        {
+            DcOffsetPercent = dcOffsetPercent,
+            DcTimeConstantMilliseconds = dcTimeConstantMilliseconds
+        };
 
     private static VirtualInjectionChannel Off()
         => new(false, 0, 0);
