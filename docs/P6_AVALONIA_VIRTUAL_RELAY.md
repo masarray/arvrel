@@ -20,7 +20,7 @@ Port the approved futuristic virtual protection relay into the cross-platform Av
 
 ## P6.2 — Annunciation cause parity
 
-Phase A, Phase B, Phase C, and Earth lamps now use the portable `RelayAnnunciationLatch` from `Arvrel.Protection`.
+Phase A, Phase B, Phase C, and Earth lamps use the portable `RelayAnnunciationLatch` from `Arvrel.Protection`.
 
 The state contract is:
 
@@ -32,12 +32,42 @@ The state contract is:
 
 No phase or earth cause is inferred from a preset name, button state, or UI threshold.
 
-The current P6.2 adapter reads the immutable `InternalLabTick.Protection` snapshot from the existing Avalonia ViewModel presentation object. This is a temporary migration seam: the next external-source milestone will expose an explicit presentation snapshot and remove that adapter seam without changing annunciation semantics.
+The current P6.2 adapter reads the immutable `InternalLabTick.Protection` snapshot from the existing Avalonia ViewModel presentation object. This is a temporary migration seam: the external-source projection milestone will expose an explicit presentation snapshot and remove that seam without changing annunciation semantics.
+
+## P6.3 — LCD and hardware-navigation parity
+
+The static faceplate LCD markup has been replaced by a dedicated native `RelayLcdControl`.
+
+The LCD now contains five pages:
+
+1. **Measure** — IA, IB, IC, residual current, frequency, and trust state;
+2. **Events** — bounded operator event history from the existing ViewModel;
+3. **Records** — trip state, decision reason, active profile, setting group, and source/settings fingerprints;
+4. **Setup** — source mode, profile, setting group, neutral provenance, evidence window, and settings status;
+5. **Diagnostics** — platform, live-capture capability, replay capability, and sample counter.
+
+Navigation authority is explicit and local to the faceplate:
+
+- F1 → Measure;
+- F2 → Events;
+- F3 → Records;
+- F4 → Setup;
+- F5 → Diagnostics;
+- Home and Back → Measure;
+- Menu → Setup;
+- Star → Records;
+- Up/Left → previous page;
+- Down/Right/OK → next page;
+- LCD footer tabs remain directly clickable.
+
+The navigation changes presentation state only. They do not alter injection, settings, protection, trust, or trip state.
 
 ## Architecture boundary
 
 ```text
-VirtualRelayControl / RelayLampControl
+VirtualRelayControl
+├── RelayLampControl × 8
+└── RelayLcdControl
         ↓ compiled bindings and annunciation projection
 MainWindowViewModel
         ↓ immutable InternalLabTick / ProtectionSnapshot
@@ -46,7 +76,7 @@ RelayAnnunciationLatch
 Arvrel.Application / Arvrel.Protection
 ```
 
-The control does not instantiate or mutate a protection engine. It reads the same immutable presentation state already used by the Avalonia measurement and relay-settings workspaces.
+The controls do not instantiate or mutate a protection engine. They read the same immutable presentation state already used by the Avalonia measurement and relay-settings workspaces.
 
 ## Visual boundary
 
@@ -60,12 +90,12 @@ The faceplate is built entirely from Avalonia controls, shapes, brushes, text, a
 
 ## Current parity boundary
 
-The native product shell and complete high-level/cause annunciation are now present. LCD measurement/event/record navigation and external process-bus source workflows remain the next major parity gaps.
+The native product shell, complete cause annunciation, five LCD pages, and hardware navigation are now present. The largest remaining migration gaps are external PCAP/live-source operation, evidence/file workflows, the explicit immutable presentation snapshot, and complete multifunction protection settings.
 
 ## Next migration milestones
 
-1. port LCD measurement, event, and record pages with faceplate navigation;
-2. port PCAP/PCAPNG replay selection and stream workflow;
-3. expose an explicit immutable presentation snapshot and remove the temporary annunciation adapter seam;
-4. port evidence export and remaining engineering dialogs;
-5. extend full 27/59/59N/67P/67N settings parity.
+1. port PCAP/PCAPNG replay selection and stream workflow;
+2. expose an explicit immutable presentation snapshot and remove the temporary annunciation adapter seam;
+3. port evidence export and remaining engineering dialogs;
+4. extend full 27/59/59N/67P/67N settings parity;
+5. add Linux/macOS live-capture backends when transport and security requirements are defined.
