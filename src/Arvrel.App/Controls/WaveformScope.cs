@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using Arvrel.Application.Laboratory;
 
 namespace Arvrel.App.Controls;
 
@@ -21,6 +22,14 @@ public sealed record WaveformFrame(
         50,
         double.NaN,
         double.NaN);
+
+    public double SampleRateHz { get; init; } = double.NaN;
+    public int NominalSamplesPerCycle { get; init; } = 80;
+
+    public double ResolvedSampleRateHz =>
+        double.IsFinite(SampleRateHz) && SampleRateHz > 0
+            ? SampleRateHz
+            : Frequency * NominalSamplesPerCycle;
 }
 
 public sealed class WaveformScope : FrameworkElement
@@ -29,6 +38,11 @@ public sealed class WaveformScope : FrameworkElement
     private static readonly Color PhaseSColor = Color.FromRgb(255, 211, 61);
     private static readonly Color PhaseTColor = Color.FromRgb(63, 145, 255);
     private static readonly Color ResidualColor = Color.FromRgb(62, 218, 120);
+    private static readonly Brush TickLabelBrush = Freeze(new SolidColorBrush(Color.FromRgb(143, 160, 173)));
+    private static readonly Pen MinorGridPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(31, 45, 56)), 1));
+    private static readonly Pen MajorGridPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(45, 62, 74)), 1));
+    private static readonly Pen CycleGridPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(66, 88, 101)), 1.2));
+    private static readonly Pen AxisPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(80, 101, 115)), 1));
 
     private double _retainedMaximum = 1.2;
     private double _lockedTriggerSample = double.NaN;
@@ -83,7 +97,22 @@ public sealed class WaveformScope : FrameworkElement
             triggerFraction,
             ref _lockedTripMarkerPosition);
 
-        DrawGrid(drawingContext, plot);
+        var sampleCount = new[]
+        {
+            Frame.PhaseA.Count,
+            Frame.PhaseB.Count,
+            Frame.PhaseC.Count,
+            Frame.Residual.Count
+        }.Max();
+        var axis = WaveformAxisLayout.Create(new WaveformAxisSource(
+            sampleCount,
+            Frame.Frequency,
+            Frame.ResolvedSampleRateHz,
+            Frame.NominalSamplesPerCycle,
+            WaveformTimeOrigin.DisplayedWindowStart));
+
+        DrawHorizontalGrid(drawingContext, plot);
+        DrawTimeAxis(drawingContext, plot, axis);
         DrawMarker(drawingContext, plot, pickupPosition, Color.FromRgb(204, 151, 52), "PICKUP");
         DrawMarker(drawingContext, plot, tripPosition, Color.FromRgb(214, 77, 72), "TRIP");
 
@@ -92,7 +121,7 @@ public sealed class WaveformScope : FrameworkElement
         DrawTrace(drawingContext, plot, Frame.PhaseB, maximum, PhaseSColor, triggerSample);
         DrawTrace(drawingContext, plot, Frame.PhaseC, maximum, PhaseTColor, triggerSample);
         DrawTrace(drawingContext, plot, Frame.Residual, maximum, ResidualColor, triggerSample, 1.7);
-        DrawScale(drawingContext, plot, maximum, Frame.Frequency);
+        DrawScale(drawingContext, plot, maximum);
         DrawLegend(drawingContext, plot);
     }
 
@@ -244,24 +273,45 @@ public sealed class WaveformScope : FrameworkElement
         return rotated;
     }
 
-    private static void DrawGrid(DrawingContext dc, Rect plot)
+    private static void DrawHorizontalGrid(DrawingContext dc, Rect plot)
     {
-        var minor = new Pen(new SolidColorBrush(Color.FromRgb(31, 45, 56)), 1);
-        var major = new Pen(new SolidColorBrush(Color.FromRgb(45, 62, 74)), 1);
         var zero = new Pen(new SolidColorBrush(Color.FromRgb(80, 101, 115)), 1);
 
-        for (var column = 0; column <= 16; column++)
-        {
-            var x = plot.Left + plot.Width * column / 16;
-            dc.DrawLine(column % 4 == 0 ? major : minor, new Point(x, plot.Top), new Point(x, plot.Bottom));
-        }
         for (var row = 0; row <= 8; row++)
         {
             var y = plot.Top + plot.Height * row / 8;
-            var pen = row == 4 ? zero : row % 2 == 0 ? major : minor;
+            var pen = row == 4 ? zero : row % 2 == 0 ? MajorGridPen : MinorGridPen;
             dc.DrawLine(pen, new Point(plot.Left, y), new Point(plot.Right, y));
         }
     }
+
+    private static void DrawTimeAxis(DrawingContext dc, Rect plot, WaveformAxis axis)
+    {
+        foreach (var tick in axis.Ticks)
+        {
+            var x = plot.Left + plot.Width * tick.NormalizedPosition;
+            var pen = tick.IsCycleBoundary
+                ? CycleGridPen
+                : tick.IsMajor
+                    ? MajorGridPen
+                    : MinorGridPen;
+            dc.DrawLine(pen, new Point(x, plot.Top), new Point(x, plot.Bottom));
+
+            var tickLength = tick.IsCycleBoundary ? 7 : tick.IsMajor ? 5 : 3;
+            dc.DrawLine(AxisPen, new Point(x, plot.Bottom), new Point(x, plot.Bottom + tickLength));
+
+            if (tick.Label is null)
+                continue;
+
+            var text = CreateText(tick.Label, 9.5, TickLabelBrush);
+            var labelX = Math.Clamp(x - text.Width / 2, 1, Math.Max(1, ActualAxisRight(plot) - text.Width));
+            dc.DrawText(text, new Point(labelX, plot.Bottom + 7));
+        }
+
+        dc.DrawLine(AxisPen, new Point(plot.Left, plot.Bottom), new Point(plot.Right, plot.Bottom));
+    }
+
+    private static double ActualAxisRight(Rect plot) => plot.Right + 17;
 
     private static void DrawTrace(
         DrawingContext dc,
@@ -281,7 +331,7 @@ public sealed class WaveformScope : FrameworkElement
             for (var displayIndex = 0; displayIndex < values.Count; displayIndex++)
             {
                 var value = InterpolatedSample(values, triggerSample + displayIndex);
-                var normalizedX = displayIndex / (double)(values.Count - 1);
+                var normalizedX = WaveformAxisLayout.NormalizeSamplePosition(displayIndex, values.Count);
                 var x = plot.Left + normalizedX * plot.Width;
                 var normalizedY = Math.Clamp(value / maximum, -1, 1);
                 var y = plot.Top + plot.Height / 2 - normalizedY * plot.Height * 0.43;
@@ -321,15 +371,11 @@ public sealed class WaveformScope : FrameworkElement
         dc.DrawText(CreateText(label, 9, brush), new Point(Math.Min(x + 4, plot.Right - 48), plot.Top + 3));
     }
 
-    private static void DrawScale(DrawingContext dc, Rect plot, double maximum, double frequency)
+    private static void DrawScale(DrawingContext dc, Rect plot, double maximum)
     {
-        var muted = new SolidColorBrush(Color.FromRgb(143, 160, 173));
-        dc.DrawText(CreateText($"+{maximum:0.0} A", 9.5, muted), new Point(4, plot.Top - 3));
-        dc.DrawText(CreateText("0", 9.5, muted), new Point(30, plot.Top + plot.Height / 2 - 7));
-        dc.DrawText(CreateText($"-{maximum:0.0} A", 9.5, muted), new Point(4, plot.Bottom - 12));
-        dc.DrawText(CreateText("0 ms", 9.5, muted), new Point(plot.Left, plot.Bottom + 7));
-        dc.DrawText(CreateText($"{1000 / Math.Max(1, frequency):0.0} ms", 9.5, muted), new Point(plot.Left + plot.Width / 2 - 23, plot.Bottom + 7));
-        dc.DrawText(CreateText($"{2000 / Math.Max(1, frequency):0.0} ms", 9.5, muted), new Point(plot.Right - 44, plot.Bottom + 7));
+        dc.DrawText(CreateText($"+{maximum:0.0} A", 9.5, TickLabelBrush), new Point(4, plot.Top - 3));
+        dc.DrawText(CreateText("0", 9.5, TickLabelBrush), new Point(30, plot.Top + plot.Height / 2 - 7));
+        dc.DrawText(CreateText($"-{maximum:0.0} A", 9.5, TickLabelBrush), new Point(4, plot.Bottom - 12));
     }
 
     private static void DrawLegend(DrawingContext dc, Rect plot)
@@ -360,4 +406,10 @@ public sealed class WaveformScope : FrameworkElement
         size,
         brush,
         1);
+
+    private static T Freeze<T>(T value) where T : Freezable
+    {
+        value.Freeze();
+        return value;
+    }
 }
