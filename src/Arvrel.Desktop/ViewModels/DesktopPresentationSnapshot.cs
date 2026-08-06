@@ -30,7 +30,7 @@ public sealed record DesktopPresentationSnapshot(
             tick.Scenario.Waveform,
             sampleCounter,
             tick.Scenario.OutputState,
-            tick.Protection.SmvTrust.Summary,
+            $"{tick.Protection.SmvTrust.Code} · {tick.Protection.SmvTrust.Detail}",
             "Portable deterministic 4I + 4V profile",
             Array.Empty<string>());
 
