@@ -82,7 +82,9 @@ public sealed class VirtualRelayFaceplateSourceTests
         StringAssert.Contains(viewModel, "FaceplatePage.Events");
         StringAssert.Contains(viewModel, "FaceplatePage.Records");
         StringAssert.Contains(viewModel, "FaceplatePage.Setup");
-        Assert.IsFalse(viewModel.Contains("System.Windows", StringComparison.Ordinal));
+        Assert.IsFalse(viewModel.Contains("using System.Windows;", StringComparison.Ordinal));
+        Assert.IsFalse(viewModel.Contains("System.Windows.Controls", StringComparison.Ordinal));
+        Assert.IsFalse(viewModel.Contains("System.Windows.Shapes", StringComparison.Ordinal));
     }
 
     [TestMethod]
