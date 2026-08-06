@@ -15,44 +15,30 @@
     </UserControl.Resources>
 
     <Viewbox Stretch="Uniform" StretchDirection="Both">
-        <Grid Width="520" Height="680" Margin="14">
+        <Grid Width="560" Height="710" Margin="8">
             <Border CornerRadius="25"
                     Background="{StaticResource VrOuterShellBrush}"
                     BorderBrush="{StaticResource VrOuterShellBorderBrush}"
                     BorderThickness="2"
                     Effect="{StaticResource VrShellShadow}" />
 
-            <Border Margin="13"
+            <Border Margin="12"
                     CornerRadius="21"
                     Background="#151D22"
-                    BorderBrush="#78848B"
-                    BorderThickness="1.4" />
+                    BorderBrush="#69757C"
+                    BorderThickness="1.2" />
 
-            <Border Margin="19"
-                    CornerRadius="18"
-                    BorderThickness="2"
-                    IsHitTestVisible="False">
-                <Border.BorderBrush>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#E6EBED" Offset="0" />
-                        <GradientStop Color="#7C878E" Offset="0.26" />
-                        <GradientStop Color="#353F45" Offset="0.73" />
-                        <GradientStop Color="#12181C" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.BorderBrush>
-            </Border>
-
-            <Border Margin="23"
-                    CornerRadius="15"
+            <Border Margin="20"
+                    CornerRadius="16"
                     Background="{StaticResource VrFrontFaceBrush}"
                     BorderBrush="{StaticResource VrFrontFaceBorderBrush}"
-                    BorderThickness="1.5">
+                    BorderThickness="1.4">
                 <Grid Margin="18">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="64" />
-                        <RowDefinition Height="330" />
+                        <RowDefinition Height="314" />
                         <RowDefinition Height="14" />
-                        <RowDefinition Height="155" />
+                        <RowDefinition Height="174" />
                         <RowDefinition Height="49" />
                     </Grid.RowDefinitions>
 
@@ -103,10 +89,10 @@
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="112" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="244" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="76" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="250" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="95" />
                         </Grid.ColumnDefinitions>
 
                         <Border Grid.Column="0"
@@ -122,14 +108,14 @@
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="30" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
-                                    <RowDefinition Height="34" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
+                                    <RowDefinition Height="33" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.ColumnSpan="2"
@@ -168,7 +154,7 @@
                                         Margin="-10,31,0,4"
                                         HorizontalAlignment="Left"
                                         Background="{StaticResource VrAccentBrush}"
-                                        Opacity="0.80"
+                                        Opacity="0.72"
                                         CornerRadius="2" />
                             </Grid>
                         </Border>
@@ -176,8 +162,8 @@
                         <Border Grid.Column="2"
                                 CornerRadius="8"
                                 Background="{StaticResource VrLcdBezelBrush}"
-                                BorderBrush="#717F87"
-                                BorderThickness="1.4"
+                                BorderBrush="#65737B"
+                                BorderThickness="1.3"
                                 Padding="7"
                                 Effect="{StaticResource VrModuleShadow}">
                             <Border CornerRadius="4"
@@ -258,15 +244,14 @@
                                 BorderBrush="{StaticResource VrModuleBorderBrush}"
                                 BorderThickness="1.3"
                                 Effect="{StaticResource VrModuleShadow}">
-                            <StackPanel Margin="10,10" HorizontalAlignment="Center">
+                            <StackPanel Margin="12,10" HorizontalAlignment="Center">
                                 <Button Tag="P6_NATIVE" Style="{StaticResource VrFunctionKeyStyle}" Content="F1" ToolTip="Context function F1" />
                                 <Button Tag="P6_NATIVE" Style="{StaticResource VrFunctionKeyStyle}" Content="F2" ToolTip="Context function F2" />
                                 <Button Tag="P6_NATIVE" Style="{StaticResource VrFunctionKeyStyle}" Content="F3" ToolTip="Context function F3" />
                                 <Button Tag="P6_NATIVE" Style="{StaticResource VrFunctionKeyStyle}" Content="F4" ToolTip="Context function F4" />
                                 <Button Tag="P6_NATIVE" Style="{StaticResource VrFunctionKeyStyle}" Content="F5" ToolTip="Context function F5" />
                                 <Button Tag="P6_NATIVE"
-                                        Style="{StaticResource VrFunctionKeyStyle}"
-                                        Foreground="{StaticResource VrAccentBrush}"
+                                        Style="{StaticResource VrResetKeyStyle}"
                                         Content="RESET"
                                         ToolTip="Relay reset"
                                         Click="ResetButton_Click" />
@@ -278,13 +263,13 @@
                             CornerRadius="11"
                             Background="{StaticResource VrModuleBrush}"
                             BorderBrush="{StaticResource VrModuleBorderBrush}"
-                            BorderThickness="1.4"
+                            BorderThickness="1.3"
                             Effect="{StaticResource VrModuleShadow}">
-                        <Grid Margin="14,11">
+                        <Grid Margin="14,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="92" />
+                                <ColumnDefinition Width="98" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="92" />
+                                <ColumnDefinition Width="98" />
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -298,7 +283,7 @@
 
                             <Border Grid.Column="1"
                                     Width="184"
-                                    Height="128"
+                                    Height="148"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     CornerRadius="18"
@@ -307,9 +292,9 @@
                                     Background="#1A2328">
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="44" />
-                                        <RowDefinition Height="44" />
-                                        <RowDefinition Height="44" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="48" />
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="56" />
@@ -317,17 +302,17 @@
                                         <ColumnDefinition Width="56" />
                                     </Grid.ColumnDefinitions>
 
-                                    <Button Grid.Row="0" Grid.Column="1" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Up">
+                                    <Button Grid.Row="0" Grid.Column="1" Margin="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Up">
                                         <controls:LucideIcon Kind="ChevronUp" Width="19" Height="19" Foreground="{StaticResource VrKeyTextBrush}" />
                                     </Button>
-                                    <Button Grid.Row="1" Grid.Column="0" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Cancel">
+                                    <Button Grid.Row="1" Grid.Column="0" Margin="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Cancel">
                                         <controls:LucideIcon Kind="ChevronLeft" Width="19" Height="19" Foreground="{StaticResource VrKeyTextBrush}" />
                                     </Button>
-                                    <Button Grid.Row="1" Grid.Column="1" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Enter" Content="OK" />
-                                    <Button Grid.Row="1" Grid.Column="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Next">
+                                    <Button Grid.Row="1" Grid.Column="1" Margin="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Enter" Content="OK" />
+                                    <Button Grid.Row="1" Grid.Column="2" Margin="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Next">
                                         <controls:LucideIcon Kind="ChevronRight" Width="19" Height="19" Foreground="{StaticResource VrKeyTextBrush}" />
                                     </Button>
-                                    <Button Grid.Row="2" Grid.Column="1" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Down">
+                                    <Button Grid.Row="2" Grid.Column="1" Margin="2" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Down">
                                         <controls:LucideIcon Kind="ChevronDown" Width="19" Height="19" Foreground="{StaticResource VrKeyTextBrush}" />
                                     </Button>
                                 </Grid>
@@ -335,8 +320,8 @@
 
                             <Grid Grid.Column="2">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="52" />
-                                    <RowDefinition Height="52" />
+                                    <RowDefinition Height="54" />
+                                    <RowDefinition Height="54" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <Button Grid.Row="0" Tag="P6_NATIVE" Style="{StaticResource VrHardwareKeyStyle}" ToolTip="Back">
@@ -385,7 +370,7 @@
                                 VerticalAlignment="Center"
                                 CornerRadius="2"
                                 Background="{StaticResource VrAccentBrush}"
-                                Opacity="0.72" />
+                                Opacity="0.68" />
                     </Grid>
 
                     <StackPanel Visibility="Collapsed" IsHitTestVisible="False">
