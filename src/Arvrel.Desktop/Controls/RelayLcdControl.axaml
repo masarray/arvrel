@@ -89,9 +89,9 @@
             <ScrollViewer Height="178" VerticalScrollBarVisibility="Auto">
               <ItemsControl ItemsSource="{Binding Events}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="x:String">
                     <TextBlock Classes="lcd-body"
-                               Text="{Binding}"
+                               Text="{Binding .}"
                                Margin="0,0,0,4"
                                TextWrapping="Wrap" />
                   </DataTemplate>
