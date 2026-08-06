@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Shapes;
 using System.Windows.Threading;
-using Arvrel.App.Controls;
 using Arvrel.Protection;
 
 namespace Arvrel.App;
@@ -32,15 +32,8 @@ public partial class MainWindow
         if (_relayAnnunciationTimer is not null)
             return;
 
-        // Trip and trip-cause lamps are intentionally larger than the passive status lenses.
-        // The pinned visual state below makes this annunciation path authoritative, so the
-        // general measurement renderer cannot flash an amber/blue/off state between updates.
-        TripLed.Width = TripLed.Height = 13;
-        PhaseALed.Width = PhaseALed.Height = 12.5;
-        PhaseBLed.Width = PhaseBLed.Height = 12.5;
-        PhaseCLed.Width = PhaseCLed.Height = 12.5;
-        EarthLed.Width = EarthLed.Height = 12.5;
-
+        // P6 owns all physical lamp geometry. Annunciation is deliberately a
+        // state-only authority and may change only the logical lens colour.
         _relayAnnunciationTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(30)
@@ -102,10 +95,12 @@ public partial class MainWindow
 
         var indication = _relayAnnunciationLatch.Observe(snapshot);
 
-        // The common PICKUP lamp is momentary. Once trip is latched the red TRIP
-        // lamp and red phase/earth trip causes remain authoritative until reset.
-        SetAnnunciationState(PickupLed, indication.PickupActive ? RelayIndicatorState.Orange : RelayIndicatorState.Off);
-        SetAnnunciationState(TripLed, indication.TripLatched ? RelayIndicatorState.Red : RelayIndicatorState.Off);
+        SetAnnunciationState(
+            PickupLed,
+            indication.PickupActive ? P6AnnunciationLampState.Amber : P6AnnunciationLampState.Off);
+        SetAnnunciationState(
+            TripLed,
+            indication.TripLatched ? P6AnnunciationLampState.Red : P6AnnunciationLampState.Off);
         SetAnnunciationState(PhaseALed, ResolveAnnunciationState(indication.PhaseA));
         SetAnnunciationState(PhaseBLed, ResolveAnnunciationState(indication.PhaseB));
         SetAnnunciationState(PhaseCLed, ResolveAnnunciationState(indication.PhaseC));
@@ -116,22 +111,39 @@ public partial class MainWindow
     {
         _relayAnnunciationSourceIdentity = null;
         _relayAnnunciationLatch.Reset();
-        SetAnnunciationState(PickupLed, RelayIndicatorState.Off);
-        SetAnnunciationState(TripLed, RelayIndicatorState.Off);
-        SetAnnunciationState(PhaseALed, RelayIndicatorState.Off);
-        SetAnnunciationState(PhaseBLed, RelayIndicatorState.Off);
-        SetAnnunciationState(PhaseCLed, RelayIndicatorState.Off);
-        SetAnnunciationState(EarthLed, RelayIndicatorState.Off);
+        SetAnnunciationState(PickupLed, P6AnnunciationLampState.Off);
+        SetAnnunciationState(TripLed, P6AnnunciationLampState.Off);
+        SetAnnunciationState(PhaseALed, P6AnnunciationLampState.Off);
+        SetAnnunciationState(PhaseBLed, P6AnnunciationLampState.Off);
+        SetAnnunciationState(PhaseCLed, P6AnnunciationLampState.Off);
+        SetAnnunciationState(EarthLed, P6AnnunciationLampState.Off);
     }
 
-    private static void SetAnnunciationState(System.Windows.Shapes.Ellipse lamp, RelayIndicatorState state)
-        => RelayIndicatorLampBehavior.SetPinnedState(lamp, state);
+    private static void SetAnnunciationState(Ellipse lamp, P6AnnunciationLampState state)
+    {
+        var brush = state switch
+        {
+            P6AnnunciationLampState.Amber => WarningBrush,
+            P6AnnunciationLampState.Red => TripBrush,
+            _ => LedOffBrush
+        };
 
-    private static RelayIndicatorState ResolveAnnunciationState(RelayLampState state)
+        if (!ReferenceEquals(lamp.Fill, brush))
+            lamp.Fill = brush;
+    }
+
+    private static P6AnnunciationLampState ResolveAnnunciationState(RelayLampState state)
         => state switch
         {
-            RelayLampState.Pickup => RelayIndicatorState.Orange,
-            RelayLampState.Trip => RelayIndicatorState.Red,
-            _ => RelayIndicatorState.Off
+            RelayLampState.Pickup => P6AnnunciationLampState.Amber,
+            RelayLampState.Trip => P6AnnunciationLampState.Red,
+            _ => P6AnnunciationLampState.Off
         };
+
+    private enum P6AnnunciationLampState
+    {
+        Off,
+        Amber,
+        Red
+    }
 }
