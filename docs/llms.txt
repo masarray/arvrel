@@ -1,0 +1,34 @@
+# ARVREL
+
+> ARVREL is an open-source, vendor-neutral IEC 61850 Sampled Values virtual protection relay laboratory for process-bus analysis, feeder protection, PCAP replay, phasor analysis, trust gating, and reviewable engineering evidence.
+
+Canonical product site: https://masarray.github.io/arvrel/
+Source repository: https://github.com/masarray/arvrel
+Official releases: https://github.com/masarray/arvrel/releases
+License: GPL-3.0-or-later
+
+## Start here
+
+- Product overview: https://masarray.github.io/arvrel/
+- Capabilities: https://masarray.github.io/arvrel/capabilities.html
+- Documentation hub: https://masarray.github.io/arvrel/documentation.html
+- Five-minute quick start: https://masarray.github.io/arvrel/quick-start.html
+- Architecture: https://masarray.github.io/arvrel/architecture.html
+- Evidence and trust: https://masarray.github.io/arvrel/evidence-and-trust.html
+- Safety and limitations: https://masarray.github.io/arvrel/safety-and-limitations.html
+- Download and verification: https://masarray.github.io/arvrel/download.html
+- Research and validation: https://masarray.github.io/arvrel/research/
+- Deterministic validation matrix: https://masarray.github.io/arvrel/research/validation.html
+
+## Machine-readable evidence
+
+- Public trust manifest: https://masarray.github.io/arvrel/trust-manifest.json
+- Deterministic research scenarios: https://masarray.github.io/arvrel/data/research-scenarios.json
+- Citation metadata: https://github.com/masarray/arvrel/blob/main/CITATION.cff
+- Security policy: https://github.com/masarray/arvrel/security/policy
+
+## Current product boundary
+
+ARVREL is virtual-output laboratory software. Virtual output only: it does not provide physical relay contacts, operational GOOSE trip, MMS control, autonomous switching, switching authority, calibrated test-set evidence, IEC 61850 conformance certification, IEC 60255 type-test evidence, or hard-real-time guarantees.
+
+The release page is the package source of truth. Features on the main development branch become official packaged capabilities only after a versioned release publishes the corresponding artifacts and integrity metadata.

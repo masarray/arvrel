@@ -1,0 +1,20 @@
+{
+  "name": "arvrel-public-site-quality",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Deterministic browser, accessibility, and Lighthouse quality gates for the ARVREL public site.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "site:prepare": "python scripts/prepare-public-site.py",
+    "site:validate": "python scripts/validate-public-site.py && python scripts/validate-public-seo.py && python scripts/validate-public-quality.py",
+    "site:test": "playwright test",
+    "site:lighthouse": "lhci autorun --config=lighthouserc.json"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.62.0"
+  }
+}

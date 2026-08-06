@@ -1,0 +1,26 @@
+/* ARVREL public-site accessibility enhancements.
+   This file is injected after site.css by scripts/prepare-public-site.py. */
+
+.breadcrumbs a,
+main p a,
+main li a,
+main td a,
+main dd a {
+  text-decoration: underline;
+  text-decoration-thickness: .08em;
+  text-underline-offset: .2em;
+}
+
+.breadcrumbs a:hover,
+main p a:hover,
+main li a:hover,
+main td a:hover,
+main dd a:hover {
+  text-decoration-thickness: .14em;
+}
+
+.matrix:focus-visible,
+.code:focus-visible {
+  outline: 3px solid rgba(23, 121, 174, .55);
+  outline-offset: 3px;
+}
