@@ -1,0 +1,44 @@
+name: Export Avalonia split
+
+on:
+  push:
+    branches:
+      - export/avalonia-p5.9-repo-ready
+    paths:
+      - scripts/export-avalonia-repo.ps1
+      - .github/workflows/export-avalonia-split.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Avalonia migration snapshot
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build validated repository-ready ZIP
+        shell: pwsh
+        run: .\scripts\export-avalonia-repo.ps1
+
+      - name: Upload Avalonia repository export
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: arvrel-avalonia-p5.9-repo-ready
+          path: |
+            artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip
+            artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
