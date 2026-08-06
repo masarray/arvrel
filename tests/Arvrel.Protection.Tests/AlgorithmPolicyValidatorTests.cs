@@ -21,7 +21,7 @@ public sealed class AlgorithmPolicyValidatorTests
         Assert.IsTrue(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("50P-1")]
     [DataRow("51P")]
     [DataRow("50N")]
