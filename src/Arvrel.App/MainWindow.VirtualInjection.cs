@@ -460,8 +460,11 @@ public partial class MainWindow
         var voltage = _virtualInjectionRows.FirstOrDefault(row => row.Signal == VirtualInjectionSignal.NeutralVoltage);
         var currentText = current?.IsEnabled == true ? "IN explicit" : "3I0 = IA+IB+IC";
         var voltageText = voltage?.IsEnabled == true ? "VN explicit" : "3V0 = VA+VB+VC";
+        var remanenceText = _virtualInjectionCtSettings.RemanencePercent.ToString(
+            "+0.#;-0.#;0",
+            CultureInfo.InvariantCulture);
         var ctText = _virtualInjectionCtSettings.Enabled
-            ? $"CT nonlinear · Vk {_virtualInjectionCtSettings.KneePointVoltageRms:0.#} V · burden {_virtualInjectionCtSettings.BurdenResistanceOhm:0.###} Ω · rem {_virtualInjectionCtSettings.RemanencePercent:+0.#;-0.#;0}%"
+            ? $"CT nonlinear · Vk {_virtualInjectionCtSettings.KneePointVoltageRms:0.#} V · burden {_virtualInjectionCtSettings.BurdenResistanceOhm:0.###} Ω · rem {remanenceText}%"
             : "CT ideal";
         _virtualInjectionProvenanceText.Text = $"{currentText} · {voltageText} · {ctText}";
         _virtualInjectionProvenanceText.ToolTip = _virtualInjectionCtSettings.Enabled
