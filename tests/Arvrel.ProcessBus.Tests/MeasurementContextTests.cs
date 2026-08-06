@@ -26,13 +26,13 @@ public sealed class MeasurementContextTests
     public void RejectsInvalidFrequency()
     {
         var context = new SmvMeasurementContext { NominalFrequencyHz = 70 };
-        Assert.ThrowsException<ArgumentOutOfRangeException>(context.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(context.Validate);
     }
 
     [TestMethod]
     public void RejectsInvalidVtSecondary()
     {
         var context = new SmvMeasurementContext { VtSecondaryV = 0 };
-        Assert.ThrowsException<ArgumentOutOfRangeException>(context.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(context.Validate);
     }
 }
