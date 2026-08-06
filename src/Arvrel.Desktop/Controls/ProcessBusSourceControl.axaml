@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Arvrel.Desktop.ViewModels"
+             x:Class="Arvrel.Desktop.Controls.ProcessBusSourceControl"
+             x:DataType="vm:MainWindowViewModel">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="10" Margin="4,10,4,4">
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="section" Text="EXTERNAL SOURCE" />
+          <TextBlock FontWeight="Bold"
+                     Foreground="#8ED5E8"
+                     Text="{Binding SourceModeText}"
+                     TextWrapping="Wrap" />
+          <TextBlock Classes="caption"
+                     Text="{Binding ExternalSourceStatus}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="section" Text="CAPTURE FILE" />
+        <Border Classes="subtle">
+          <StackPanel Spacing="4">
+            <TextBlock FontWeight="SemiBold"
+                       Text="{Binding ReplayFileName}"
+                       TextWrapping="Wrap" />
+            <TextBlock Classes="caption"
+                       Text="{Binding ReplayFilePath}"
+                       TextWrapping="Wrap" />
+            <TextBlock Classes="caption" Text="{Binding ReplayFrameCountText}" />
+          </StackPanel>
+        </Border>
+        <Button Classes="primary"
+                Content="OPEN + REPLAY PCAP / PCAPNG"
+                Click="OpenReplay_Click" />
+        <Button Content="RETURN TO INTERNAL TEST SET"
+                Click="SelectInternal_Click" />
+      </StackPanel>
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="section" Text="SAMPLED VALUES STREAM" />
+        <ComboBox ItemsSource="{Binding ExternalStreams}"
+                  SelectedItem="{Binding SelectedExternalStream, Mode=TwoWay}"
+                  MinHeight="34"
+                  PlaceholderText="No decoded SV stream" />
+        <TextBlock Classes="caption"
+                   Text="{Binding SelectedStreamText}"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="section" Text="TRUST" />
+          <TextBlock Text="{Binding StreamTrustText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="section" Text="MAPPING + SOURCE" />
+          <TextBlock Text="{Binding StreamMappingText}" TextWrapping="Wrap" />
+          <Border Height="1" Background="#223541" />
+          <TextBlock Classes="caption" Text="{Binding StreamSourceText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="section" Text="DIAGNOSTICS" />
+          <TextBlock Classes="caption"
+                     FontFamily="Cascadia Mono,Consolas,monospace"
+                     Text="{Binding StreamDiagnosticsText}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="subtle">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="section" Text="PLATFORM CAPABILITY" />
+          <TextBlock FontWeight="SemiBold" Text="LIVE CAPTURE" />
+          <TextBlock Classes="caption" Text="{Binding LiveCaptureStatus}" TextWrapping="Wrap" />
+          <Border Height="1" Background="#223541" />
+          <TextBlock FontWeight="SemiBold" Text="CAPTURE REPLAY" />
+          <TextBlock Classes="caption" Text="{Binding ReplayStatus}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Classes="caption"
+                 Text="Replay is finite and read-only. It uses the existing portable PCAP/PCAPNG source, ARIEC61850 decoder, continuity gate, trust policy, measurement runtime, and protection snapshot."
+                 TextWrapping="Wrap" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
