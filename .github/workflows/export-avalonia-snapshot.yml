@@ -37,14 +37,13 @@ jobs:
 
           Status: development preview. The WPF repository remains the stable public release.
           EOF
-          cd ..
-          zip -r arvrel-avalonia-p5.8-ready-to-push.zip arvrel \
-            -x 'arvrel/.git/*' 'arvrel/**/bin/*' 'arvrel/**/obj/*' 'arvrel/artifacts/*' 'arvrel/**/TestResults/*'
+          zip -r arvrel-avalonia-p5.8-ready-to-push.zip . \
+            -x '.git/*' '**/bin/*' '**/obj/*' 'artifacts/*' '**/TestResults/*' 'arvrel-avalonia-p5.8-ready-to-push.zip'
 
       - name: Upload clean source ZIP
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: arvrel-avalonia-p5.8-ready-to-push
-          path: ../arvrel-avalonia-p5.8-ready-to-push.zip
+          path: arvrel-avalonia-p5.8-ready-to-push.zip
           if-no-files-found: error
           retention-days: 30
