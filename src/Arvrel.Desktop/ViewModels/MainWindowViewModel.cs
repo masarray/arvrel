@@ -12,7 +12,7 @@ using Arvrel.Protection;
 
 namespace Arvrel.Desktop.ViewModels;
 
-public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposable
+public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private static readonly TimeSpan SimulationSubstep = TimeSpan.FromMilliseconds(5);
     private const int SimulationIterationsPerUiTick = 8;
@@ -95,7 +95,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
 
     public string ProductTitle => "ARVREL";
     public string ProductSubtitle => "Virtual Protection Relay Laboratory";
-    public string ShellVersion => "P5.4 · RELAY + INJECTION PARITY";
+    public string ShellVersion => "P5.7 · FACEPLATE ANNUNCIATION";
     public string PlatformText => $"{RuntimeInformation.OSDescription} · {RuntimeInformation.ProcessArchitecture}";
     public string SourceModeText => "INTERNAL VIRTUAL TEST SET";
     public string StatusText => _statusText;
@@ -147,12 +147,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
         StringComparison.Ordinal);
     public bool SmvDegraded => _workspace.InternalLab.Scenario.SmvDegraded;
     public bool AllowsTrip => _currentTick.Protection.SmvTrust.AllowsTrip;
-    public bool TripLatched => _currentTick.Protection.TripLatched;
-    public bool PickupActive =>
-        _currentTick.Protection.Phase50.Pickup ||
-        _currentTick.Protection.Phase51.Pickup ||
-        _currentTick.Protection.Earth50.Pickup ||
-        _currentTick.Protection.Earth51.Pickup;
+    public bool TripLatched => _relayAnnunciation.TripLatched;
+    public bool PickupActive => _relayAnnunciation.PickupActive;
 
     public string RunButtonText => IsRunning ? "STOP INJECTION" : "START INJECTION";
     public string FaultButtonText => "LOAD + START A-G FAULT";
@@ -469,6 +465,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IAsyncDisposab
     private void ApplyTick(InternalLabTick tick)
     {
         _currentTick = tick;
+        UpdateFaceplateState(tick.Protection);
         ProtectionElements[0].Update(tick.Protection.Phase50);
         ProtectionElements[1].Update(tick.Protection.Phase51);
         ProtectionElements[2].Update(tick.Protection.Earth50);
