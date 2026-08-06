@@ -1,11 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Arvrel.Protection;
 
 namespace Arvrel.Desktop.Controls;
 
 public sealed partial class RelayLamp : UserControl
 {
+    private static readonly Color OffColor = Color.Parse("#52636D");
+    private static readonly Color PickupColor = Color.Parse("#E1AA38");
+    private static readonly Color TripColor = Color.Parse("#E34D53");
+
     public static readonly StyledProperty<bool> IsOnProperty =
         AvaloniaProperty.Register<RelayLamp, bool>(nameof(IsOn));
 
@@ -13,6 +18,9 @@ public sealed partial class RelayLamp : UserControl
         AvaloniaProperty.Register<RelayLamp, Color>(
             nameof(ActiveColor),
             Color.Parse("#45B768"));
+
+    public static readonly StyledProperty<RelayLampState?> LampStateProperty =
+        AvaloniaProperty.Register<RelayLamp, RelayLampState?>(nameof(LampState));
 
     public RelayLamp()
     {
@@ -32,12 +40,22 @@ public sealed partial class RelayLamp : UserControl
         set => SetValue(ActiveColorProperty, value);
     }
 
+    public RelayLampState? LampState
+    {
+        get => GetValue(LampStateProperty);
+        set => SetValue(LampStateProperty, value);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == IsOnProperty || change.Property == ActiveColorProperty)
+        if (change.Property == IsOnProperty ||
+            change.Property == ActiveColorProperty ||
+            change.Property == LampStateProperty)
+        {
             UpdateOptics();
+        }
     }
 
     private void UpdateOptics()
@@ -45,16 +63,42 @@ public sealed partial class RelayLamp : UserControl
         if (Lens is null || Halo is null)
             return;
 
+        if (LampState is { } state)
+        {
+            switch (state)
+            {
+                case RelayLampState.Pickup:
+                    SetActive(PickupColor);
+                    return;
+                case RelayLampState.Trip:
+                    SetActive(TripColor);
+                    return;
+                default:
+                    SetOff();
+                    return;
+            }
+        }
+
         if (!IsOn)
         {
-            Lens.Fill = new SolidColorBrush(Color.Parse("#52636D"));
-            Halo.Fill = Brushes.Transparent;
-            Halo.Opacity = 0;
+            SetOff();
             return;
         }
 
-        Lens.Fill = new SolidColorBrush(ActiveColor);
-        Halo.Fill = new SolidColorBrush(Color.FromArgb(120, ActiveColor.R, ActiveColor.G, ActiveColor.B));
+        SetActive(ActiveColor);
+    }
+
+    private void SetOff()
+    {
+        Lens.Fill = new SolidColorBrush(OffColor);
+        Halo.Fill = Brushes.Transparent;
+        Halo.Opacity = 0;
+    }
+
+    private void SetActive(Color color)
+    {
+        Lens.Fill = new SolidColorBrush(color);
+        Halo.Fill = new SolidColorBrush(Color.FromArgb(120, color.R, color.G, color.B));
         Halo.Opacity = 0.72;
     }
 }
