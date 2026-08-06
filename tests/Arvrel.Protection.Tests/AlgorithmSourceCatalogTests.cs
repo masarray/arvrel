@@ -7,7 +7,7 @@ namespace Arvrel.Protection.Tests;
 [TestClass]
 public sealed class AlgorithmSourceCatalogTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("67P", "phasor V1", "DirectionalPhase67CharacteristicAngleDeg")]
     [DataRow("67N", "phasor polarizingVoltage = 3V0", "DirectionalEarth67NCharacteristicAngleDeg")]
     [DataRow("27", "element \"27\"", "Undervoltage27PickupV")]
