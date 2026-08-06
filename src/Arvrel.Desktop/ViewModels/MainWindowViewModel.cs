@@ -38,12 +38,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
         _processBus = new SmvProcessBusController(_settings);
         _currentTick = _workspace.InternalLab.CaptureFrame();
 
-        RunCommand = new RelayCommand(ToggleRun);
+        RunCommand = new AsyncRelayCommand(ToggleDisplayedSourceAsync);
         FaultCommand = new RelayCommand(InjectAgFault);
         SmvCommand = new RelayCommand(ToggleSmvDegradation);
         ApplyInjectionCommand = new RelayCommand(() => TryApplyInjection(announce: true));
         ClearInjectionCommand = new RelayCommand(ClearInjection);
-        ResetRelayCommand = new RelayCommand(ResetRelay);
+        ResetRelayCommand = new RelayCommand(ResetDisplayedRelay);
         ResetLaboratoryCommand = new RelayCommand(ResetLaboratory);
         ApplySettingsCommand = new RelayCommand(ApplySettings);
 
@@ -95,9 +95,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
 
     public string ProductTitle => "ARVREL";
     public string ProductSubtitle => "Virtual Protection Relay Laboratory";
-    public string ShellVersion => "P5.7 · FACEPLATE ANNUNCIATION";
+    public string ShellVersion => "P5.9 · GUARDED SOURCE HANDOVER";
     public string PlatformText => $"{RuntimeInformation.OSDescription} · {RuntimeInformation.ProcessArchitecture}";
-    public string SourceModeText => "INTERNAL VIRTUAL TEST SET";
+    public string SourceModeText => ActiveDisplaySourceText;
     public string StatusText => _statusText;
     public string InjectionEditorStatus => _injectionEditorStatus;
     public string SettingsEditorStatus => _settingsEditorStatus;
@@ -146,11 +146,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
         "A-G fault",
         StringComparison.Ordinal);
     public bool SmvDegraded => _workspace.InternalLab.Scenario.SmvDegraded;
-    public bool AllowsTrip => _currentTick.Protection.SmvTrust.AllowsTrip;
-    public bool TripLatched => _relayAnnunciation.TripLatched;
-    public bool PickupActive => _relayAnnunciation.PickupActive;
+    public bool AllowsTrip => DisplayProtection.SmvTrust.AllowsTrip;
+    public bool TripLatched => DisplayAnnunciation.TripLatched;
+    public bool PickupActive => DisplayAnnunciation.PickupActive;
 
-    public string RunButtonText => IsRunning ? "STOP INJECTION" : "START INJECTION";
+    public string RunButtonText => IsProcessBusDisplayActive
+        ? _processBus.IsRunning ? "STOP PROCESS BUS" : "START LIVE SOURCE"
+        : IsRunning ? "STOP INJECTION" : "START INJECTION";
     public string FaultButtonText => "LOAD + START A-G FAULT";
     public string SmvButtonText => SmvDegraded ? "RESTORE SMV TRUST" : "DEGRADE SMV";
     public string OutputStateText => _workspace.InternalLab.Scenario.OutputState.ToUpperInvariant();
@@ -163,23 +165,25 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
         $"VN {_workspace.InternalLab.Scenario.NeutralVoltageProvenance}";
 
     public string TripStateText => TripLatched
-        ? $"TRIP LATCHED · {_currentTick.Protection.ActiveElement}"
+        ? $"TRIP LATCHED · {DisplayActiveElement}"
         : PickupActive
-            ? $"PICKUP · {_currentTick.Protection.ActiveElement}"
+            ? $"PICKUP · {DisplayActiveElement}"
             : "READY · NO PICKUP";
     public string TrustStateText => AllowsTrip
         ? "SMV TRUST · TRIP PERMITTED"
-        : $"SMV TRUST · TRIP BLOCKED · {_currentTick.Protection.SmvTrust.Code}";
-    public string DecisionReason => _currentTick.Protection.DecisionReason;
+        : $"SMV TRUST · TRIP BLOCKED · {DisplayProtection.SmvTrust.Code}";
+    public string DecisionReason => DisplayProtection.DecisionReason;
 
-    public string PhaseAText => FormatCurrent(_currentTick.Scenario.Measurement.PhaseA);
-    public string PhaseBText => FormatCurrent(_currentTick.Scenario.Measurement.PhaseB);
-    public string PhaseCText => FormatCurrent(_currentTick.Scenario.Measurement.PhaseC);
-    public string ResidualText => FormatCurrent(_currentTick.Scenario.Measurement.Residual);
-    public string FrequencyTextDisplay => $"{_currentTick.Scenario.Waveform.FrequencyHz:0.000} Hz";
-    public string SampleCounterText => $"smpCnt {_workspace.InternalLab.Scenario.SampleCounter:0000}";
-    public string WindowText => $"{_currentTick.Scenario.Waveform.SamplesPerCycle} samples/cycle · two-cycle evidence";
-    public ScenarioWaveform Waveform => _currentTick.Scenario.Waveform;
+    public string PhaseAText => FormatCurrent(DisplayMeasurement.PhaseA);
+    public string PhaseBText => FormatCurrent(DisplayMeasurement.PhaseB);
+    public string PhaseCText => FormatCurrent(DisplayMeasurement.PhaseC);
+    public string ResidualText => FormatCurrent(DisplayMeasurement.Residual);
+    public string FrequencyTextDisplay => $"{DisplayWaveform.FrequencyHz:0.000} Hz";
+    public string SampleCounterText => IsProcessBusDisplayActive
+        ? $"smpCnt {_processBusSnapshot.SampleCounter:0000}"
+        : $"smpCnt {_workspace.InternalLab.Scenario.SampleCounter:0000}";
+    public string WindowText => $"{DisplayWaveform.SamplesPerCycle} samples/cycle · two-cycle evidence";
+    public ScenarioWaveform Waveform => DisplayWaveform;
 
     public void Tick()
     {
@@ -314,6 +318,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
     }
 
     public void ResetRelay()
+        => ResetDisplayedRelay();
+
+    private void ResetInternalRelay()
     {
         var wasRunning = IsRunning;
         var profile = ProfileNameText;
@@ -369,6 +376,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
     public async ValueTask DisposeAsync()
     {
         _workspace.StopAll();
+        if (_processBusWorkspaceInitialized)
+            _processBus.EventRaised -= ProcessBus_EventRaised;
         await _processBus.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -466,10 +475,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IAsync
     {
         _currentTick = tick;
         UpdateFaceplateState(tick.Protection);
-        ProtectionElements[0].Update(tick.Protection.Phase50);
-        ProtectionElements[1].Update(tick.Protection.Phase51);
-        ProtectionElements[2].Update(tick.Protection.Earth50);
-        ProtectionElements[3].Update(tick.Protection.Earth51);
+        if (!IsProcessBusDisplayActive)
+            UpdateProtectionElementCards(tick.Protection);
         OnPropertyChanged(string.Empty);
     }
 
