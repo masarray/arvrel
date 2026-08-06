@@ -63,8 +63,8 @@ public sealed class ProtectionSettingsIdentityTests
             EarthTimeResetMode = (ProtectionResetMode)999
         };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(invalidCurve.Validate);
-        Assert.ThrowsException<ArgumentOutOfRangeException>(invalidReset.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(invalidCurve.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(invalidReset.Validate);
     }
 
     [TestMethod]
@@ -85,7 +85,7 @@ public sealed class ProtectionSettingsIdentityTests
             }
         };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(invalidMode.Validate);
-        Assert.ThrowsException<ArgumentOutOfRangeException>(invalidDirection.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(invalidMode.Validate);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(invalidDirection.Validate);
     }
 }
