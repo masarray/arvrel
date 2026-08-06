@@ -46,8 +46,8 @@
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="VrFrontFaceBorderBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="#C3CBD0" Offset="0" />
-        <GradientStop Color="#707C84" Offset="0.32" />
+        <GradientStop Color="#AEB8BE" Offset="0" />
+        <GradientStop Color="#66737B" Offset="0.34" />
         <GradientStop Color="#1A2328" Offset="0.82" />
         <GradientStop Color="#0B1114" Offset="1" />
     </LinearGradientBrush>
@@ -120,10 +120,10 @@
 
     <DropShadowEffect x:Key="VrShellShadow"
                       Color="#11181D"
-                      BlurRadius="22"
+                      BlurRadius="20"
                       Direction="315"
-                      ShadowDepth="8"
-                      Opacity="0.58"
+                      ShadowDepth="7"
+                      Opacity="0.54"
                       RenderingBias="Quality" />
 
     <DropShadowEffect x:Key="VrModuleShadow"
@@ -131,7 +131,7 @@
                       BlurRadius="7"
                       Direction="315"
                       ShadowDepth="3"
-                      Opacity="0.48"
+                      Opacity="0.45"
                       RenderingBias="Performance" />
 
     <Style x:Key="VrHardwareKeyStyle" TargetType="Button">
@@ -193,7 +193,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="HoverLayer" Property="Background" Value="#0FFFFFFF" />
+                            <Setter TargetName="HoverLayer" Property="Background" Value="#0CFFFFFF" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Root" Property="RenderTransform">
@@ -218,17 +218,18 @@
     <Style x:Key="VrFunctionKeyStyle"
            TargetType="Button"
            BasedOn="{StaticResource VrHardwareKeyStyle}">
-        <Setter Property="Width" Value="55" />
+        <Setter Property="Width" Value="64" />
         <Setter Property="Height" Value="39" />
-        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Margin" Value="0,0,0,7" />
         <Setter Property="FontSize" Value="11.5" />
     </Style>
 
     <Style x:Key="VrResetKeyStyle"
            TargetType="Button"
            BasedOn="{StaticResource VrHardwareKeyStyle}">
-        <Setter Property="Width" Value="86" />
+        <Setter Property="Width" Value="64" />
         <Setter Property="Height" Value="39" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="FontSize" Value="10.5" />
         <Setter Property="Foreground" Value="{StaticResource VrAccentBrush}" />
     </Style>
