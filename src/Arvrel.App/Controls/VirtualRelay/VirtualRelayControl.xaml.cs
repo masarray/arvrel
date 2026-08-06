@@ -13,10 +13,23 @@ public partial class VirtualRelayControl : UserControl
     public VirtualRelayControl()
     {
         InitializeComponent();
+        MarkNativeHardwareButtons(this);
     }
 
     public event RoutedEventHandler? ResetRequested;
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
         => ResetRequested?.Invoke(this, e);
+
+    private static void MarkNativeHardwareButtons(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is Button button)
+                button.Tag = "ARVREL_TACTILE";
+
+            if (child is DependencyObject dependencyObject)
+                MarkNativeHardwareButtons(dependencyObject);
+        }
+    }
 }
