@@ -11,6 +11,12 @@ $outputRoot = [System.IO.Path]::GetFullPath($OutputDirectory)
 $stageRoot = Join-Path $outputRoot 'arvrel-avalonia'
 $zipPath = Join-Path $outputRoot 'arvrel-avalonia-p5.9-repo-ready.zip'
 $hashPath = "$zipPath.sha256"
+$engineRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot '..\ARIEC61850'))
+
+if (-not (Test-Path (Join-Path $engineRoot 'src\AR.Iec61850\AR.Iec61850.csproj'))) {
+    throw "Pinned ARIEC61850 sibling was not found at $engineRoot"
+}
+$engineProperty = "-p:ARIEC61850Root=$engineRoot"
 
 # First build the sanitized repository tree using the audited export logic.
 & (Join-Path $PSScriptRoot 'export-avalonia-repo.ps1') `
@@ -101,17 +107,17 @@ $readme = $readme.Replace(
     'The desktop toolchain is pinned separately from the legacy Windows product toolchain. Full live-decoder and process-bus validation expects the public `masarray/ARIEC61850` repository beside this repository; CI checks out the pinned engine automatically.')
 Set-Content -LiteralPath $readmePath -Value $readme -Encoding utf8
 
-# Validate exactly the tree that will be delivered. The workflow checks out the
-# pinned ARIEC61850 repository beside this repository before invoking the script.
+# Validate exactly the tree that will be delivered, explicitly binding the
+# nested staging tree to the checked-out pinned decoder.
 Push-Location (Join-Path $stageRoot 'desktop')
 try {
-    dotnet restore ARVREL.Desktop.sln
+    dotnet restore ARVREL.Desktop.sln $engineProperty
     if ($LASTEXITCODE -ne 0) { throw 'Avalonia restore failed.' }
 
-    dotnet build ARVREL.Desktop.sln -c Release --no-restore
+    dotnet build ARVREL.Desktop.sln -c Release --no-restore $engineProperty
     if ($LASTEXITCODE -ne 0) { throw 'Avalonia build failed.' }
 
-    dotnet test ARVREL.Desktop.sln -c Release --no-build
+    dotnet test ARVREL.Desktop.sln -c Release --no-build $engineProperty
     if ($LASTEXITCODE -ne 0) { throw 'Avalonia desktop tests failed.' }
 }
 finally {
@@ -126,7 +132,7 @@ $sharedTestProjects = @(
 )
 foreach ($relativeProject in $sharedTestProjects) {
     $project = Join-Path $stageRoot $relativeProject
-    dotnet test $project -c Release
+    dotnet test $project -c Release $engineProperty
     if ($LASTEXITCODE -ne 0) {
         throw "Shared test project failed: $relativeProject"
     }
