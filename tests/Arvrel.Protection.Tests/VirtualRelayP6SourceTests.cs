@@ -120,6 +120,25 @@ public sealed class VirtualRelayP6SourceTests
     }
 
     [TestMethod]
+    public void P6RuntimeMount_UsesExplicitApplicationAndWindowLifecycle()
+    {
+        var app = Read("src", "Arvrel.App", "App.xaml.cs");
+        var adapter = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+
+        StringAssert.Contains(app, "protected override void OnActivated(EventArgs e)");
+        StringAssert.Contains(app, "window.InitializeP6VirtualRelay()");
+        StringAssert.Contains(adapter, "if (!IsLoaded)");
+        StringAssert.Contains(adapter, "Loaded += P6Window_Loaded");
+        StringAssert.Contains(adapter, "InstallP6VirtualRelay()");
+        StringAssert.Contains(adapter, "Native virtual relay faceplate mounted");
+        StringAssert.Contains(adapter, "· P6");
+
+        Assert.IsFalse(adapter.Contains("ModuleInitializer", StringComparison.Ordinal));
+        Assert.IsFalse(adapter.Contains("RegisterClassHandler", StringComparison.Ordinal));
+        Assert.IsFalse(adapter.Contains("Dispatcher.BeginInvoke", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void P6Adapter_RebindsExistingStateAuthoritiesWithoutProtectionChanges()
     {
         var adapter = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
