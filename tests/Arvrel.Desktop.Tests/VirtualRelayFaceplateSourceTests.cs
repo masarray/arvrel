@@ -35,7 +35,7 @@ public sealed class VirtualRelayFaceplateSourceTests
     }
 
     [TestMethod]
-    public void Lamp_UsesOneSharedBezelCavityLensAndOpticalHighlight()
+    public void Lamp_UsesOneSharedBezelCavityLensAndPickupTripOptics()
     {
         var lamp = Read("src", "Arvrel.Desktop", "Controls", "RelayLamp.axaml");
         var behavior = Read("src", "Arvrel.Desktop", "Controls", "RelayLamp.axaml.cs");
@@ -49,9 +49,40 @@ public sealed class VirtualRelayFaceplateSourceTests
 
         StringAssert.Contains(behavior, "StyledProperty<bool> IsOnProperty");
         StringAssert.Contains(behavior, "StyledProperty<Color> ActiveColorProperty");
+        StringAssert.Contains(behavior, "StyledProperty<RelayLampState?> LampStateProperty");
+        StringAssert.Contains(behavior, "RelayLampState.Pickup");
+        StringAssert.Contains(behavior, "RelayLampState.Trip");
+        StringAssert.Contains(behavior, "SetActive(ActiveColor)");
         StringAssert.Contains(behavior, "Halo.Opacity = 0.72");
-        StringAssert.Contains(behavior, "Lens.Fill = new SolidColorBrush(ActiveColor)");
         Assert.IsFalse(behavior.Contains("System.Windows", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Faceplate_UsesExactPortableAnnunciationAndFunctionalOperatorKeys()
+    {
+        var faceplate = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayFaceplate.axaml");
+        var viewModel = Read("src", "Arvrel.Desktop", "ViewModels", "MainWindowViewModel.Faceplate.cs");
+
+        StringAssert.Contains(faceplate, "LampState=\"{Binding PhaseAAnnunciation}\"");
+        StringAssert.Contains(faceplate, "LampState=\"{Binding PhaseBAnnunciation}\"");
+        StringAssert.Contains(faceplate, "LampState=\"{Binding PhaseCAnnunciation}\"");
+        StringAssert.Contains(faceplate, "LampState=\"{Binding EarthAnnunciation}\"");
+        StringAssert.Contains(faceplate, "FaceplateMeasureCommand");
+        StringAssert.Contains(faceplate, "FaceplateEventsCommand");
+        StringAssert.Contains(faceplate, "FaceplateRecordsCommand");
+        StringAssert.Contains(faceplate, "FaceplateSetupCommand");
+        StringAssert.Contains(faceplate, "FaceplateHomeCommand");
+        StringAssert.Contains(faceplate, "FaceplateMenuCommand");
+        StringAssert.Contains(faceplate, "FaceplateOkCommand");
+        StringAssert.Contains(faceplate, "Button.hardware:focus");
+        StringAssert.Contains(faceplate, "FocusAdorner");
+
+        StringAssert.Contains(viewModel, "RelayAnnunciationLatch");
+        StringAssert.Contains(viewModel, "UpdateFaceplateState(ProtectionSnapshot snapshot)");
+        StringAssert.Contains(viewModel, "FaceplatePage.Events");
+        StringAssert.Contains(viewModel, "FaceplatePage.Records");
+        StringAssert.Contains(viewModel, "FaceplatePage.Setup");
+        Assert.IsFalse(viewModel.Contains("System.Windows", StringComparison.Ordinal));
     }
 
     [TestMethod]
