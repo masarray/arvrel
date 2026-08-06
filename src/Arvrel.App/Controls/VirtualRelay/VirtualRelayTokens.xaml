@@ -1,0 +1,259 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      P6 design read
+      Industrial protection HMI · trust-first · low glare · high legibility.
+      One blue accent only. Depth is expressed by material layers and bevels,
+      never by full-face glass polygons or decorative neon.
+    -->
+
+    <Color x:Key="VrAccentColor">#3699D2</Color>
+    <Color x:Key="VrHealthyColor">#45B768</Color>
+    <Color x:Key="VrPickupColor">#D6A23B</Color>
+    <Color x:Key="VrTripColor">#DC4D4D</Color>
+    <Color x:Key="VrOffColor">#52636D</Color>
+
+    <SolidColorBrush x:Key="VrAccentBrush" Color="{StaticResource VrAccentColor}" />
+    <SolidColorBrush x:Key="VrAccentMutedBrush" Color="#426E88" />
+    <SolidColorBrush x:Key="VrTextBrush" Color="#E8EEF1" />
+    <SolidColorBrush x:Key="VrMutedTextBrush" Color="#98A8B2" />
+    <SolidColorBrush x:Key="VrDarkTextBrush" Color="#283942" />
+    <SolidColorBrush x:Key="VrLcdTextBrush" Color="#30444B" />
+    <SolidColorBrush x:Key="VrLcdMutedBrush" Color="#62777D" />
+    <SolidColorBrush x:Key="VrKeyTextBrush" Color="#F0F4F6" />
+    <SolidColorBrush x:Key="VrOffBrush" Color="{StaticResource VrOffColor}" />
+
+    <LinearGradientBrush x:Key="VrOuterShellBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#59636A" Offset="0" />
+        <GradientStop Color="#3C464D" Offset="0.18" />
+        <GradientStop Color="#242D33" Offset="0.68" />
+        <GradientStop Color="#171E23" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrOuterShellBorderBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#9DA7AD" Offset="0" />
+        <GradientStop Color="#4A565E" Offset="0.42" />
+        <GradientStop Color="#10171B" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- P1: broad edge-to-edge fascia gloss integrated into the material brush.
+         It follows the complete front-face bounds instead of a small overlay patch. -->
+    <LinearGradientBrush x:Key="VrFrontFaceBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#536067" Offset="0" />
+        <GradientStop Color="#46535A" Offset="0.18" />
+        <GradientStop Color="#39454C" Offset="0.42" />
+        <GradientStop Color="#303A41" Offset="0.58" />
+        <GradientStop Color="#273138" Offset="0.78" />
+        <GradientStop Color="#222B31" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrFrontFaceBorderBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#AEB8BE" Offset="0" />
+        <GradientStop Color="#66737B" Offset="0.34" />
+        <GradientStop Color="#1A2328" Offset="0.82" />
+        <GradientStop Color="#0B1114" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrModuleBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#303B42" Offset="0" />
+        <GradientStop Color="#273138" Offset="0.56" />
+        <GradientStop Color="#212A30" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrModuleBorderBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#65737C" Offset="0" />
+        <GradientStop Color="#344149" Offset="0.48" />
+        <GradientStop Color="#12191D" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrLcdBezelBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#121A1F" Offset="0" />
+        <GradientStop Color="#35434B" Offset="0.32" />
+        <GradientStop Color="#11181C" Offset="0.74" />
+        <GradientStop Color="#070B0D" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrLcdFaceBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#F1F5F1" Offset="0" />
+        <GradientStop Color="#E6ECE7" Offset="0.46" />
+        <GradientStop Color="#D5DFD8" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrKeyFaceBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#56626A" Offset="0" />
+        <GradientStop Color="#3A454C" Offset="0.30" />
+        <GradientStop Color="#283238" Offset="0.74" />
+        <GradientStop Color="#20282D" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrKeyBorderBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#A1ACB2" Offset="0" />
+        <GradientStop Color="#5D6A72" Offset="0.45" />
+        <GradientStop Color="#151C20" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VrLampBezelBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#F0F4F6" Offset="0" />
+        <GradientStop Color="#AAB5BB" Offset="0.25" />
+        <GradientStop Color="#536169" Offset="0.62" />
+        <GradientStop Color="#11181C" Offset="1" />
+    </LinearGradientBrush>
+
+    <RadialGradientBrush x:Key="VrLampCavityBrush"
+                         Center="0.50,0.50"
+                         GradientOrigin="0.34,0.28"
+                         RadiusX="0.72"
+                         RadiusY="0.72">
+        <GradientStop Color="#74838B" Offset="0" />
+        <GradientStop Color="#2D383E" Offset="0.55" />
+        <GradientStop Color="#070B0D" Offset="1" />
+    </RadialGradientBrush>
+
+    <RadialGradientBrush x:Key="VrLampShadeBrush"
+                         Center="0.50,0.50"
+                         GradientOrigin="0.28,0.22"
+                         RadiusX="0.76"
+                         RadiusY="0.76">
+        <GradientStop Color="#00FFFFFF" Offset="0" />
+        <GradientStop Color="#04000000" Offset="0.40" />
+        <GradientStop Color="#4A000000" Offset="0.80" />
+        <GradientStop Color="#92000000" Offset="1" />
+    </RadialGradientBrush>
+
+    <DropShadowEffect x:Key="VrShellShadow"
+                      Color="#11181D"
+                      BlurRadius="20"
+                      Direction="315"
+                      ShadowDepth="7"
+                      Opacity="0.54"
+                      RenderingBias="Quality" />
+
+    <DropShadowEffect x:Key="VrModuleShadow"
+                      Color="#090D10"
+                      BlurRadius="7"
+                      Direction="315"
+                      ShadowDepth="3"
+                      Opacity="0.45"
+                      RenderingBias="Performance" />
+
+    <Style x:Key="VrHardwareKeyStyle" TargetType="Button">
+        <Setter Property="Width" Value="50" />
+        <Setter Property="Height" Value="43" />
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource VrKeyTextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TranslateTransform Y="0" />
+                        </Grid.RenderTransform>
+                        <Border x:Name="Well"
+                                Margin="0,3,0,0"
+                                CornerRadius="7"
+                                Background="#11181C"
+                                BorderBrush="#687780"
+                                BorderThickness="1" />
+                        <Border x:Name="Depth"
+                                Margin="2,6,2,0"
+                                CornerRadius="6"
+                                Background="#080C0E" />
+                        <Border x:Name="Face"
+                                Margin="1,0,1,4"
+                                CornerRadius="6"
+                                Background="{StaticResource VrKeyFaceBrush}"
+                                BorderBrush="{StaticResource VrKeyBorderBrush}"
+                                BorderThickness="1">
+                            <Grid ClipToBounds="True">
+                                <Border x:Name="TopHighlight"
+                                        Height="7"
+                                        Margin="2,1,2,0"
+                                        VerticalAlignment="Top"
+                                        CornerRadius="5,5,2,2">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#42FFFFFF" Offset="0" />
+                                            <GradientStop Color="#00FFFFFF" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <Border x:Name="HoverLayer" CornerRadius="5" Background="Transparent" />
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Focusable="False"
+                                                  RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HoverLayer" Property="Background" Value="#0AFFFFFF" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="RenderTransform">
+                                <Setter.Value>
+                                    <TranslateTransform Y="0.25" />
+                                </Setter.Value>
+                            </Setter>
+                            <Setter TargetName="Face" Property="Margin" Value="1,0.25,1,3.75" />
+                            <Setter TargetName="TopHighlight" Property="Opacity" Value="0.72" />
+                            <Setter TargetName="Depth" Property="Opacity" Value="0.86" />
+                            <Setter TargetName="HoverLayer" Property="Background" Value="#06000000" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="VrFunctionKeyStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource VrHardwareKeyStyle}">
+        <Setter Property="Width" Value="64" />
+        <Setter Property="Height" Value="39" />
+        <Setter Property="Margin" Value="0,0,0,7" />
+        <Setter Property="FontSize" Value="11.5" />
+    </Style>
+
+    <Style x:Key="VrResetKeyStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource VrHardwareKeyStyle}">
+        <Setter Property="Width" Value="64" />
+        <Setter Property="Height" Value="39" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="Foreground" Value="{StaticResource VrAccentBrush}" />
+    </Style>
+
+    <Style x:Key="VrStatusLabelStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource VrTextBrush}" />
+        <Setter Property="FontFamily" Value="Segoe UI Semibold, Segoe UI" />
+        <Setter Property="FontSize" Value="10.2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="VrMicroLabelStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource VrMutedTextBrush}" />
+        <Setter Property="FontFamily" Value="Segoe UI Semibold, Segoe UI" />
+        <Setter Property="FontSize" Value="8.4" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+    </Style>
+</ResourceDictionary>

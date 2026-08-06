@@ -27,7 +27,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The original non-P2 faceplate implementation remains source history only. -->
     <Compile Remove="MainWindow.RelayFaceplate.cs" />
+
+    <!-- P6 owns all relay hardware geometry and materials. Keep the legacy files
+         for audit history and source-level regression context, but do not compile
+         their runtime mutation bootstraps into the WPF application. -->
+    <Compile Remove="MainWindow.RelayHardwarePresentation.cs" />
+    <Compile Remove="MainWindow.RelayFullFaceGloss.cs" />
+    <Compile Remove="MainWindow.RelayLedPresentation.cs" />
+    <Compile Remove="MainWindow.RelayPremiumButtonTuning.cs" />
+    <Compile Remove="Controls\RelayIndicatorLampBehavior.cs" />
+    <Compile Remove="Controls\RelayTactileButtonBehavior.cs" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
