@@ -6,6 +6,7 @@ on:
       - export/avalonia-p5.9-repo-ready
     paths:
       - scripts/export-avalonia-repo.ps1
+      - scripts/export-avalonia-repo-final.ps1
       - .github/workflows/export-avalonia-split.yml
   workflow_dispatch:
 
@@ -21,7 +22,16 @@ jobs:
       - name: Checkout Avalonia migration snapshot
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          path: arvrel
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout pinned ARIEC61850 engine
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
           persist-credentials: false
 
       - name: Setup .NET 8 and 10
@@ -33,14 +43,14 @@ jobs:
 
       - name: Build validated repository-ready ZIP
         shell: pwsh
-        run: .\scripts\export-avalonia-repo.ps1
+        run: .\arvrel\scripts\export-avalonia-repo-final.ps1
 
       - name: Upload Avalonia repository export
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: arvrel-avalonia-p5.9-repo-ready
           path: |
-            artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip
-            artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip.sha256
+            arvrel/artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip
+            arvrel/artifacts/avalonia-export/arvrel-avalonia-p5.9-repo-ready.zip.sha256
           if-no-files-found: error
           retention-days: 30
