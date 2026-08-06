@@ -17,7 +17,7 @@ public sealed class MainWindowViewModelTests
         Assert.IsFalse(viewModel.SmvDegraded);
         Assert.AreEqual("START INJECTION", viewModel.RunButtonText);
         Assert.AreEqual("Normal balanced", viewModel.ProfileNameText);
-        Assert.AreEqual(14, viewModel.PresetNames.Count);
+        Assert.AreEqual(15, viewModel.PresetNames.Count);
         Assert.AreEqual(8, viewModel.InjectionChannels.Count);
         Assert.IsNotNull(viewModel.Waveform);
         Assert.AreEqual(160, viewModel.Waveform.PhaseA.Length);
