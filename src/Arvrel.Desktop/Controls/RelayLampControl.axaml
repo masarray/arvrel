@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Arvrel.Desktop.Controls.RelayLampControl"
+             Width="21"
+             Height="21"
+             IsHitTestVisible="False">
+  <Grid Width="21" Height="21">
+    <Ellipse x:Name="Halo"
+             Width="17"
+             Height="17"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Fill="Transparent"
+             Opacity="0" />
+
+    <Ellipse Width="21"
+             Height="21"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+      <Ellipse.Fill>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#F0F4F6" Offset="0" />
+          <GradientStop Color="#9EABB2" Offset="0.28" />
+          <GradientStop Color="#4A5860" Offset="0.64" />
+          <GradientStop Color="#11181C" Offset="1" />
+        </LinearGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <Ellipse Width="16.4"
+             Height="16.4"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+      <Ellipse.Fill>
+        <RadialGradientBrush Center="50%,50%"
+                             GradientOrigin="34%,28%">
+          <GradientStop Color="#6F7E86" Offset="0" />
+          <GradientStop Color="#2C373D" Offset="0.56" />
+          <GradientStop Color="#080C0E" Offset="1" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <Ellipse x:Name="Lens"
+             Width="11.5"
+             Height="11.5"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Fill="#52636D"
+             Stroke="#A6B1B7"
+             StrokeThickness="0.6" />
+
+    <Ellipse Width="11.5"
+             Height="11.5"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center">
+      <Ellipse.Fill>
+        <RadialGradientBrush Center="50%,50%"
+                             GradientOrigin="30%,24%">
+          <GradientStop Color="#00FFFFFF" Offset="0" />
+          <GradientStop Color="#08000000" Offset="0.46" />
+          <GradientStop Color="#76000000" Offset="1" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <Ellipse x:Name="Highlight"
+             Width="3.6"
+             Height="2.4"
+             Margin="-4.2,-4.6,0,0"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Fill="#E8FFFFFF"
+             Opacity="0.30" />
+  </Grid>
+</UserControl>
