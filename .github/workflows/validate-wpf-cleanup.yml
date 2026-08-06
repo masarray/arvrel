@@ -1,0 +1,99 @@
+name: Validate WPF-only cleanup
+
+on:
+  push:
+    branches:
+      - cleanup/wpf-only-repository
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: arvrel
+          persist-credentials: false
+
+      - name: Checkout pinned ARIEC61850
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
+          persist-credentials: false
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Verify repository boundary
+        shell: pwsh
+        working-directory: arvrel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $forbidden = @(
+            'desktop',
+            'src/Arvrel.Desktop',
+            'tests/Arvrel.Desktop.Tests',
+            'packaging/avalonia',
+            'scripts/package-avalonia-linux.sh',
+            'scripts/package-avalonia-macos.sh',
+            'scripts/package-avalonia-windows.ps1',
+            '.github/workflows/avalonia-packaging.yml',
+            '.github/workflows/avalonia-shell.yml',
+            'docs/P5_0_APPLICATION_CORE.md',
+            'docs/P5_1_CAPTURE_ABSTRACTION.md',
+            'docs/P5_2_AVALONIA_BASE_SHELL.md',
+            'docs/P5_3_WAVEFORM_X_TICKS.md',
+            'docs/P5_4_RELAY_INJECTION_PARITY.md',
+            'docs/P5_5_CROSS_PLATFORM_PACKAGING.md'
+          )
+          $leaked = @($forbidden | Where-Object { Test-Path $_ })
+          if ($leaked.Count -gt 0) {
+            throw "Avalonia/migration paths remain: $($leaked -join ', ')"
+          }
+
+          $solution = Get-Content ARVREL.sln -Raw
+          if ($solution -match 'Arvrel\.Desktop|desktop\\') {
+            throw 'The authoritative WPF solution still references the Avalonia desktop project.'
+          }
+          if ($solution -notmatch 'Arvrel\.App') {
+            throw 'The authoritative WPF application is missing from ARVREL.sln.'
+          }
+
+          $allowedReferenceFiles = @(
+            'README.md',
+            'docs/ARCHITECTURE.md',
+            'docs/PLATFORM_DISTRIBUTION.md',
+            '.github/ISSUE_TEMPLATE/config.yml',
+            '.github/workflows/validate-wpf-cleanup.yml'
+          )
+          $matches = @(git grep -n -i 'avalonia' -- . 2>$null)
+          $unexpected = @($matches | Where-Object {
+            $line = $_
+            -not ($allowedReferenceFiles | Where-Object { $line.StartsWith("$_`:") })
+          })
+          if ($unexpected.Count -gt 0) {
+            $unexpected | Write-Host
+            throw 'Unexpected Avalonia references remain outside the explicit migration routing documents.'
+          }
+
+      - name: Restore WPF solution
+        working-directory: arvrel
+        run: dotnet restore .\ARVREL.sln
+
+      - name: Build WPF solution
+        working-directory: arvrel
+        run: dotnet build .\ARVREL.sln -c Release --no-restore
+
+      - name: Test WPF solution
+        working-directory: arvrel
+        run: dotnet test .\ARVREL.sln -c Release --no-build
