@@ -46,7 +46,10 @@
              HorizontalAlignment="Center"
              VerticalAlignment="Center">
       <Ellipse.Fill>
-        <RadialGradientBrush Center="50%,50%" GradientOrigin="30%,24%" Radius="75%">
+        <RadialGradientBrush Center="50%,50%"
+                             GradientOrigin="30%,24%"
+                             RadiusX="75%"
+                             RadiusY="75%">
           <GradientStop Color="#8AFFFFFF" Offset="0" />
           <GradientStop Color="#18FFFFFF" Offset="0.30" />
           <GradientStop Color="#16000000" Offset="0.68" />
