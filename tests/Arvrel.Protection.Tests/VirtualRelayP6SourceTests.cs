@@ -94,44 +94,82 @@ public sealed class VirtualRelayP6SourceTests
     }
 
     [TestMethod]
-    public void P6Lamp_SeparatesHaloBezelCavityLensAndHighlight()
+    public void P6P1Fascia_UsesBroadEdgeToEdgeGlossWithoutGeometryPatch()
+    {
+        var tokens = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayTokens.xaml");
+
+        StringAssert.Contains(tokens, "P1: broad edge-to-edge fascia gloss");
+        StringAssert.Contains(tokens, "x:Key=\"VrFrontFaceBrush\" StartPoint=\"0,0\" EndPoint=\"1,1\"");
+        foreach (var offset in new[] { "0", "0.18", "0.42", "0.58", "0.78", "1" })
+            StringAssert.Contains(tokens, $"Offset=\"{offset}\"");
+
+        Assert.IsFalse(tokens.Contains("DrawingBrush", StringComparison.Ordinal));
+        Assert.IsFalse(tokens.Contains("PathGeometry", StringComparison.Ordinal));
+        Assert.IsFalse(tokens.Contains("Polygon", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void P6Lamp_UsesOneRealisticOpticalStackForEveryActiveState()
     {
         var lamp = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "RelayLampControl.xaml");
         var behavior = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "RelayLampControl.xaml.cs");
 
         var haloIndex = lamp.IndexOf("x:Name=\"Halo\"", StringComparison.Ordinal);
-        var bezelIndex = lamp.IndexOf("Width=\"19\"", haloIndex + 1, StringComparison.Ordinal);
-        var cavityIndex = lamp.IndexOf("Width=\"14.5\"", bezelIndex + 1, StringComparison.Ordinal);
+        var bezelIndex = lamp.IndexOf("Width=\"21\"", haloIndex + 1, StringComparison.Ordinal);
+        var cavityIndex = lamp.IndexOf("Width=\"16.6\"", bezelIndex + 1, StringComparison.Ordinal);
         var lensIndex = lamp.IndexOf("x:Name=\"Lens\"", cavityIndex + 1, StringComparison.Ordinal);
-        var highlightIndex = lamp.IndexOf("x:Name=\"Highlight\"", lensIndex + 1, StringComparison.Ordinal);
+        var opticIndex = lamp.IndexOf("x:Name=\"LensOptic\"", lensIndex + 1, StringComparison.Ordinal);
+        var rimIndex = lamp.IndexOf("x:Name=\"LensRim\"", opticIndex + 1, StringComparison.Ordinal);
+        var lowerIndex = lamp.IndexOf("x:Name=\"LowerReflection\"", rimIndex + 1, StringComparison.Ordinal);
+        var highlightIndex = lamp.IndexOf("x:Name=\"Highlight\"", lowerIndex + 1, StringComparison.Ordinal);
 
         Assert.IsTrue(haloIndex >= 0);
         Assert.IsTrue(bezelIndex > haloIndex);
         Assert.IsTrue(cavityIndex > bezelIndex);
         Assert.IsTrue(lensIndex > cavityIndex);
-        Assert.IsTrue(highlightIndex > lensIndex);
+        Assert.IsTrue(opticIndex > lensIndex);
+        Assert.IsTrue(rimIndex > opticIndex);
+        Assert.IsTrue(lowerIndex > rimIndex);
+        Assert.IsTrue(highlightIndex > lowerIndex);
 
         StringAssert.Contains(lamp, "x:FieldModifier=\"public\"");
+        StringAssert.Contains(lamp, "Common metal bezel used by Healthy, Pickup, Trip and SMV Block");
         StringAssert.Contains(lamp, "VrLampBezelBrush");
         StringAssert.Contains(lamp, "VrLampCavityBrush");
         StringAssert.Contains(lamp, "VrLampShadeBrush");
+
         StringAssert.Contains(behavior, "FillDescriptor?.AddValueChanged(Lens");
-        StringAssert.Contains(behavior, "Halo.Effect = glow");
-        StringAssert.Contains(behavior, "BlurRadius = 11.5");
+        StringAssert.Contains(behavior, "LensOptic.Fill = CreateActiveLensBrush(emitted)");
+        StringAssert.Contains(behavior, "BlurRadius = 8.5");
         StringAssert.Contains(behavior, "ShadowDepth = 0");
+        StringAssert.Contains(behavior, "CreateActiveLensBrush(Color emitted)");
+        StringAssert.Contains(behavior, "Mix(emitted, Colors.White, 0.78)");
+        StringAssert.Contains(behavior, "Mix(emitted, Colors.Black, 0.46)");
+
+        Assert.IsFalse(behavior.Contains("Lens.Width", StringComparison.Ordinal));
+        Assert.IsFalse(behavior.Contains("Lens.Height", StringComparison.Ordinal));
+        Assert.IsFalse(behavior.Contains("HealthyLamp", StringComparison.Ordinal));
+        Assert.IsFalse(behavior.Contains("BlockLamp", StringComparison.Ordinal));
+        Assert.IsFalse(behavior.Contains("TripLamp", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void P6Buttons_HaveShallowPressAndNoBlueFocusNoise()
+    public void P6Buttons_HaveSubtlePressAndNoBlueFocusNoise()
     {
         var tokens = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayTokens.xaml");
 
         StringAssert.Contains(tokens, "x:Key=\"VrHardwareKeyStyle\"");
-        StringAssert.Contains(tokens, "TranslateTransform Y=\"0.6\"");
-        StringAssert.Contains(tokens, "Property=\"Margin\" Value=\"1,0.6,1,3.4\"");
+        StringAssert.Contains(tokens, "TranslateTransform Y=\"0.25\"");
+        StringAssert.Contains(tokens, "Property=\"Margin\" Value=\"1,0.25,1,3.75\"");
+        StringAssert.Contains(tokens, "OverridesDefaultStyle\" Value=\"True\"");
+        StringAssert.Contains(tokens, "Focusable\" Value=\"False\"");
+        StringAssert.Contains(tokens, "IsTabStop\" Value=\"False\"");
         StringAssert.Contains(tokens, "FocusVisualStyle\" Value=\"{x:Null}\"");
+        StringAssert.Contains(tokens, "BorderBrush\" Value=\"Transparent\"");
+
         Assert.IsFalse(tokens.Contains("IsKeyboardFocused", StringComparison.Ordinal));
         Assert.IsFalse(tokens.Contains("#77B7DE", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(tokens.Contains("TranslateTransform Y=\"0.6\"", StringComparison.Ordinal));
         Assert.IsFalse(tokens.Contains("TranslateTransform Y=\"3\"", StringComparison.Ordinal));
         Assert.IsFalse(tokens.Contains("TranslateTransform Y=\"5\"", StringComparison.Ordinal));
     }
