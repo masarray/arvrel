@@ -38,6 +38,9 @@ public sealed record DesktopPresentationSnapshot(
             "Portable deterministic 4I + 4V profile",
             Array.Empty<string>());
 
+    public static DesktopPresentationSnapshot FromProcessBus(SmvRuntimeSnapshot snapshot)
+        => FromProcessBus(snapshot, replay: true);
+
     public static DesktopPresentationSnapshot FromProcessBus(
         SmvRuntimeSnapshot snapshot,
         bool replay)
