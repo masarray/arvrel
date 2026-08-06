@@ -9,7 +9,6 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
-    private VirtualRelayControl? _p6VirtualRelay;
     private bool _p6VirtualRelayInstalled;
 
     internal void InitializeP6VirtualRelay()
@@ -17,10 +16,9 @@ public partial class MainWindow
         if (_p6VirtualRelayInstalled)
             return;
 
-        // The legacy LCD and measurement presenters initialize synchronously at
-        // Loaded. Install P6 one dispatcher tier later, then rebind those state
-        // presenters to the new native control. The older cosmetic owners are
-        // scheduled below this priority and are disabled before they can run.
+        // The LCD and measurement presenters initialize synchronously at Loaded.
+        // Install P6 one dispatcher tier later, then bind those state presenters
+        // to the new native control.
         Dispatcher.BeginInvoke(
             DispatcherPriority.ContextIdle,
             new Action(InstallP6VirtualRelay));
@@ -32,7 +30,7 @@ public partial class MainWindow
             return;
 
         var oldHealthy = HealthyLed;
-        var relayHost = VisualAncestors<Border>(oldHealthy).LastOrDefault();
+        var relayHost = P6VisualAncestors<Border>(oldHealthy).LastOrDefault();
         if (relayHost is null)
             return;
 
@@ -76,16 +74,7 @@ public partial class MainWindow
         EarthLed.Fill = LedOffBrush;
         BlockLed.Fill = LedOffBrush;
 
-        _p6VirtualRelay = relay;
         _p6VirtualRelayInstalled = true;
-
-        // P6 is the only hardware-visual authority. These legacy owners remain
-        // compiled for compatibility but must not mutate the new control tree.
-        _relayHardwarePresentationInitialized = true;
-        _relayFullFaceGlossApplied = true;
-        _relayLedPresentationInitialized = true;
-        _relayPremiumButtonsApplied = true;
-
         RebindRelayStatePresentersToP6();
     }
 
@@ -116,6 +105,18 @@ public partial class MainWindow
 
     private void P6Relay_ResetRequested(object sender, RoutedEventArgs e)
         => Reset_Click(sender, e);
+
+    private static IEnumerable<T> P6VisualAncestors<T>(DependencyObject child)
+        where T : DependencyObject
+    {
+        for (var current = VisualTreeHelper.GetParent(child);
+             current is not null;
+             current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is T match)
+                yield return match;
+        }
+    }
 }
 
 internal static class P6VirtualRelayBootstrap
