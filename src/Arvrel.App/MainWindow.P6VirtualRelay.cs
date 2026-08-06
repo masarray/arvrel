@@ -29,16 +29,16 @@ public partial class MainWindow
         if (_p6VirtualRelayInstalled)
             return;
 
-        var oldHealthy = HealthyLed;
-        var relayHost = P6VisualAncestors<Border>(oldHealthy).LastOrDefault();
+        var relayHost = ResolveP6RelayWorkspaceCard(HealthyLed);
         if (relayHost is null)
             return;
 
         var relay = new VirtualRelayControl();
         relay.ResetRequested += P6Relay_ResetRequested;
 
-        // Replace the complete legacy faceplate subtree. The surrounding right
-        // workspace column remains intact, including sizing and responsiveness.
+        // Replace only the complete relay card in the right workspace column.
+        // The status-panel and body borders have Grid children; the outer relay
+        // card is the first ancestor whose direct content is the body Border.
         relayHost.Child = relay;
         relayHost.Padding = new Thickness(0);
         relayHost.Background = Brushes.Transparent;
@@ -105,6 +105,10 @@ public partial class MainWindow
 
     private void P6Relay_ResetRequested(object sender, RoutedEventArgs e)
         => Reset_Click(sender, e);
+
+    private static Border? ResolveP6RelayWorkspaceCard(DependencyObject child)
+        => P6VisualAncestors<Border>(child)
+            .FirstOrDefault(border => border.Child is Border);
 
     private static IEnumerable<T> P6VisualAncestors<T>(DependencyObject child)
         where T : DependencyObject
