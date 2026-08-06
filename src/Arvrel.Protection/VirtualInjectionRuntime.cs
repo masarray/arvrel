@@ -187,8 +187,23 @@ public sealed class VirtualInjectionRuntime
             Zero(configured.PhaseACurrent),
             Zero(configured.PhaseBCurrent),
             Zero(configured.PhaseCCurrent),
-            Zero(configured.NeutralCurrent));
+            Zero(configured.NeutralCurrent))
+        {
+            // STOP is an absolute virtual-output interlock. Configured CT parameters
+            // stay armed in ActiveProfile, while the generated zero-output profile
+            // disables remanence release and all CT transient response.
+            CurrentTransformer = configured.CurrentTransformer with
+            {
+                Enabled = false,
+                RemanencePercent = 0
+            }
+        };
 
     private static VirtualInjectionChannel Zero(VirtualInjectionChannel channel)
-        => new(channel.Enabled, 0, 0);
+        => channel with
+        {
+            Rms = 0,
+            AngleDegrees = 0,
+            DcOffsetPercent = 0
+        };
 }
