@@ -27,9 +27,11 @@ public sealed class VirtualRelayMigrationTests
     }
 
     [TestMethod]
-    public void Faceplate_BindsToExistingPortableStateAndCommands()
+    public void FaceplateAndLcd_BindToExistingPortableStateAndCommands()
     {
-        var source = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml");
+        var faceplate = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml");
+        var lcd = Read("src", "Arvrel.Desktop", "Controls", "RelayLcdControl.axaml");
+        var combined = faceplate + lcd;
 
         foreach (var binding in new[]
                  {
@@ -46,7 +48,7 @@ public sealed class VirtualRelayMigrationTests
                      "{Binding ResetRelayCommand}"
                  })
         {
-            StringAssert.Contains(source, binding);
+            StringAssert.Contains(combined, binding);
         }
     }
 
@@ -71,6 +73,69 @@ public sealed class VirtualRelayMigrationTests
         StringAssert.Contains(code, "_annunciationLatch.Reset()");
         Assert.IsFalse(code.Contains("ProtectionEngine", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("VirtualInjectionPresets", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void RelayLcd_HasNativeMeasurementEventRecordSetupAndDiagnosticPages()
+    {
+        var xaml = Read("src", "Arvrel.Desktop", "Controls", "RelayLcdControl.axaml");
+        var code = Read("src", "Arvrel.Desktop", "Controls", "RelayLcdControl.axaml.cs");
+        _ = XDocument.Parse(xaml, LoadOptions.PreserveWhitespace);
+
+        foreach (var page in new[]
+                 {
+                     "MeasurePage", "EventsPage", "RecordPage", "SetupPage", "DiagnosticsPage"
+                 })
+        {
+            StringAssert.Contains(xaml, $"x:Name=\"{page}\"");
+        }
+
+        foreach (var heading in new[]
+                 {
+                     "MEASUREMENTS · SECONDARY",
+                     "EVENT LOG · OPERATOR TRACE",
+                     "TRIP RECORD · LAST OPERATION",
+                     "ACTIVE CONFIGURATION",
+                     "PROCESS-BUS DIAGNOSTICS"
+                 })
+        {
+            StringAssert.Contains(xaml, heading);
+        }
+
+        StringAssert.Contains(code, "public enum RelayLcdPage");
+        StringAssert.Contains(code, "public void ShowPage(RelayLcdPage page)");
+        StringAssert.Contains(code, "public void NextPage()");
+        StringAssert.Contains(code, "public void PreviousPage()");
+        StringAssert.Contains(code, "RelayLcdPage.Diagnostics");
+        Assert.IsFalse(code.Contains("System.Windows", StringComparison.Ordinal));
+        Assert.IsFalse(code.Contains("ProtectionEngine", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void FaceplateHardware_ControlsAllLcdPagesAndNavigation()
+    {
+        var xaml = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml");
+        var code = Read("src", "Arvrel.Desktop", "Controls", "VirtualRelayControl.axaml.cs");
+
+        StringAssert.Contains(xaml, "<controls:RelayLcdControl x:Name=\"RelayLcd\"");
+        foreach (var handler in new[]
+                 {
+                     "F1Button_Click", "F2Button_Click", "F3Button_Click", "F4Button_Click", "F5Button_Click",
+                     "HomeButton_Click", "MenuButton_Click", "BackButton_Click", "StarButton_Click",
+                     "PreviousPageButton_Click", "NextPageButton_Click", "OkButton_Click"
+                 })
+        {
+            StringAssert.Contains(xaml, $"Click=\"{handler}\"");
+            StringAssert.Contains(code, $"private void {handler}");
+        }
+
+        StringAssert.Contains(code, "_relayLcd?.ShowPage(RelayLcdPage.Measure)");
+        StringAssert.Contains(code, "_relayLcd?.ShowPage(RelayLcdPage.Events)");
+        StringAssert.Contains(code, "_relayLcd?.ShowPage(RelayLcdPage.Records)");
+        StringAssert.Contains(code, "_relayLcd?.ShowPage(RelayLcdPage.Setup)");
+        StringAssert.Contains(code, "_relayLcd?.ShowPage(RelayLcdPage.Diagnostics)");
+        StringAssert.Contains(code, "_relayLcd?.PreviousPage()");
+        StringAssert.Contains(code, "_relayLcd?.NextPage()");
     }
 
     [TestMethod]
