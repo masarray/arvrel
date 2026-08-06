@@ -84,7 +84,11 @@ public sealed class WaveformScope : FrameworkElement
             4,
             4);
 
-        var triggerSample = ResolveLockedTriggerSample(Frame.PhaseA);
+        var sampleRateHz = Frame.ResolvedSampleRateHz;
+        var triggerSample = ResolveLockedTriggerSample(
+            Frame.PhaseA,
+            Frame.Frequency,
+            sampleRateHz);
         var triggerFraction = Frame.PhaseA.Count == 0
             ? 0
             : triggerSample / Frame.PhaseA.Count;
@@ -107,12 +111,12 @@ public sealed class WaveformScope : FrameworkElement
         var axis = WaveformAxisLayout.Create(new WaveformAxisSource(
             sampleCount,
             Frame.Frequency,
-            Frame.ResolvedSampleRateHz,
+            sampleRateHz,
             Frame.NominalSamplesPerCycle,
             WaveformTimeOrigin.DisplayedWindowStart));
 
         DrawHorizontalGrid(drawingContext, plot);
-        DrawTimeAxis(drawingContext, plot, axis);
+        DrawTimeAxis(drawingContext, plot, axis, width);
         DrawMarker(drawingContext, plot, pickupPosition, Color.FromRgb(204, 151, 52), "PICKUP");
         DrawMarker(drawingContext, plot, tripPosition, Color.FromRgb(214, 77, 72), "TRIP");
 
@@ -161,18 +165,28 @@ public sealed class WaveformScope : FrameworkElement
         }
     }
 
-    private double ResolveLockedTriggerSample(IReadOnlyList<double> reference)
+    private double ResolveLockedTriggerSample(
+        IReadOnlyList<double> reference,
+        double signalFrequencyHz,
+        double sampleRateHz)
     {
-        if (reference.Count < 4)
+        if (reference.Count < 4 ||
+            !double.IsFinite(signalFrequencyHz) || signalFrequencyHz <= 0 ||
+            !double.IsFinite(sampleRateHz) || sampleRateHz <= 0)
         {
             _lockedTriggerSample = double.NaN;
             _lockedTriggerCount = reference.Count;
             return 0;
         }
 
-        var cycleLength = reference.Count >= 8
-            ? reference.Count / 2.0
-            : reference.Count;
+        var cycleLength = sampleRateHz / signalFrequencyHz;
+        if (!double.IsFinite(cycleLength) || cycleLength < 2)
+        {
+            _lockedTriggerSample = double.NaN;
+            _lockedTriggerCount = reference.Count;
+            return 0;
+        }
+
         var previousAvailable =
             _lockedTriggerCount == reference.Count &&
             double.IsFinite(_lockedTriggerSample);
@@ -285,7 +299,11 @@ public sealed class WaveformScope : FrameworkElement
         }
     }
 
-    private static void DrawTimeAxis(DrawingContext dc, Rect plot, WaveformAxis axis)
+    private static void DrawTimeAxis(
+        DrawingContext dc,
+        Rect plot,
+        WaveformAxis axis,
+        double controlWidth)
     {
         foreach (var tick in axis.Ticks)
         {
@@ -304,14 +322,15 @@ public sealed class WaveformScope : FrameworkElement
                 continue;
 
             var text = CreateText(tick.Label, 9.5, TickLabelBrush);
-            var labelX = Math.Clamp(x - text.Width / 2, 1, Math.Max(1, ActualAxisRight(plot) - text.Width));
+            var labelX = Math.Clamp(
+                x - text.Width / 2,
+                1,
+                Math.Max(1, controlWidth - text.Width - 1));
             dc.DrawText(text, new Point(labelX, plot.Bottom + 7));
         }
 
         dc.DrawLine(AxisPen, new Point(plot.Left, plot.Bottom), new Point(plot.Right, plot.Bottom));
     }
-
-    private static double ActualAxisRight(Rect plot) => plot.Right + 17;
 
     private static void DrawTrace(
         DrawingContext dc,
