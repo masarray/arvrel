@@ -294,7 +294,9 @@ public sealed partial class MainWindowViewModel
 
     private void UpdateProcessBusSnapshot()
     {
-        _processBusSnapshot = _processBus.GetSnapshot(SelectedProcessBusStream?.Key, primaryDisplay: true);
+        _processBusSnapshot = SelectedProcessBusStream is null
+            ? SmvRuntimeSnapshot.Empty
+            : _processBus.GetSnapshot(SelectedProcessBusStream.Key, primaryDisplay: true);
         ObserveProcessBusDisplaySnapshot(_processBusSnapshot);
         OnPropertyChanged(nameof(SelectedStreamSummary));
         OnPropertyChanged(nameof(SelectedStreamAddress));
