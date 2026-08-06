@@ -24,6 +24,10 @@
       <Setter Property="Background" Value="#3A464D" />
       <Setter Property="BorderBrush" Value="#82919A" />
     </Style>
+    <Style Selector="Button.hardware:focus">
+      <Setter Property="Background" Value="#303A41" />
+      <Setter Property="BorderBrush" Value="#75838B" />
+    </Style>
     <Style Selector="Button.hardware:pressed">
       <Setter Property="Background" Value="#273138" />
       <Setter Property="Padding" Value="6,4,6,2" />
@@ -93,16 +97,16 @@
                 <controls:RelayLamp Grid.Row="3" Grid.Column="1" IsOn="{Binding TripLatched}" ActiveColor="#E34D53" />
 
                 <TextBlock Grid.Row="4" Classes="statusLabel" Text="PHASE A" />
-                <controls:RelayLamp Grid.Row="4" Grid.Column="1" IsOn="{Binding PickupActive}" ActiveColor="#E34D53" />
+                <controls:RelayLamp Grid.Row="4" Grid.Column="1" LampState="{Binding PhaseAAnnunciation}" />
 
                 <TextBlock Grid.Row="5" Classes="statusLabel" Text="PHASE B" />
-                <controls:RelayLamp Grid.Row="5" Grid.Column="1" IsOn="False" ActiveColor="#E34D53" />
+                <controls:RelayLamp Grid.Row="5" Grid.Column="1" LampState="{Binding PhaseBAnnunciation}" />
 
                 <TextBlock Grid.Row="6" Classes="statusLabel" Text="PHASE C" />
-                <controls:RelayLamp Grid.Row="6" Grid.Column="1" IsOn="False" ActiveColor="#E34D53" />
+                <controls:RelayLamp Grid.Row="6" Grid.Column="1" LampState="{Binding PhaseCAnnunciation}" />
 
                 <TextBlock Grid.Row="7" Classes="statusLabel" Text="EARTH" />
-                <controls:RelayLamp Grid.Row="7" Grid.Column="1" IsOn="{Binding FaultActive}" ActiveColor="#E34D53" />
+                <controls:RelayLamp Grid.Row="7" Grid.Column="1" LampState="{Binding EarthAnnunciation}" />
 
                 <TextBlock Grid.Row="8" Classes="statusLabel" Text="SMV BLOCK" FontSize="8" />
                 <controls:RelayLamp Grid.Row="8" Grid.Column="1" IsOn="{Binding SmvDegraded}" ActiveColor="#3CA0D8" />
@@ -115,29 +119,29 @@
                   <Border Background="#4B7086" Padding="8,0">
                     <Grid ColumnDefinitions="*,Auto">
                       <TextBlock Text="BAY 12 · FEEDER" Foreground="#F4F7F8" FontSize="8" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1" Text="SV READY" Foreground="#DDE8EC" FontSize="7" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding FaceplatePageName}" Foreground="#DDE8EC" FontSize="7" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </Grid>
                   </Border>
 
                   <StackPanel Grid.Row="1" Margin="11,9" Spacing="5">
                     <TextBlock Text="{Binding TripStateText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="9.5" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="4">
-                      <TextBlock Text="IA" Foreground="#62777D" FontSize="8" />
-                      <TextBlock Grid.Column="1" Text="{Binding PhaseAText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" HorizontalAlignment="Right" />
-                      <TextBlock Grid.Row="1" Text="IB" Foreground="#62777D" FontSize="8" />
-                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PhaseBText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" HorizontalAlignment="Right" />
-                      <TextBlock Grid.Row="2" Text="IC" Foreground="#62777D" FontSize="8" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhaseCText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" HorizontalAlignment="Right" />
-                      <TextBlock Grid.Row="3" Text="3I0" Foreground="#62777D" FontSize="8" />
-                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ResidualText}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8.5" HorizontalAlignment="Right" />
+                    <Grid ColumnDefinitions="42,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                      <TextBlock Text="{Binding FaceplateRow1Label}" Foreground="#62777D" FontSize="8" />
+                      <TextBlock Grid.Column="1" Text="{Binding FaceplateRow1Value}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8" HorizontalAlignment="Right" MaxWidth="153" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="1" Text="{Binding FaceplateRow2Label}" Foreground="#62777D" FontSize="8" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FaceplateRow2Value}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8" HorizontalAlignment="Right" MaxWidth="153" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="2" Text="{Binding FaceplateRow3Label}" Foreground="#62777D" FontSize="8" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FaceplateRow3Value}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8" HorizontalAlignment="Right" MaxWidth="153" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="3" Text="{Binding FaceplateRow4Label}" Foreground="#62777D" FontSize="8" />
+                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FaceplateRow4Value}" Foreground="#30444B" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="8" HorizontalAlignment="Right" MaxWidth="153" TextTrimming="CharacterEllipsis" />
                     </Grid>
                     <Border Height="1" Background="#94A49E" Margin="0,5" />
-                    <TextBlock Text="{Binding TrustStateText}" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="7.5" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding DecisionReason}" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="7.2" TextWrapping="Wrap" MaxHeight="52" />
+                    <TextBlock Text="{Binding FaceplateNavigationText}" Foreground="#4B7086" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="7.5" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding FaceplateDetailText}" Foreground="#62777D" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="7.2" TextWrapping="Wrap" MaxHeight="52" />
                   </StackPanel>
 
                   <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*">
-                    <Border Grid.Column="0" Background="#426F8C" BorderBrush="#83938F" BorderThickness="0,1,1,0"><TextBlock Text="MEASURE" Foreground="White" FontSize="6.7" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                    <Border Grid.Column="0" Background="#CAD4D1" BorderBrush="#83938F" BorderThickness="0,1,1,0"><TextBlock Text="MEASURE" Foreground="#30444B" FontSize="6.7" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                     <Border Grid.Column="1" Background="#CAD4D1" BorderBrush="#83938F" BorderThickness="0,1,1,0"><TextBlock Text="EVENTS" Foreground="#30444B" FontSize="6.7" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                     <Border Grid.Column="2" Background="#CAD4D1" BorderBrush="#83938F" BorderThickness="0,1,1,0"><TextBlock Text="RECORDS" Foreground="#30444B" FontSize="6.7" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                     <Border Grid.Column="3" Background="#CAD4D1" BorderBrush="#83938F" BorderThickness="0,1,0,0"><TextBlock Text="SETUP" Foreground="#30444B" FontSize="6.7" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
@@ -148,11 +152,11 @@
 
             <Border Grid.Column="4" CornerRadius="9" Background="#273138" BorderBrush="#52616A" BorderThickness="1.2" Padding="8,9">
               <StackPanel HorizontalAlignment="Center" Spacing="4">
-                <Button Classes="hardware" Content="F1" />
-                <Button Classes="hardware" Content="F2" />
-                <Button Classes="hardware" Content="F3" />
-                <Button Classes="hardware" Content="F4" />
-                <Button Classes="hardware" Content="F5" />
+                <Button Classes="hardware" Command="{Binding FaceplateMeasureCommand}"><TextBlock Text="F1&#10;MEAS" TextAlignment="Center" FontSize="8" /></Button>
+                <Button Classes="hardware" Command="{Binding FaceplateEventsCommand}"><TextBlock Text="F2&#10;EVNT" TextAlignment="Center" FontSize="8" /></Button>
+                <Button Classes="hardware" Command="{Binding FaceplateRecordsCommand}"><TextBlock Text="F3&#10;RECD" TextAlignment="Center" FontSize="8" /></Button>
+                <Button Classes="hardware" Command="{Binding FaceplateSetupCommand}"><TextBlock Text="F4&#10;SET" TextAlignment="Center" FontSize="8" /></Button>
+                <Button Classes="hardware" Command="{Binding RunCommand}"><TextBlock Text="F5&#10;RUN" TextAlignment="Center" FontSize="8" /></Button>
                 <Button Classes="hardware" Content="RESET" Command="{Binding ResetRelayCommand}" Foreground="#4AB0E4" FontSize="9" />
               </StackPanel>
             </Border>
@@ -161,23 +165,23 @@
           <Border Grid.Row="3" CornerRadius="11" Background="#273138" BorderBrush="#52616A" BorderThickness="1.2" Padding="12,10">
             <Grid ColumnDefinitions="90,*,90">
               <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7">
-                <Button Classes="hardware" Content="⌂" FontSize="17" />
-                <Button Classes="hardware" Content="☰" FontSize="16" />
+                <Button Classes="hardware" Content="⌂" FontSize="17" Command="{Binding FaceplateHomeCommand}" />
+                <Button Classes="hardware" Content="☰" FontSize="16" Command="{Binding FaceplateMenuCommand}" />
               </StackPanel>
 
               <Border Grid.Column="1" Width="178" Height="144" CornerRadius="20" Background="#182126" BorderBrush="#3C8AB3" BorderThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid RowDefinitions="48,48,48" ColumnDefinitions="56,56,56" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <Button Grid.Row="0" Grid.Column="1" Classes="hardware" Content="▲" />
-                  <Button Grid.Row="1" Grid.Column="0" Classes="hardware" Content="◀" />
-                  <Button Grid.Row="1" Grid.Column="1" Classes="hardware" Content="OK" />
-                  <Button Grid.Row="1" Grid.Column="2" Classes="hardware" Content="▶" />
-                  <Button Grid.Row="2" Grid.Column="1" Classes="hardware" Content="▼" />
+                  <Button Grid.Row="0" Grid.Column="1" Classes="hardware" Content="▲" Command="{Binding FaceplatePreviousCommand}" />
+                  <Button Grid.Row="1" Grid.Column="0" Classes="hardware" Content="◀" Command="{Binding FaceplatePreviousCommand}" />
+                  <Button Grid.Row="1" Grid.Column="1" Classes="hardware" Content="OK" Command="{Binding FaceplateOkCommand}" />
+                  <Button Grid.Row="1" Grid.Column="2" Classes="hardware" Content="▶" Command="{Binding FaceplateNextCommand}" />
+                  <Button Grid.Row="2" Grid.Column="1" Classes="hardware" Content="▼" Command="{Binding FaceplateNextCommand}" />
                 </Grid>
               </Border>
 
               <StackPanel Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7">
-                <Button Classes="hardware" Content="↩" FontSize="16" />
-                <Button Classes="hardware" Content="☆" FontSize="18" />
+                <Button Classes="hardware" Content="↩" FontSize="16" Command="{Binding FaceplateBackCommand}" />
+                <Button Classes="hardware" Content="☆" FontSize="18" Command="{Binding FaceplateFavoriteCommand}" />
                 <Border Width="48" Height="28" CornerRadius="4" Background="#151D22" BorderBrush="#69767D" BorderThickness="1">
                   <StackPanel VerticalAlignment="Center" Spacing="2">
                     <Border Height="3" Width="31" CornerRadius="2" Background="#3CA0D8" />
