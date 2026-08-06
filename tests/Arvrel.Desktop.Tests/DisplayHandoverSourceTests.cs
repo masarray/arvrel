@@ -29,6 +29,8 @@ public sealed class DisplayHandoverSourceTests
 
         StringAssert.Contains(source, "P5.9 · GUARDED SOURCE HANDOVER");
         StringAssert.Contains(source, "SourceModeText => ActiveDisplaySourceText");
+        StringAssert.Contains(source, "SmvDegraded => IsProcessBusDisplayActive");
+        StringAssert.Contains(source, "!DisplayProtection.SmvTrust.AllowsTrip");
         StringAssert.Contains(source, "AllowsTrip => DisplayProtection.SmvTrust.AllowsTrip");
         StringAssert.Contains(source, "TripLatched => DisplayAnnunciation.TripLatched");
         StringAssert.Contains(source, "FormatCurrent(DisplayMeasurement.PhaseA)");
