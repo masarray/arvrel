@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Avalonia cross-platform preview
+    url: https://github.com/masarray/arvrel-avalonia/issues
+    about: Report Avalonia, Linux, macOS, or cross-platform migration issues in the dedicated preview repository.
   - name: Security vulnerability
     url: https://github.com/masarray/arvrel/security/advisories/new
     about: Report vulnerabilities privately. Do not publish sensitive details in an issue.
