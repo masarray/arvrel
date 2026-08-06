@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -8,8 +9,8 @@ namespace Arvrel.App.Controls.VirtualRelay;
 
 /// <summary>
 /// A physical relay annunciator lamp. State owners continue to write a simple
-/// logical colour to <see cref="Lens"/>; this control supplies the shared metal
-/// bezel, cavity, optical shade, specular highlight and emitted halo.
+/// logical colour to <see cref="Lens"/>; this control supplies one shared metal,
+/// cavity, radial-lens, reflection and emitted-light model for every state.
 /// </summary>
 public partial class RelayLampControl : UserControl
 {
@@ -25,7 +26,7 @@ public partial class RelayLampControl : UserControl
         Unloaded += OnUnloaded;
     }
 
-    private void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (!_listening)
         {
@@ -36,7 +37,7 @@ public partial class RelayLampControl : UserControl
         UpdateOptics();
     }
 
-    private void OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
+    private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (!_listening)
             return;
@@ -64,25 +65,30 @@ public partial class RelayLampControl : UserControl
         }
 
         var emitted = ResolveEmittedColor(color);
-        var haloBrush = new SolidColorBrush(Color.FromArgb(205, emitted.R, emitted.G, emitted.B));
+        var haloBrush = new SolidColorBrush(Color.FromArgb(154, emitted.R, emitted.G, emitted.B));
         haloBrush.Freeze();
 
         var glow = new DropShadowEffect
         {
             Color = emitted,
-            BlurRadius = 11.5,
+            BlurRadius = 8.5,
             Direction = 0,
             ShadowDepth = 0,
-            Opacity = 0.76,
+            Opacity = 0.58,
             RenderingBias = RenderingBias.Quality
         };
         glow.Freeze();
 
         Halo.Fill = haloBrush;
         Halo.Effect = glow;
-        Halo.Opacity = 0.82;
-        Highlight.Opacity = 0.90;
-        Lens.Opacity = 1.0;
+        Halo.Opacity = 0.58;
+
+        Lens.Opacity = 0.90;
+        LensOptic.Fill = CreateActiveLensBrush(emitted);
+        LensOptic.Opacity = 1.0;
+        LensRim.Opacity = 0.70;
+        LowerReflection.Opacity = 0.42;
+        Highlight.Opacity = 0.82;
     }
 
     private void SetPassiveOptics()
@@ -90,8 +96,45 @@ public partial class RelayLampControl : UserControl
         Halo.Fill = Brushes.Transparent;
         Halo.Effect = null;
         Halo.Opacity = 0;
-        Highlight.Opacity = 0.32;
-        Lens.Opacity = 0.94;
+
+        Lens.Opacity = 0.96;
+        LensOptic.Fill = Brushes.Transparent;
+        LensOptic.Opacity = 0;
+        LensRim.Opacity = 0.30;
+        LowerReflection.Opacity = 0.22;
+        Highlight.Opacity = 0.28;
+    }
+
+    private static RadialGradientBrush CreateActiveLensBrush(Color emitted)
+    {
+        var brush = new RadialGradientBrush
+        {
+            Center = new Point(0.50, 0.50),
+            GradientOrigin = new Point(0.30, 0.25),
+            RadiusX = 0.74,
+            RadiusY = 0.74
+        };
+
+        brush.GradientStops.Add(new GradientStop(Mix(emitted, Colors.White, 0.78), 0.00));
+        brush.GradientStops.Add(new GradientStop(Mix(emitted, Colors.White, 0.28), 0.24));
+        brush.GradientStops.Add(new GradientStop(emitted, 0.58));
+        brush.GradientStops.Add(new GradientStop(Mix(emitted, Colors.Black, 0.46), 1.00));
+        brush.Freeze();
+        return brush;
+    }
+
+    private static Color Mix(Color from, Color to, double amount)
+    {
+        amount = Math.Clamp(amount, 0, 1);
+
+        static byte MixChannel(byte start, byte end, double ratio)
+            => (byte)Math.Round(start + ((end - start) * ratio));
+
+        return Color.FromArgb(
+            255,
+            MixChannel(from.R, to.R, amount),
+            MixChannel(from.G, to.G, amount),
+            MixChannel(from.B, to.B, amount));
     }
 
     private static bool IsPassive(Color color)
