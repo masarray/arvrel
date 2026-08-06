@@ -1,8 +1,8 @@
-# P6 Avalonia — Native virtual relay faceplate
+# P6 Avalonia — Native virtual relay and process-bus workflow
 
 ## Objective
 
-Port the approved futuristic virtual protection relay into the cross-platform Avalonia shell without using the WPF visual tree, PNG image maps, or duplicated protection logic.
+Migrate the approved futuristic virtual protection relay and its essential source workflows into the cross-platform Avalonia shell without using the WPF visual tree, PNG image maps, or duplicated protection logic.
 
 ## P6.1 — Native product shell
 
@@ -27,18 +27,16 @@ The state contract is:
 - `Off` → lamp inactive;
 - `Pickup` → amber lens;
 - `Trip` → red lens;
-- trip cause remains latched after the instantaneous pickup falls away;
+- trip cause remains latched after instantaneous pickup falls away;
 - relay reset clears the cause latch through the same protection snapshot lifecycle.
 
 No phase or earth cause is inferred from a preset name, button state, or UI threshold.
 
-The current P6.2 adapter reads the immutable `InternalLabTick.Protection` snapshot from the existing Avalonia ViewModel presentation object. This is a temporary migration seam: the external-source projection milestone will expose an explicit presentation snapshot and remove that seam without changing annunciation semantics.
-
 ## P6.3 — LCD and hardware-navigation parity
 
-The static faceplate LCD markup has been replaced by a dedicated native `RelayLcdControl`.
+The static faceplate LCD markup was replaced by a dedicated native `RelayLcdControl`.
 
-The LCD now contains five pages:
+The LCD contains five pages:
 
 1. **Measure** — IA, IB, IC, residual current, frequency, and trust state;
 2. **Events** — bounded operator event history from the existing ViewModel;
@@ -60,7 +58,58 @@ Navigation authority is explicit and local to the faceplate:
 - Down/Right/OK → next page;
 - LCD footer tabs remain directly clickable.
 
-The navigation changes presentation state only. They do not alter injection, settings, protection, trust, or trip state.
+Navigation changes presentation state only. It does not alter injection, settings, protection, trust, or trip state.
+
+## P6.4 — PCAP replay and unified presentation projection
+
+A native `PROCESS BUS` workspace now provides the first complete external-source workflow in Avalonia.
+
+### Capture selection and replay
+
+- cross-platform Avalonia `StorageProvider` file picker;
+- explicit `.pcap` and `.pcapng` filters;
+- finite replay through the existing `SmvProcessBusController.ReplayAsync()` authority;
+- no second PCAP parser, SV decoder, measurement runtime, or protection engine;
+- replay lifecycle and frame count shown to the operator;
+- a command to return cleanly to the internal virtual test set.
+
+### Stream workflow
+
+After replay, the workspace exposes:
+
+- decoded Sampled Values stream list;
+- selected stream identity and APPID;
+- source summary;
+- trust summary;
+- mapping/SCL summary;
+- bounded runtime diagnostics.
+
+Changing the selected stream projects that stream's immutable runtime snapshot into the existing waveform, measurement, protection, LCD, annunciation, and relay-state surfaces.
+
+### Unified projection
+
+`DesktopPresentationSnapshot` is the single immutable presentation contract for both internal and external sources. It contains:
+
+- source mode and identity;
+- `MeasurementFrame`;
+- `ProtectionSnapshot`;
+- two-cycle `ScenarioWaveform`;
+- sample counter;
+- source, trust, mapping, and diagnostic evidence.
+
+The faceplate no longer reads a private ViewModel field through reflection. `VirtualRelayControl` consumes the public `CurrentPresentationSnapshot` and `CurrentProtectionSnapshot` properties and resets its cause latch whenever the selected source identity changes.
+
+### Source authority
+
+```text
+Internal deterministic laboratory ─┐
+                                    ├─ DesktopPresentationSnapshot
+PCAP / PCAPNG replay runtime ───────┘            │
+                                                 ▼
+Waveform · measurements · trust · relay · LCD · annunciation
+```
+
+Internal injection commands explicitly switch back to the internal source. External replay is read-only for setting edits in P6.4; relay reset remains available for the selected external stream.
 
 ## Architecture boundary
 
@@ -68,19 +117,21 @@ The navigation changes presentation state only. They do not alter injection, set
 VirtualRelayControl
 ├── RelayLampControl × 8
 └── RelayLcdControl
-        ↓ compiled bindings and annunciation projection
-MainWindowViewModel
-        ↓ immutable InternalLabTick / ProtectionSnapshot
-RelayAnnunciationLatch
+
+ProcessBusSourceControl
         ↓
-Arvrel.Application / Arvrel.Protection
+MainWindowViewModel
+        ↓ DesktopPresentationSnapshot
+InternalLabSession / SmvProcessBusController
+        ↓ immutable snapshots
+Arvrel.Application / Arvrel.ProcessBus / Arvrel.Protection
 ```
 
-The controls do not instantiate or mutate a protection engine. They read the same immutable presentation state already used by the Avalonia measurement and relay-settings workspaces.
+The controls do not instantiate or mutate a protection engine. The replay workflow uses the existing capture abstraction, ARIEC61850 decoder, continuity/trust gate, measurement runtime, and protection snapshot.
 
-## Visual boundary
+## Visual and platform boundary
 
-The faceplate is built entirely from Avalonia controls, shapes, brushes, text, and buttons. It does not use:
+The migrated surfaces are built entirely from Avalonia controls, shapes, brushes, text, storage APIs, and buttons. They do not use:
 
 - PNG or raster background assets;
 - image maps;
@@ -88,14 +139,25 @@ The faceplate is built entirely from Avalonia controls, shapes, brushes, text, a
 - Windows-only UI APIs;
 - runtime geometry patches.
 
+Windows can report the existing authorized Npcap live backend. Linux and macOS remain replay/internal-laboratory platforms until native live-capture transport and security boundaries are implemented.
+
 ## Current parity boundary
 
-The native product shell, complete cause annunciation, five LCD pages, and hardware navigation are now present. The largest remaining migration gaps are external PCAP/live-source operation, evidence/file workflows, the explicit immutable presentation snapshot, and complete multifunction protection settings.
+Completed in this branch:
 
-## Next migration milestones
+- native futuristic relay shell;
+- shared physical lamp model;
+- complete cause annunciation;
+- five LCD pages and hardware navigation;
+- PCAP/PCAPNG file selection and replay;
+- stream selection, trust/mapping/diagnostics;
+- unified internal/replay presentation projection.
 
-1. port PCAP/PCAPNG replay selection and stream workflow;
-2. expose an explicit immutable presentation snapshot and remove the temporary annunciation adapter seam;
-3. port evidence export and remaining engineering dialogs;
-4. extend full 27/59/59N/67P/67N settings parity;
-5. add Linux/macOS live-capture backends when transport and security requirements are defined.
+Largest remaining migration gaps:
+
+1. evidence export and file/dialog workflows;
+2. full 27/59/59N/67P/67N settings parity;
+3. SCL import and measurement-context workflow;
+4. live adapter selection/start-stop on Windows;
+5. Linux/macOS live-capture backends;
+6. final removal of the WPF product channel after parity and field validation.
