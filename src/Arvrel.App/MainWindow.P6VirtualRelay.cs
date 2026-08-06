@@ -57,14 +57,18 @@ public partial class MainWindow
         relay.ResetRequested += P6Relay_ResetRequested;
 
         // Replace only the complete relay card in the right workspace column.
-        // The status-panel and body borders have Grid children; the outer relay
-        // card is the first ancestor whose direct content is the body Border.
         relayHost.Child = relay;
         relayHost.Padding = new Thickness(0);
         relayHost.Background = Brushes.Transparent;
         relayHost.BorderBrush = Brushes.Transparent;
         relayHost.BorderThickness = new Thickness(0);
         relayHost.ClipToBounds = false;
+        relayHost.Effect = null;
+
+        // P6 already owns enclosure depth and shadow. Remove exactly one host
+        // card around it so the relay reads as a calm hardware object rather
+        // than a panel nested inside another bright enterprise card.
+        CalmP6WorkspaceChrome(relayHost);
 
         // Redirect the existing protection and process-bus presentation logic to
         // P6 binding anchors. No protection-domain state is copied or recreated.
@@ -102,6 +106,20 @@ public partial class MainWindow
 
         AddEvent("P6", "Native virtual relay faceplate mounted");
         StatusText.Text = "P6 native virtual relay faceplate active.";
+    }
+
+    private static void CalmP6WorkspaceChrome(Border relayHost)
+    {
+        var workspaceFrame = P6VisualAncestors<Border>(relayHost).FirstOrDefault();
+        if (workspaceFrame is null)
+            return;
+
+        workspaceFrame.Background = Brushes.Transparent;
+        workspaceFrame.BorderBrush = Brushes.Transparent;
+        workspaceFrame.BorderThickness = new Thickness(0);
+        workspaceFrame.Padding = new Thickness(0);
+        workspaceFrame.Effect = null;
+        workspaceFrame.ClipToBounds = false;
     }
 
     private void RebindRelayStatePresentersToP6()
