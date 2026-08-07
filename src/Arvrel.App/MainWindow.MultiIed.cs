@@ -107,11 +107,12 @@ public partial class MainWindow
 
         _iedTypeCombo = new ComboBox
         {
-            Width = 245,
+            Width = 215,
             Height = 28,
             Margin = new Thickness(0, 0, 8, 0),
             ItemsSource = VirtualIedCatalog.All,
             DisplayMemberPath = nameof(VirtualIedDescriptor.DisplayName),
+            TextSearch = { TextPath = nameof(VirtualIedDescriptor.DisplayName) },
             ToolTip = "Select the virtual IED to configure and test"
         };
         _iedTypeCombo.SelectionChanged += IedTypeCombo_SelectionChanged;
@@ -151,7 +152,7 @@ public partial class MainWindow
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Automatic Voltage Regulator · OLTC setpoint / bandwidth / T1-T2 simulation",
+            Text = "Injection form → virtual AVR response → configuration / validation",
             Foreground = BrushFrom("#31444F"),
             FontSize = 10.5,
             VerticalAlignment = VerticalAlignment.Center
@@ -166,9 +167,9 @@ public partial class MainWindow
         };
         Grid.SetColumn(actions, 2);
 
-        var configureButton = CreateToolbarButton("Configure", "CompactButton", AvrConfigure_Click);
+        var configureButton = CreateToolbarButton("AVR Config", "CompactButton", AvrConfigure_Click);
         var runButton = CreateToolbarButton(string.Empty, "PrimaryButton", AvrRun_Click);
-        _avrRunButtonText = new TextBlock { Text = "Run AVR", VerticalAlignment = VerticalAlignment.Center };
+        _avrRunButtonText = new TextBlock { Text = "Start Injection", VerticalAlignment = VerticalAlignment.Center };
         runButton.Content = _avrRunButtonText;
         var resetButton = CreateToolbarButton("Reset", "CompactButton", AvrReset_Click);
         resetButton.Margin = new Thickness(0);
@@ -252,12 +253,11 @@ public partial class MainWindow
         {
             if (!EngineModeText.Text.Contains("AVR", StringComparison.Ordinal))
                 _relayEngineModeText = EngineModeText.Text;
-            EngineModeText.Text = "IED · AVR · OLTC REGULATION";
-            StatusText.Text = "Automatic Voltage Regulator selected. Configure setpoint, tolerance band, delays and tap limits, then run the AVR laboratory.";
-            _avrWorkspace.FocusConfiguration();
+            EngineModeText.Text = "IED · AVR · BENCH INJECTION";
+            StatusText.Text = "AVR selected. Inject U/f/phase from the left form, observe the virtual controller response, and tune settings from the right tabs.";
         }
 
-        AddEvent("IED", protectionRelay ? "Protection Relay · OCR selected" : "Automatic Voltage Regulator · AVR selected");
+        AddEvent("IED", protectionRelay ? "Protection Relay · OCR selected" : "AVR · OLTC Controller selected");
         UpdateAvrRunButton();
     }
 
@@ -274,7 +274,7 @@ public partial class MainWindow
     {
         _avrWorkspace?.ResetSimulator();
         UpdateAvrRunButton();
-        StatusText.Text = "AVR simulator reset to neutral tap and nominal source voltage.";
+        StatusText.Text = "AVR bench simulator reset to neutral tap and nominal injected voltage.";
     }
 
     private void AvrWorkspace_RunStateChanged(object? sender, EventArgs e)
@@ -282,8 +282,8 @@ public partial class MainWindow
         UpdateAvrRunButton();
         if (_avrWorkspace is not null)
             StatusText.Text = _avrWorkspace.IsRunning
-                ? "AVR simulation running. Move the test-source voltage outside the tolerance band to observe T1/T2 and OLTC tap commands."
-                : "AVR simulation paused; configured values and tap position remain visible.";
+                ? "AVR injection running. Observe T1/T2 timing, RAISE/LOWER outputs, blocking, and tap response on the virtual device."
+                : "AVR injection paused; source, configuration, tap position, and event trace remain available for validation.";
     }
 
     private void UpdateAvrRunButton()
@@ -291,7 +291,7 @@ public partial class MainWindow
         if (_avrRunButtonText is null || _avrWorkspace is null)
             return;
 
-        _avrRunButtonText.Text = _avrWorkspace.IsRunning ? "Pause AVR" : "Run AVR";
+        _avrRunButtonText.Text = _avrWorkspace.IsRunning ? "Pause Injection" : "Start Injection";
     }
 
     private static FrameworkElement? ResolveRootWorkspaceChild(Grid root, DependencyObject descendant)
