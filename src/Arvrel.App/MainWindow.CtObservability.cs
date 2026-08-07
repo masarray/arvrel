@@ -69,11 +69,14 @@ public partial class MainWindow
         _ctObservabilityButton = new Button
         {
             Style = FindResource("CompactButton") as Style,
-            Content = "CT IDEAL",
-            MinWidth = 76,
+            Content = "CT MODEL · IDEAL",
+            MinWidth = 116,
             Height = 28,
             Margin = new Thickness(8, 0, 0, 0),
-            ToolTip = "Open current-transformer settings, magnetic state, per-channel diagnostics, event timing, and ideal-versus-secondary waveform/flux comparison."
+            Padding = new Thickness(9, 0, 9, 0),
+            FontSize = 9.2,
+            FontWeight = FontWeights.SemiBold,
+            ToolTip = "Open CT Saturation & Observability. Source preset and CT model are independent in the INJECT workspace."
         };
         _ctObservabilityButton.Click += (_, _) => OpenCtObservabilityWindow();
         controlsLine.Children.Add(_ctObservabilityButton);
@@ -132,6 +135,7 @@ public partial class MainWindow
 
             var changed = _scenario.ApplyProfile(profile);
             UpdateVirtualInjectionProvenance();
+            SyncCtModelSelectorFromProfile(profile);
             if (changed)
             {
                 SetVirtualInjectionStatus("APPLIED · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
@@ -203,6 +207,7 @@ public partial class MainWindow
             step.SourceSampleIndex,
             evidence,
             step.IsRunning);
+        SyncCtModelSelectorFromProfile(_scenario.ActiveProfile);
         UpdateCtToolbarButton(snapshot);
 
         if (_ctObservabilityWindow is null)
@@ -269,14 +274,20 @@ public partial class MainWindow
         if (_ctObservabilityButton is null)
             return;
 
-        _ctObservabilityButton.Content = snapshot.BadgeText;
+        _ctObservabilityButton.Content = snapshot.Status switch
+        {
+            CtObservabilityStatus.Saturated => "CT MODEL · SAT",
+            CtObservabilityStatus.Nonlinear => "CT MODEL · ACTIVE",
+            _ => "CT MODEL · IDEAL"
+        };
         _ctObservabilityButton.Foreground = snapshot.Status switch
         {
             CtObservabilityStatus.Saturated => TripBrush,
             CtObservabilityStatus.Nonlinear => WarningBrush,
             _ => HealthyBrush
         };
-        _ctObservabilityButton.ToolTip = $"{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}\n{snapshot.EventSummary}";
+        _ctObservabilityButton.ToolTip =
+            $"Click to open CT Saturation & Observability.\n{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}\n{snapshot.EventSummary}";
     }
 
     private void RestartCtStudyEvent()
