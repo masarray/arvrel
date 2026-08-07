@@ -17,7 +17,10 @@ public partial class MainWindow
     private AvrWorkspaceControl? _avrWorkspace;
     private Border? _avrToolbar;
     private TextBlock? _avrRunButtonText;
+    private TextBlock? _labSubtitleText;
     private string? _relayEngineModeText;
+    private string? _relayWindowTitle;
+    private string? _relaySubtitleText;
 
     internal void InitializeMultiIedWorkspace()
     {
@@ -66,6 +69,13 @@ public partial class MainWindow
 
         _topHealthBadge = MultiIedVisualAncestors<Border>(TopHealthLed).FirstOrDefault();
         _relayEngineModeText = EngineModeText.Text;
+        _relayWindowTitle = Title;
+        _labSubtitleText = MultiIedVisualDescendants<TextBlock>(root)
+            .FirstOrDefault(text => string.Equals(
+                text.Text,
+                "IEC 61850 Process Bus Protection Laboratory",
+                StringComparison.Ordinal));
+        _relaySubtitleText = _labSubtitleText?.Text;
 
         _avrWorkspace = new AvrWorkspaceControl
         {
@@ -246,6 +256,9 @@ public partial class MainWindow
 
         if (protectionRelay)
         {
+            Title = _relayWindowTitle ?? "ARVREL — Virtual Protection Relay Lab";
+            if (_labSubtitleText is not null)
+                _labSubtitleText.Text = _relaySubtitleText ?? "IEC 61850 Process Bus Protection Laboratory";
             EngineModeText.Text = _relayEngineModeText ?? "P6 RELAY";
             StatusText.Text = "Protection Relay · OCR selected. Configure 50/51 and run the existing relay laboratory.";
         }
@@ -253,8 +266,11 @@ public partial class MainWindow
         {
             if (!EngineModeText.Text.Contains("AVR", StringComparison.Ordinal))
                 _relayEngineModeText = EngineModeText.Text;
-            EngineModeText.Text = "IED · AVR · BENCH INJECTION";
-            StatusText.Text = "AVR selected. Inject U/f/phase from the left form, observe the virtual controller response, and tune settings from the right tabs.";
+            Title = "ARVREL — AVR / OLTC Controller Lab";
+            if (_labSubtitleText is not null)
+                _labSubtitleText.Text = "Automatic Voltage Regulator · OLTC commissioning laboratory";
+            EngineModeText.Text = "IED · AVR · U/I BENCH";
+            StatusText.Text = "AVR selected. Configure U/I/φ/f targets, energize the test source, observe controller/tap response, then validate settings and blocking.";
         }
 
         AddEvent("IED", protectionRelay ? "Protection Relay · OCR selected" : "AVR · OLTC Controller selected");
@@ -274,7 +290,7 @@ public partial class MainWindow
     {
         _avrWorkspace?.ResetSimulator();
         UpdateAvrRunButton();
-        StatusText.Text = "AVR bench simulator reset to neutral tap and nominal injected voltage.";
+        StatusText.Text = "AVR reset. Test source is OFF at 0 V / 0 A; configured source targets remain ready for the next injection.";
     }
 
     private void AvrWorkspace_RunStateChanged(object? sender, EventArgs e)
@@ -282,8 +298,8 @@ public partial class MainWindow
         UpdateAvrRunButton();
         if (_avrWorkspace is not null)
             StatusText.Text = _avrWorkspace.IsRunning
-                ? "AVR injection running. Observe T1/T2 timing, RAISE/LOWER outputs, blocking, and tap response on the virtual device."
-                : "AVR injection paused; source, configuration, tap position, and event trace remain available for validation.";
+                ? "AVR injection sequence/ramp active. Observe T1/T2, output contact, motor travel, blocking and tap feedback."
+                : "AVR sequence/ramp paused. The faceplate shows whether the test source is held energized or OFF.";
     }
 
     private void UpdateAvrRunButton()
@@ -291,7 +307,7 @@ public partial class MainWindow
         if (_avrRunButtonText is null || _avrWorkspace is null)
             return;
 
-        _avrRunButtonText.Text = _avrWorkspace.IsRunning ? "Pause Injection" : "Start Injection";
+        _avrRunButtonText.Text = _avrWorkspace.IsRunning ? "Pause Injection" : "Start / Resume";
     }
 
     private static FrameworkElement? ResolveRootWorkspaceChild(Grid root, DependencyObject descendant)
@@ -316,6 +332,20 @@ public partial class MainWindow
         {
             if (current is T match)
                 yield return match;
+        }
+    }
+
+    private static IEnumerable<T> MultiIedVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+                yield return match;
+
+            foreach (var descendant in MultiIedVisualDescendants<T>(child))
+                yield return descendant;
         }
     }
 }
