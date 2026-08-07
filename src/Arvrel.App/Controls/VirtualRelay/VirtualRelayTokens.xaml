@@ -37,10 +37,14 @@
         <GradientStop Color="#11181C" Offset="1" />
     </LinearGradientBrush>
 
+    <!-- P1: broad edge-to-edge fascia gloss heritage retained as the hardware
+         material contract, with P0 reducing contrast so the face reads as calm metal. -->
     <LinearGradientBrush x:Key="VrFrontFaceBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#465158" Offset="0" />
-        <GradientStop Color="#3A454C" Offset="0.38" />
-        <GradientStop Color="#303A40" Offset="0.72" />
+        <GradientStop Color="#424D54" Offset="0.18" />
+        <GradientStop Color="#3B464D" Offset="0.42" />
+        <GradientStop Color="#353F46" Offset="0.58" />
+        <GradientStop Color="#2E383E" Offset="0.78" />
         <GradientStop Color="#283137" Offset="1" />
     </LinearGradientBrush>
 
