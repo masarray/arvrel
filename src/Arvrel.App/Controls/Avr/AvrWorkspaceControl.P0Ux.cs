@@ -45,6 +45,11 @@ public partial class AvrWorkspaceControl
             return;
         }
 
+        // The virtual device is the primary commissioning surface. Keep the
+        // configuration workspace one click away, but do not consume its full
+        // width on every AVR startup.
+        SetConfigurationExpanded(false);
+
         _p0Hmi = new AvrP0HmiControl();
         _p0Hmi.StartServerRequested += P0StartServerRequested;
         _p0Hmi.StopServerRequested += P0StopServerRequested;
@@ -61,7 +66,7 @@ public partial class AvrWorkspaceControl
         }
 
         RefreshP0NativeHmi();
-        AddEvent("HMI", "Native P0 AVR display loaded");
+        AddEvent("HMI", "Operational AVR HMI loaded · configuration rail collapsed");
     }
 
     private Border? FindLegacyHmiDisplayBorder()
