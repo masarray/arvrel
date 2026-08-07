@@ -29,16 +29,20 @@ public sealed class InjectionWorkspaceProductUxSourceTests
         // Duplicate/noisy quick actions are not allowed to compete with the SOURCE editor.
         StringAssert.Contains(ux, "InjectFaultButton.Visibility = Visibility.Collapsed");
         StringAssert.Contains(ux, "ProductSetButtonText(DegradeSmvButton, \"SMV quality…\")");
+        StringAssert.Contains(ux, "_virtualInjectionProvenanceText.Visibility = Visibility.Collapsed");
 
-        // Internal injection lifecycle belongs to the injection workspace, while external
+        // Internal injection lifecycle belongs to the analysis/source header, while external
         // live/replay lifecycle stays in the global source context bar.
-        StringAssert.Contains(ux, "_productInjectionToolbar.Children.Add(RunButton)");
+        StringAssert.Contains(ux, "TryGetProductAnalysisControlsLine");
+        StringAssert.Contains(ux, "controlsLine.Children.Insert");
         StringAssert.Contains(ux, "_productTopSourceActions.Children.Add(RunButton)");
         StringAssert.Contains(ux, "Start or stop virtual injection. Relay state is not reset.");
+        Assert.IsFalse(ux.Contains("_productInjectionToolbar.Children.Add(RunButton)", StringComparison.Ordinal));
 
         // AUTO APPLY and steady-state status duplication are deliberately quieted.
         StringAssert.Contains(ux, "_analysisWorkspaceMode == AnalysisWorkspaceMode.Injection");
         StringAssert.Contains(ux, "quietSteadyState");
+        StringAssert.Contains(ux, "StreamHealthText.Visibility = Visibility.Collapsed");
     }
 
     private static string Read(params string[] segments)
