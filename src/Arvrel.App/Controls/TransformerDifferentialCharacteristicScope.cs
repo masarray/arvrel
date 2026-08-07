@@ -102,7 +102,7 @@ public sealed class TransformerDifferentialCharacteristicScope : FrameworkElemen
         dc.DrawGeometry(OperateFillBrush, null, operate);
     }
 
-    private static void DrawAxes(DrawingContext dc, Rect plot, double max)
+    private void DrawAxes(DrawingContext dc, Rect plot, double max)
     {
         var gridPen = new Pen(GridBrush, 1);
         var axisPen = new Pen(AxisBrush, 1.1);
@@ -175,9 +175,7 @@ public sealed class TransformerDifferentialCharacteristicScope : FrameworkElemen
         var settings = Settings ?? new TransformerDifferentialSettings();
         var maximum = Math.Max(4.0, settings.SlopeBreakpointPu * 2.0);
         if (Phases is not null && Phases.Count > 0)
-        {
             maximum = Math.Max(maximum, Phases.Max(phase => Math.Max(phase.RestraintCurrentPu, phase.OperatingCurrentPu)) * 1.18);
-        }
         if (settings.HighSetEnabled)
             maximum = Math.Max(maximum, settings.HighSetPickupPu * 1.08);
         return Math.Clamp(Math.Ceiling(maximum * 2) / 2.0, 2.0, 50.0);
@@ -201,7 +199,7 @@ public sealed class TransformerDifferentialCharacteristicScope : FrameworkElemen
             plot.Left + plot.Width * x / max,
             plot.Bottom - plot.Height * y / max);
 
-    private static void DrawText(
+    private void DrawText(
         DrawingContext dc,
         string text,
         Point point,
@@ -216,7 +214,7 @@ public sealed class TransformerDifferentialCharacteristicScope : FrameworkElemen
             typeface,
             size,
             brush,
-            VisualTreeHelper.GetDpi(Application.Current.MainWindow ?? new DependencyObject()).PixelsPerDip);
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(formatted, point);
     }
 
