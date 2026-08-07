@@ -115,7 +115,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- 1. Injection / test-set workspace -->
         <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource AvrPanel}" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -224,7 +223,6 @@
             </Grid>
         </Border>
 
-        <!-- 2. Real-device-like AVR faceplate -->
         <Border Grid.Row="1" Grid.Column="2" Background="#77838A" BorderBrush="#5B676E" BorderThickness="1" CornerRadius="7" Padding="10">
             <Border Background="{StaticResource DeviceMetal}" BorderBrush="#6E7A80" BorderThickness="1" CornerRadius="5" Padding="10">
                 <Grid>
@@ -331,7 +329,6 @@
             </Border>
         </Border>
 
-        <!-- 3. Sliding configuration rail -->
         <Border Grid.Row="1" Grid.Column="4" x:Name="ConfigurationPanel" Background="{StaticResource AvrPanel}" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid x:Name="ConfigurationExpanded">
@@ -373,9 +370,9 @@
                                 <TextBlock Text="CURRENT INPUT / BLOCKING" Style="{StaticResource SectionLabel}" Margin="0,15,0,0"/>
                                 <TextBlock Text="Nominal current In (A secondary)" Foreground="{StaticResource AvrMuted}" FontSize="9" Margin="0,7,0,0"/><TextBox x:Name="NominalCurrentBox" Text="1" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/>
                                 <CheckBox x:Name="UnderCurrentCheck" Content="Enable I&lt; blocking" Foreground="{StaticResource AvrText}" Margin="0,10,0,4"/>
-                                <TextBox x:Name="UnderCurrentBox" Text="10" Style="{StaticResource DarkTextBox}" ToolTip="I< threshold in % In"/>
+                                <TextBox x:Name="UnderCurrentBox" Text="10" Style="{StaticResource DarkTextBox}" ToolTip="I&lt; threshold in % In"/>
                                 <CheckBox x:Name="OverCurrentCheck" Content="Enable I&gt; blocking" Foreground="{StaticResource AvrText}" Margin="0,10,0,4"/>
-                                <TextBox x:Name="OverCurrentBox" Text="150" Style="{StaticResource DarkTextBox}" ToolTip="I> threshold in % In"/>
+                                <TextBox x:Name="OverCurrentBox" Text="150" Style="{StaticResource DarkTextBox}" ToolTip="I&gt; threshold in % In"/>
                             </StackPanel></ScrollViewer>
                         </TabItem>
 
