@@ -270,7 +270,7 @@ public sealed class TransformerDifferentialProtectionTests
             }
         };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => settings.Validate());
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => settings.Validate());
     }
 
     [TestMethod]
