@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
 using Arvrel.Protection;
@@ -13,6 +14,8 @@ public partial class MainWindow
     {
         Injection,
         Waveform,
+        // Kept as compatibility aliases for older lifecycle calls. The product
+        // surface now intentionally exposes only Waveform and Injection.
         Dual,
         Phasor
     }
@@ -23,11 +26,12 @@ public partial class MainWindow
     private PhasorScope? _phasorScope;
     private ComboBox? _phasorQuantityCombo;
     private DispatcherTimer? _phasorRefreshTimer;
-    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Dual;
+    private AnalysisWorkspaceMode _analysisWorkspaceMode = AnalysisWorkspaceMode.Waveform;
     private PhasorDisplayMode _phasorDisplayMode = PhasorDisplayMode.Current;
     private TextBlock? _analysisTitleText;
     private TextBlock? _analysisBadgeText;
     private string? _lastPhasorPresentationSignature;
+    private TranslateTransform? _injectionDrawerTransform;
 
     protected override void OnContentRendered(EventArgs e)
     {
@@ -60,6 +64,7 @@ public partial class MainWindow
 
         SmvScope.Margin = new Thickness(0);
         Grid.SetColumn(SmvScope, 0);
+        Panel.SetZIndex(SmvScope, 0);
         _analysisHost.Children.Add(SmvScope);
 
         _phasorScope = new PhasorScope
@@ -70,9 +75,18 @@ public partial class MainWindow
                 "Waiting for a complete 4I+4V one-cycle phasor window.")
         };
         Grid.SetColumn(_phasorScope, 2);
+        Panel.SetZIndex(_phasorScope, 0);
         _analysisHost.Children.Add(_phasorScope);
 
         InitializeVirtualInjectionEditor();
+        if (_virtualInjectionView is not null)
+        {
+            _injectionDrawerTransform = new TranslateTransform();
+            _virtualInjectionView.RenderTransform = _injectionDrawerTransform;
+            _virtualInjectionView.RenderTransformOrigin = new Point(0, 0.5);
+            Panel.SetZIndex(_virtualInjectionView, 4);
+        }
+
         InstallAnalysisHeaderControls();
         UpdateAnalysisSourceMode(announce: false);
 
@@ -109,17 +123,20 @@ public partial class MainWindow
         if (measurementSummary is null)
             return;
 
+        // Three zones only: title, compact view/source controls, measurements.
+        // The previous four-mode tab strip consumed enough width to clip the
+        // first control at common laptop/DPI sizes.
         headerGrid.ColumnDefinitions.Clear();
-        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(232) });
+        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(210) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition
         {
             Width = new GridLength(1, GridUnitType.Star),
-            MinWidth = 292
+            MinWidth = 360
         });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         Grid.SetColumn(titleBlock, 0);
-        titleBlock.Width = 232;
+        titleBlock.Width = 210;
         titleBlock.VerticalAlignment = VerticalAlignment.Center;
         titleBlock.HorizontalAlignment = HorizontalAlignment.Left;
 
@@ -127,14 +144,14 @@ public partial class MainWindow
         foreach (var child in titleLine.Children.OfType<FrameworkElement>())
             child.VerticalAlignment = VerticalAlignment.Center;
 
-        StreamHealthText.MaxWidth = 76;
+        StreamHealthText.MaxWidth = 72;
         StreamHealthText.TextTrimming = TextTrimming.CharacterEllipsis;
         StreamHealthText.VerticalAlignment = VerticalAlignment.Center;
 
         var subtitle = titleBlock.Children.OfType<TextBlock>().FirstOrDefault();
         if (subtitle is not null)
         {
-            subtitle.Width = 232;
+            subtitle.Width = 210;
             subtitle.Margin = new Thickness(0, 3, 0, 0);
             subtitle.VerticalAlignment = VerticalAlignment.Center;
             subtitle.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -144,7 +161,7 @@ public partial class MainWindow
         Grid.SetColumn(measurementSummary, 2);
         measurementSummary.VerticalAlignment = VerticalAlignment.Center;
         measurementSummary.HorizontalAlignment = HorizontalAlignment.Right;
-        measurementSummary.Margin = new Thickness(14, 0, 0, 0);
+        measurementSummary.Margin = new Thickness(10, 0, 0, 0);
 
         var measurementGroups = measurementSummary.Children.OfType<StackPanel>().ToArray();
         for (var index = 0; index < measurementGroups.Length; index++)
@@ -152,8 +169,8 @@ public partial class MainWindow
             var group = measurementGroups[index];
             group.VerticalAlignment = VerticalAlignment.Center;
             group.HorizontalAlignment = HorizontalAlignment.Left;
-            group.MinWidth = index == measurementGroups.Length - 1 ? 62 : 47;
-            group.Margin = new Thickness(0, 0, index == measurementGroups.Length - 1 ? 0 : 11, 0);
+            group.MinWidth = index == measurementGroups.Length - 1 ? 60 : 45;
+            group.Margin = new Thickness(0, 0, index == measurementGroups.Length - 1 ? 0 : 9, 0);
 
             foreach (var text in group.Children.OfType<TextBlock>())
             {
@@ -166,9 +183,9 @@ public partial class MainWindow
         var controlsLine = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 8, 0)
+            Margin = new Thickness(6, 0, 6, 0)
         };
         Grid.SetColumn(controlsLine, 1);
         headerGrid.Children.Add(controlsLine);
@@ -191,24 +208,24 @@ public partial class MainWindow
         viewGroup.Child = viewPanel;
         controlsLine.Children.Add(viewGroup);
 
-        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Injection, "INJECT");
-        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Waveform, "WAVE");
-        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Dual, "DUAL");
-        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Phasor, "PHASOR");
+        // Phasor is now permanent on the right. The only user decision is what
+        // occupies the large left pane: waveform evidence or the injection drawer.
+        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Waveform, "WAVEFORM");
+        AddAnalysisModeButton(viewPanel, AnalysisWorkspaceMode.Injection, "INJECTION");
 
         _phasorQuantityCombo = new ComboBox
         {
-            Width = 108,
+            Width = 104,
             Height = 32,
             MinHeight = 32,
             MaxHeight = 32,
             Margin = new Thickness(8, 0, 0, 0),
             Padding = new Thickness(8, 0, 8, 0),
-            FontSize = 10.5,
+            FontSize = 10.2,
             VerticalAlignment = VerticalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             HorizontalContentAlignment = HorizontalAlignment.Left,
-            ToolTip = "Select current, voltage, or symmetrical-component phasors"
+            ToolTip = "Select the quantity shown by the phasor panel on the right"
         };
         _phasorQuantityCombo.Items.Add("Current I");
         _phasorQuantityCombo.Items.Add("Voltage U");
@@ -234,16 +251,11 @@ public partial class MainWindow
         {
             Style = (Style)FindResource("CompactButton"),
             Content = label,
-            MinWidth = mode switch
-            {
-                AnalysisWorkspaceMode.Injection => 54,
-                AnalysisWorkspaceMode.Phasor => 54,
-                _ => 42
-            },
+            MinWidth = mode == AnalysisWorkspaceMode.Injection ? 76 : 78,
             Height = 26,
             MinHeight = 26,
             MaxHeight = 26,
-            Padding = new Thickness(7, 0, 7, 0),
+            Padding = new Thickness(9, 0, 9, 0),
             Margin = new Thickness(0),
             BorderThickness = new Thickness(0),
             FontSize = 9.1,
@@ -252,13 +264,9 @@ public partial class MainWindow
             VerticalContentAlignment = VerticalAlignment.Center,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = mode switch
-            {
-                AnalysisWorkspaceMode.Injection => "Edit the internal 4I+4V source while keeping the phasor visible",
-                AnalysisWorkspaceMode.Waveform => "Use the full analysis area for the stationary waveform",
-                AnalysisWorkspaceMode.Dual => "Show waveform and compact phasor together",
-                _ => "Use the full analysis area for the phasor diagram"
-            }
+            ToolTip = mode == AnalysisWorkspaceMode.Injection
+                ? "Slide in the virtual injection editor; live phasor remains visible on the right"
+                : "Show waveform evidence; live phasor remains visible on the right"
         };
         button.Click += (_, _) => ApplyAnalysisWorkspaceMode(mode, announce: true);
         parent.Children.Add(button);
@@ -280,13 +288,11 @@ public partial class MainWindow
         }
 
         if (!injectionAvailable && _analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
-            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
+            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Waveform, announce);
         else if (internalMode)
             ApplyAnalysisWorkspaceMode(_analysisWorkspaceMode, announce);
-        else if (_analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
-            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Dual, announce);
         else
-            ApplyAnalysisWorkspaceMode(_analysisWorkspaceMode, announce: false);
+            ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode.Waveform, announce: false);
     }
 
     private void ApplyAnalysisWorkspaceMode(AnalysisWorkspaceMode mode, bool announce)
@@ -294,52 +300,36 @@ public partial class MainWindow
         if (_analysisHost is null || _phasorScope is null)
             return;
 
+        // Legacy callers still request DUAL/PHASOR. Product UX intentionally
+        // normalizes both to WAVEFORM because the phasor is permanently visible.
+        mode = mode == AnalysisWorkspaceMode.Injection
+            ? AnalysisWorkspaceMode.Injection
+            : AnalysisWorkspaceMode.Waveform;
+
         var injectionAvailable = SourceCombo.SelectedIndex == 0 && !IsAdvancedInjectionOpen;
         if (mode == AnalysisWorkspaceMode.Injection && !injectionAvailable)
-            mode = AnalysisWorkspaceMode.Dual;
+            mode = AnalysisWorkspaceMode.Waveform;
 
+        var previousMode = _analysisWorkspaceMode;
         _analysisWorkspaceMode = mode;
-        SmvScope.Visibility = Visibility.Collapsed;
-        _phasorScope.Visibility = Visibility.Collapsed;
+
+        // Permanent analysis geometry: large evidence/source pane on the left,
+        // narrow gap, compact live phasor on the right.
+        var columns = _analysisHost.ColumnDefinitions;
+        columns[0].Width = new GridLength(2.35, GridUnitType.Star);
+        columns[1].Width = new GridLength(9);
+        columns[2].Width = new GridLength(0.85, GridUnitType.Star);
+        SmvScope.Visibility = Visibility.Visible;
+        _phasorScope.Visibility = Visibility.Visible;
 
         var editorIsInMainWorkspace = _virtualInjectionView is not null &&
                                       ReferenceEquals(_virtualInjectionView.Parent, _analysisHost);
         if (editorIsInMainWorkspace)
-            _virtualInjectionView!.Visibility = Visibility.Collapsed;
-
-        var columns = _analysisHost.ColumnDefinitions;
-        switch (mode)
         {
-            case AnalysisWorkspaceMode.Injection:
-                columns[0].Width = new GridLength(2.35, GridUnitType.Star);
-                columns[1].Width = new GridLength(9);
-                columns[2].Width = new GridLength(0.85, GridUnitType.Star);
-                if (editorIsInMainWorkspace)
-                    _virtualInjectionView!.Visibility = Visibility.Visible;
-                _phasorScope.Visibility = Visibility.Visible;
-                break;
-
-            case AnalysisWorkspaceMode.Waveform:
-                columns[0].Width = new GridLength(1, GridUnitType.Star);
-                columns[1].Width = new GridLength(0);
-                columns[2].Width = new GridLength(0);
-                SmvScope.Visibility = Visibility.Visible;
-                break;
-
-            case AnalysisWorkspaceMode.Phasor:
-                columns[0].Width = new GridLength(0);
-                columns[1].Width = new GridLength(0);
-                columns[2].Width = new GridLength(1, GridUnitType.Star);
-                _phasorScope.Visibility = Visibility.Visible;
-                break;
-
-            default:
-                columns[0].Width = new GridLength(2.35, GridUnitType.Star);
-                columns[1].Width = new GridLength(9);
-                columns[2].Width = new GridLength(0.85, GridUnitType.Star);
-                SmvScope.Visibility = Visibility.Visible;
-                _phasorScope.Visibility = Visibility.Visible;
-                break;
+            var showDrawer = mode == AnalysisWorkspaceMode.Injection;
+            SetInjectionDrawerVisible(
+                showDrawer,
+                animate: previousMode != mode && IsVisible);
         }
 
         var accent = new SolidColorBrush(Color.FromRgb(46, 111, 158));
@@ -359,33 +349,100 @@ public partial class MainWindow
         UpdateAnalysisHeader(mode);
         if (announce)
         {
-            var description = mode switch
-            {
-                AnalysisWorkspaceMode.Injection => "Virtual injection + live phasor",
-                AnalysisWorkspaceMode.Waveform => "Waveform focus",
-                AnalysisWorkspaceMode.Phasor => "Phasor focus",
-                _ => "Waveform + compact phasor"
-            };
-            StatusText.Text = $"Analysis view · {description}.";
+            StatusText.Text = mode == AnalysisWorkspaceMode.Injection
+                ? "Analysis view · Injection editor + live phasor."
+                : "Analysis view · Waveform + live phasor.";
         }
+    }
+
+    private void SetInjectionDrawerVisible(bool show, bool animate)
+    {
+        if (_analysisHost is null ||
+            _virtualInjectionView is null ||
+            _injectionDrawerTransform is null ||
+            !ReferenceEquals(_virtualInjectionView.Parent, _analysisHost))
+            return;
+
+        var drawerWidth = Math.Max(480, _analysisHost.ColumnDefinitions[0].ActualWidth);
+        _injectionDrawerTransform.BeginAnimation(TranslateTransform.XProperty, null);
+
+        if (!animate)
+        {
+            _injectionDrawerTransform.X = show ? 0 : -drawerWidth;
+            _virtualInjectionView.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+
+        if (show)
+        {
+            _virtualInjectionView.Visibility = Visibility.Visible;
+            _injectionDrawerTransform.X = -drawerWidth;
+            var slideIn = new DoubleAnimation
+            {
+                From = -drawerWidth,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(190),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop
+            };
+            slideIn.Completed += (_, _) =>
+            {
+                if (_injectionDrawerTransform is null)
+                    return;
+                _injectionDrawerTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                _injectionDrawerTransform.X = 0;
+                if (_analysisWorkspaceMode != AnalysisWorkspaceMode.Injection &&
+                    _virtualInjectionView is not null)
+                    _virtualInjectionView.Visibility = Visibility.Collapsed;
+            };
+            _injectionDrawerTransform.BeginAnimation(TranslateTransform.XProperty, slideIn);
+            return;
+        }
+
+        if (_virtualInjectionView.Visibility != Visibility.Visible)
+        {
+            _injectionDrawerTransform.X = -drawerWidth;
+            return;
+        }
+
+        var slideOut = new DoubleAnimation
+        {
+            From = _injectionDrawerTransform.X,
+            To = -drawerWidth,
+            Duration = TimeSpan.FromMilliseconds(160),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+            FillBehavior = FillBehavior.Stop
+        };
+        slideOut.Completed += (_, _) =>
+        {
+            if (_injectionDrawerTransform is null || _virtualInjectionView is null)
+                return;
+            _injectionDrawerTransform.BeginAnimation(TranslateTransform.XProperty, null);
+            if (_analysisWorkspaceMode == AnalysisWorkspaceMode.Injection)
+            {
+                _injectionDrawerTransform.X = 0;
+                _virtualInjectionView.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _injectionDrawerTransform.X = -drawerWidth;
+                _virtualInjectionView.Visibility = Visibility.Collapsed;
+            }
+        };
+        _injectionDrawerTransform.BeginAnimation(TranslateTransform.XProperty, slideOut);
     }
 
     private void UpdateAnalysisHeader(AnalysisWorkspaceMode mode)
     {
         if (_analysisTitleText is not null)
-            SetTextIfChanged(_analysisTitleText, mode switch
-            {
-                AnalysisWorkspaceMode.Injection => "Virtual injection",
-                AnalysisWorkspaceMode.Phasor => "Phasor analysis",
-                _ => "SMV waveform"
-            });
+            SetTextIfChanged(
+                _analysisTitleText,
+                mode == AnalysisWorkspaceMode.Injection ? "Virtual injection" : "SMV waveform");
+
         if (_analysisBadgeText is not null)
-            SetTextIfChanged(_analysisBadgeText, mode switch
-            {
-                AnalysisWorkspaceMode.Injection => "AUTO APPLY",
-                AnalysisWorkspaceMode.Phasor => "1 CYCLE",
-                _ => "2 CYCLES"
-            });
+            SetTextIfChanged(
+                _analysisBadgeText,
+                mode == AnalysisWorkspaceMode.Injection ? "SOURCE" : "2 CYCLES");
     }
 
     private void RefreshPhasorFrame()
