@@ -10,6 +10,7 @@ public partial class App : System.Windows.Application
     {
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        InstallUxFoundationResources();
         base.OnStartup(e);
     }
 
@@ -23,6 +24,7 @@ public partial class App : System.Windows.Application
         if (MainWindow is Arvrel.App.MainWindow window)
         {
             window.InitializeP6VirtualRelay();
+            window.InitializeGlobalUxFoundation();
             window.InitializeMultiIedWorkspace();
         }
     }
@@ -32,6 +34,20 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException -= App_DispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException -= CurrentDomain_UnhandledException;
         base.OnExit(e);
+    }
+
+    private void InstallUxFoundationResources()
+    {
+        if (Resources.MergedDictionaries.Any(dictionary =>
+                dictionary.Source?.OriginalString.Contains("ArvrelUxFoundation.xaml", StringComparison.OrdinalIgnoreCase) == true))
+            return;
+
+        Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri(
+                "pack://application:,,,/ARVREL;component/Themes/ArvrelUxFoundation.xaml",
+                UriKind.Absolute)
+        });
     }
 
     private static void App_DispatcherUnhandledException(
