@@ -64,6 +64,52 @@ public sealed record CtSaturationSettings
     }
 }
 
+/// <summary>
+/// Persistent numerical state for one CT secondary circuit. Flux linkage is stored in
+/// volt-seconds so state can be resumed without renormalizing it to a display window.
+/// </summary>
+public sealed record CtSaturationChannelState(
+    bool Initialized,
+    double FluxLinkageVoltSeconds,
+    double PreviousSecondaryCurrentA,
+    double PreviousSecondaryVoltageV,
+    long ProcessedSampleCount)
+{
+    public static CtSaturationChannelState Empty { get; } = new(false, 0, 0, 0, 0);
+
+    public bool HasHistory => Initialized && ProcessedSampleCount > 0;
+
+    public void Validate()
+    {
+        if (!double.IsFinite(FluxLinkageVoltSeconds))
+            throw new ArgumentOutOfRangeException(nameof(FluxLinkageVoltSeconds));
+        if (!double.IsFinite(PreviousSecondaryCurrentA))
+            throw new ArgumentOutOfRangeException(nameof(PreviousSecondaryCurrentA));
+        if (!double.IsFinite(PreviousSecondaryVoltageV))
+            throw new ArgumentOutOfRangeException(nameof(PreviousSecondaryVoltageV));
+        if (ProcessedSampleCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(ProcessedSampleCount));
+    }
+}
+
+public sealed record CtSaturationRuntimeState(
+    CtSaturationChannelState PhaseA,
+    CtSaturationChannelState PhaseB,
+    CtSaturationChannelState PhaseC,
+    CtSaturationChannelState Neutral)
+{
+    public static CtSaturationRuntimeState Empty { get; } = new(
+        CtSaturationChannelState.Empty,
+        CtSaturationChannelState.Empty,
+        CtSaturationChannelState.Empty,
+        CtSaturationChannelState.Empty);
+
+    public bool HasHistory => PhaseA.HasHistory || PhaseB.HasHistory || PhaseC.HasHistory || Neutral.HasHistory;
+    public long MaximumProcessedSampleCount => Math.Max(
+        Math.Max(PhaseA.ProcessedSampleCount, PhaseB.ProcessedSampleCount),
+        Math.Max(PhaseC.ProcessedSampleCount, Neutral.ProcessedSampleCount));
+}
+
 public sealed record CtSaturationChannelDiagnostics(
     bool Enabled,
     bool Saturated,
@@ -79,6 +125,13 @@ public sealed record CtSaturationChannelDiagnostics(
     double WaveformErrorPercent,
     double MinimumMagnitudeRatio)
 {
+    public double InitialFluxPerUnit { get; init; }
+    public double FinalFluxPerUnit { get; init; }
+    public bool StateWasCarried { get; init; }
+    public long InitialProcessedSampleCount { get; init; }
+    public long FinalProcessedSampleCount { get; init; }
+    public long FirstSaturationAbsoluteSample { get; init; } = -1;
+
     public static CtSaturationChannelDiagnostics Disabled { get; } = new(
         false,
         false,
@@ -101,14 +154,21 @@ public sealed record CtSaturationChannelResult(
     double[] ExcitationCurrentA,
     CtSaturationChannelDiagnostics Diagnostics)
 {
-    public static CtSaturationChannelResult PassThrough(IReadOnlyList<double> samples)
+    public CtSaturationChannelState FinalState { get; init; } = CtSaturationChannelState.Empty;
+
+    public static CtSaturationChannelResult PassThrough(
+        IReadOnlyList<double> samples,
+        CtSaturationChannelState? state = null)
     {
         ArgumentNullException.ThrowIfNull(samples);
         return new CtSaturationChannelResult(
             samples.ToArray(),
             new double[samples.Count],
             new double[samples.Count],
-            CtSaturationChannelDiagnostics.Disabled);
+            CtSaturationChannelDiagnostics.Disabled)
+        {
+            FinalState = state ?? CtSaturationChannelState.Empty
+        };
     }
 }
 
@@ -126,6 +186,7 @@ public sealed record CtSaturationFrameDiagnostics(
 
     public bool Enabled => PhaseA.Enabled || PhaseB.Enabled || PhaseC.Enabled || Neutral.Enabled;
     public bool Saturated => PhaseA.Saturated || PhaseB.Saturated || PhaseC.Saturated || Neutral.Saturated;
+    public bool StateWasCarried => PhaseA.StateWasCarried || PhaseB.StateWasCarried || PhaseC.StateWasCarried || Neutral.StateWasCarried;
     public int SaturatedChannelCount =>
         (PhaseA.Saturated ? 1 : 0) +
         (PhaseB.Saturated ? 1 : 0) +
@@ -136,7 +197,9 @@ public sealed record CtSaturationFrameDiagnostics(
         ? "CT ideal"
         : Saturated
             ? $"CT SAT · {SaturatedChannelCount} channel(s)"
-            : "CT nonlinear · unsaturated";
+            : StateWasCarried
+                ? "CT nonlinear · stateful"
+                : "CT nonlinear · unsaturated";
 }
 
 /// <summary>
@@ -155,6 +218,14 @@ public static class CtSaturationModel
         double sampleRateHz,
         double frequencyHz,
         CtSaturationSettings settings)
+        => Apply(idealSecondaryCurrentA, sampleRateHz, frequencyHz, settings, null);
+
+    public static CtSaturationChannelResult Apply(
+        IReadOnlyList<double> idealSecondaryCurrentA,
+        double sampleRateHz,
+        double frequencyHz,
+        CtSaturationSettings settings,
+        CtSaturationChannelState? initialState)
     {
         ArgumentNullException.ThrowIfNull(idealSecondaryCurrentA);
         ArgumentNullException.ThrowIfNull(settings);
@@ -173,8 +244,9 @@ public static class CtSaturationModel
                     $"Current sample {index} is not finite.");
         }
 
+        initialState?.Validate();
         if (!settings.Enabled || idealSecondaryCurrentA.Count == 0)
-            return CtSaturationChannelResult.PassThrough(idealSecondaryCurrentA);
+            return CtSaturationChannelResult.PassThrough(idealSecondaryCurrentA, initialState);
 
         var count = idealSecondaryCurrentA.Count;
         var secondary = new double[count];
@@ -187,12 +259,17 @@ public static class CtSaturationModel
         var burdenInductance = settings.BurdenInductanceMilliHenries / 1_000d;
         var maximumFlux = settings.MaximumFluxPerUnit * kneeFluxLinkage;
 
-        var previousFlux = settings.RemanencePercent / 100d * kneeFluxLinkage;
-        var previousSecondary = 0d;
-        var previousVoltage = 0d;
+        var carriedState = initialState is { Initialized: true };
+        var previousFlux = carriedState
+            ? Math.Clamp(initialState!.FluxLinkageVoltSeconds, -maximumFlux, maximumFlux)
+            : settings.RemanencePercent / 100d * kneeFluxLinkage;
+        var previousSecondary = carriedState ? initialState!.PreviousSecondaryCurrentA : 0d;
+        var previousVoltage = carriedState ? initialState!.PreviousSecondaryVoltageV : 0d;
+        var initialProcessedSampleCount = carriedState ? initialState!.ProcessedSampleCount : 0;
+        var initialFluxPerUnit = previousFlux / kneeFluxLinkage;
         var saturatedSamples = 0;
         var firstSaturatedSample = -1;
-        var maximumAbsoluteFluxPerUnit = Math.Abs(previousFlux / kneeFluxLinkage);
+        var maximumAbsoluteFluxPerUnit = Math.Abs(initialFluxPerUnit);
         var maximumExcitation = 0d;
         var maximumVoltage = 0d;
         var minimumMagnitudeRatio = 1d;
@@ -271,6 +348,13 @@ public static class CtSaturationModel
         var firstSaturationMilliseconds = firstSaturatedSample >= 0
             ? firstSaturatedSample * 1_000d / sampleRateHz
             : double.NaN;
+        var finalProcessedSampleCount = checked(initialProcessedSampleCount + count);
+        var finalState = new CtSaturationChannelState(
+            true,
+            previousFlux,
+            previousSecondary,
+            previousVoltage,
+            finalProcessedSampleCount);
 
         var diagnostics = new CtSaturationChannelDiagnostics(
             true,
@@ -285,13 +369,26 @@ public static class CtSaturationModel
             secondaryRms,
             rmsMagnitudeErrorPercent,
             waveformErrorPercent,
-            ratioWasMeasured ? minimumMagnitudeRatio : 1);
+            ratioWasMeasured ? minimumMagnitudeRatio : 1)
+        {
+            InitialFluxPerUnit = initialFluxPerUnit,
+            FinalFluxPerUnit = previousFlux / kneeFluxLinkage,
+            StateWasCarried = carriedState && initialProcessedSampleCount > 0,
+            InitialProcessedSampleCount = initialProcessedSampleCount,
+            FinalProcessedSampleCount = finalProcessedSampleCount,
+            FirstSaturationAbsoluteSample = firstSaturatedSample >= 0
+                ? initialProcessedSampleCount + firstSaturatedSample
+                : -1
+        };
 
         return new CtSaturationChannelResult(
             secondary,
             fluxPerUnit,
             excitation,
-            diagnostics);
+            diagnostics)
+        {
+            FinalState = finalState
+        };
     }
 
     private static double ExcitationCurrent(
