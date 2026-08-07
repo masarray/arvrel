@@ -51,6 +51,7 @@ public partial class AvrWorkspaceControl
         // can gain/lose room when the configuration rail changes, but the AVR
         // chassis itself must retain the same width like a real panel device.
         LockPhysicalFaceplateGeometry(displayBorder);
+        SetConfigurationExpanded(false);
 
         _p0Hmi = new AvrP0HmiControl
         {
