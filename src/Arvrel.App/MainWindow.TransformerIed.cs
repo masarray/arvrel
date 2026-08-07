@@ -8,11 +8,8 @@ public partial class MainWindow
 {
     private bool _transformerIedEntryInjected;
 
-    protected override void OnContentRendered(EventArgs e)
-    {
-        base.OnContentRendered(e);
-        InjectTransformerIedEntryPoint();
-    }
+    public void InitializeTransformerIedEntryPoint()
+        => InjectTransformerIedEntryPoint();
 
     private void InjectTransformerIedEntryPoint()
     {
