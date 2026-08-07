@@ -41,12 +41,10 @@ internal sealed record AvrIec61850ControlContext(
 #if ARIEC61850_SIBLING
 /// <summary>
 /// Per-MMS-association process-control runtime for the virtual AVR.
-///
-/// It deliberately claims only the explicitly modelled AVR controls/settings;
-/// every unrelated MMS write falls through to ARIEC61850's read-only guard.
-/// The runtime owns IEC 61850 select state per association and queues accepted
-/// operations back to the WPF/AVR authority thread instead of mutating the AVR
-/// engine from a socket thread.
+/// It claims only explicitly modelled AVR controls/settings; all other writes
+/// continue to ARIEC61850's read-only guard. The dispatcher removes the FC
+/// segment when converting MMS names to IEC references, so this runtime matches
+/// decoded paths such as YLTC1.TapChg.Oper.
 /// </summary>
 internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDisposable
 {
@@ -56,11 +54,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
     private const int DataAccessErrorObjectNonExistent = 10;
     private static readonly TimeSpan SboTimeout = TimeSpan.FromSeconds(5);
 
-    private sealed record Selection(
-        string ControlRoot,
-        long? ControlValue,
-        byte? ControlNumber,
-        DateTimeOffset ExpiresAtUtc);
+    private sealed record Selection(string ControlRoot, long? ControlValue, byte? ControlNumber, DateTimeOffset ExpiresAtUtc);
 
     private readonly string _remoteEndPoint;
     private readonly Func<AvrIec61850ControlContext> _context;
@@ -94,9 +88,6 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
         PurgeExpiredSelections();
         if (!CanSelect(controlRoot, _context(), out var reason))
         {
-            // IEC 61850 normal-security SBO selection is a Read. An empty object
-            // reference communicates a failed selection without claiming the
-            // underlying process point as an ordinary writable data attribute.
             value = MmsDataValue.VisibleString(string.Empty);
             _audit(false, target, reason);
             return true;
@@ -143,8 +134,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
     private bool SelectWithValue(string controlRoot, string target, MmsDataValue value, out int error)
     {
         error = 0;
-        var context = _context();
-        if (!CanSelect(controlRoot, context, out var reason))
+        if (!CanSelect(controlRoot, _context(), out var reason))
         {
             error = reason.Contains("moving", StringComparison.OrdinalIgnoreCase)
                 ? DataAccessErrorTemporarilyUnavailable
@@ -197,11 +187,9 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
             return true;
         }
 
-        var context = _context();
-        if (!ValidateOperate(controlRoot, ctlVal, context, out var command, out reason))
+        if (!ValidateOperate(controlRoot, ctlVal, _context(), out var command, out reason))
         {
-            error = reason.Contains("moving", StringComparison.OrdinalIgnoreCase) ||
-                    reason.Contains("limit", StringComparison.OrdinalIgnoreCase)
+            error = reason.Contains("moving", StringComparison.OrdinalIgnoreCase) || reason.Contains("limit", StringComparison.OrdinalIgnoreCase)
                 ? DataAccessErrorTemporarilyUnavailable
                 : DataAccessErrorObjectAccessDenied;
             _audit(false, target, reason);
@@ -209,13 +197,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
         }
 
         _selections.Remove(controlRoot);
-        _enqueue(command with
-        {
-            RemoteEndPoint = _remoteEndPoint,
-            Target = target,
-            ControlNumber = ctlNum,
-            Test = test
-        });
+        _enqueue(command with { RemoteEndPoint = _remoteEndPoint, Target = target, ControlNumber = ctlNum, Test = test });
         _audit(true, target, $"Operate accepted ctlVal={ctlVal} ctlNum={(ctlNum?.ToString() ?? "-")}{(test ? " TEST" : string.Empty)}");
         return true;
     }
@@ -225,9 +207,9 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
         error = 0;
         var kind = target switch
         {
-            "ARVAVR1/ATCC1$SP$BNDCTR$SETMAG$F" => AvrIec61850CommandKind.SetSetpoint,
-            "ARVAVR1/ATCC1$SP$BNDWID$SETMAG$F" => AvrIec61850CommandKind.SetBandwidth,
-            "ARVAVR1/ATCC1$SP$CTLDLTMMS$SETVAL" => AvrIec61850CommandKind.SetT1Delay,
+            "ARVAVR1/ATCC1$BNDCTR$SETMAG$F" => AvrIec61850CommandKind.SetSetpoint,
+            "ARVAVR1/ATCC1$BNDWID$SETMAG$F" => AvrIec61850CommandKind.SetBandwidth,
+            "ARVAVR1/ATCC1$CTLDLTMMS$SETVAL" => AvrIec61850CommandKind.SetT1Delay,
             _ => (AvrIec61850CommandKind?)null
         };
         if (!kind.HasValue)
@@ -279,23 +261,16 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
             reason = "Control selection requires REMOTE authority";
             return false;
         }
-
-        if (controlRoot.Contains("YLTC1$CO$TAPCHG", StringComparison.OrdinalIgnoreCase) && context.TapMoving)
+        if (controlRoot.Contains("YLTC1$TAPCHG", StringComparison.OrdinalIgnoreCase) && context.TapMoving)
         {
             reason = "Tap-change selection unavailable while tap changer is moving";
             return false;
         }
-
         reason = string.Empty;
         return true;
     }
 
-    private static bool ValidateOperate(
-        string controlRoot,
-        long ctlVal,
-        AvrIec61850ControlContext context,
-        out AvrIec61850Command command,
-        out string reason)
+    private static bool ValidateOperate(string controlRoot, long ctlVal, AvrIec61850ControlContext context, out AvrIec61850Command command, out string reason)
     {
         command = new AvrIec61850Command(AvrIec61850CommandKind.TapChange, 0, false, string.Empty, string.Empty);
         if (context.Authority != AvrControlAuthority.Remote)
@@ -304,7 +279,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
             return false;
         }
 
-        if (controlRoot.Contains("YLTC1$CO$TAPCHG", StringComparison.OrdinalIgnoreCase))
+        if (controlRoot.Contains("YLTC1$TAPCHG", StringComparison.OrdinalIgnoreCase))
         {
             if (ctlVal is < 0 or > 2)
             {
@@ -336,20 +311,19 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
                 reason = "TapChg RAISE rejected: maximum tap limit reached";
                 return false;
             }
-
             command = new AvrIec61850Command(AvrIec61850CommandKind.TapChange, ctlVal, false, string.Empty, string.Empty);
             reason = string.Empty;
             return true;
         }
 
-        if (controlRoot.Contains("ATCC1$CO$AUTO", StringComparison.OrdinalIgnoreCase))
+        if (controlRoot.Contains("ATCC1$AUTO", StringComparison.OrdinalIgnoreCase))
         {
             command = new AvrIec61850Command(AvrIec61850CommandKind.SetAutomaticMode, 0, ctlVal != 0, string.Empty, string.Empty);
             reason = string.Empty;
             return true;
         }
 
-        if (controlRoot.Contains("ATCC1$CO$LTCBLK", StringComparison.OrdinalIgnoreCase))
+        if (controlRoot.Contains("ATCC1$LTCBLK", StringComparison.OrdinalIgnoreCase))
         {
             command = new AvrIec61850Command(AvrIec61850CommandKind.SetRemoteBlock, 0, ctlVal != 0, string.Empty, string.Empty);
             reason = string.Empty;
@@ -360,32 +334,20 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
         return false;
     }
 
-    private static bool TryControlValue(
-        string controlRoot,
-        MmsDataValue value,
-        out long ctlVal,
-        out byte? ctlNum,
-        out bool test,
-        out string reason)
+    private static bool TryControlValue(string controlRoot, MmsDataValue value, out long ctlVal, out byte? ctlNum, out bool test, out string reason)
     {
         ctlVal = 0;
         ctlNum = null;
         test = false;
-
-        var primary = value.Kind is MmsDataKind.Structure or MmsDataKind.Array
-            ? value.Children.FirstOrDefault()
-            : value;
+        var primary = value.Kind is MmsDataKind.Structure or MmsDataKind.Array ? value.Children.FirstOrDefault() : value;
         if (primary is null || !TryLong(primary, out ctlVal))
         {
             reason = "Control value has no decodable ctlVal";
             return false;
         }
 
-        if (controlRoot.Contains("ATCC1$CO$AUTO", StringComparison.OrdinalIgnoreCase) ||
-            controlRoot.Contains("ATCC1$CO$LTCBLK", StringComparison.OrdinalIgnoreCase))
-        {
+        if (controlRoot.Contains("ATCC1$AUTO", StringComparison.OrdinalIgnoreCase) || controlRoot.Contains("ATCC1$LTCBLK", StringComparison.OrdinalIgnoreCase))
             ctlVal = ctlVal == 0 ? 0 : 1;
-        }
 
         if (value.Kind is MmsDataKind.Structure or MmsDataKind.Array)
         {
@@ -394,7 +356,6 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
             if (value.Children.Count > 4 && TryBoolean(value.Children[4], out var isTest))
                 test = isTest;
         }
-
         reason = string.Empty;
         return true;
     }
@@ -403,24 +364,16 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
     {
         controlRoot = string.Empty;
         action = string.Empty;
-        var roots = new[]
-        {
-            "ARVAVR1/YLTC1$CO$TAPCHG",
-            "ARVAVR1/ATCC1$CO$AUTO",
-            "ARVAVR1/ATCC1$CO$LTCBLK"
-        };
-
+        var roots = new[] { "ARVAVR1/YLTC1$TAPCHG", "ARVAVR1/ATCC1$AUTO", "ARVAVR1/ATCC1$LTCBLK" };
         foreach (var root in roots)
         {
             if (!target.StartsWith(root + "$", StringComparison.OrdinalIgnoreCase))
                 continue;
-
             controlRoot = root;
             var suffix = target[(root.Length + 1)..];
             action = suffix.Split('$', StringSplitOptions.RemoveEmptyEntries)[0].ToUpperInvariant();
             return action is "SBO" or "SBOW" or "OPER" or "CANCEL";
         }
-
         return false;
     }
 
@@ -428,80 +381,39 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
     {
         switch (value.Kind)
         {
-            case MmsDataKind.Boolean when value.Value is bool boolean:
-                result = boolean ? 1 : 0;
-                return true;
-            case MmsDataKind.Integer when value.Value is long signed:
-                result = signed;
-                return true;
-            case MmsDataKind.Unsigned when value.Value is ulong unsigned && unsigned <= long.MaxValue:
-                result = (long)unsigned;
-                return true;
-            case MmsDataKind.FloatingPoint when value.Value is float single:
-                result = (long)single;
-                return true;
-            case MmsDataKind.FloatingPoint when value.Value is double floating:
-                result = (long)floating;
-                return true;
-            default:
-                result = 0;
-                return false;
+            case MmsDataKind.Boolean when value.Value is bool boolean: result = boolean ? 1 : 0; return true;
+            case MmsDataKind.Integer when value.Value is long signed: result = signed; return true;
+            case MmsDataKind.Unsigned when value.Value is ulong unsigned && unsigned <= long.MaxValue: result = (long)unsigned; return true;
+            case MmsDataKind.FloatingPoint when value.Value is float single: result = (long)single; return true;
+            case MmsDataKind.FloatingPoint when value.Value is double floating: result = (long)floating; return true;
+            default: result = 0; return false;
         }
     }
 
     private static bool TryBoolean(MmsDataValue value, out bool result)
     {
-        if (value.Kind == MmsDataKind.Boolean && value.Value is bool boolean)
-        {
-            result = boolean;
-            return true;
-        }
-        if (TryLong(value, out var numeric))
-        {
-            result = numeric != 0;
-            return true;
-        }
-
+        if (value.Kind == MmsDataKind.Boolean && value.Value is bool boolean) { result = boolean; return true; }
+        if (TryLong(value, out var numeric)) { result = numeric != 0; return true; }
         result = false;
         return false;
     }
 
     private static bool TryDouble(MmsDataValue value, out double result)
     {
-        var primary = value.Kind is MmsDataKind.Structure or MmsDataKind.Array
-            ? value.Children.FirstOrDefault()
-            : value;
-        if (primary is null)
-        {
-            result = 0;
-            return false;
-        }
-
+        var primary = value.Kind is MmsDataKind.Structure or MmsDataKind.Array ? value.Children.FirstOrDefault() : value;
+        if (primary is null) { result = 0; return false; }
         switch (primary.Kind)
         {
-            case MmsDataKind.FloatingPoint when primary.Value is float single:
-                result = single;
-                return double.IsFinite(result);
-            case MmsDataKind.FloatingPoint when primary.Value is double floating:
-                result = floating;
-                return double.IsFinite(result);
-            case MmsDataKind.Integer when primary.Value is long signed:
-                result = signed;
-                return true;
-            case MmsDataKind.Unsigned when primary.Value is ulong unsigned:
-                result = unsigned;
-                return true;
-            default:
-                result = 0;
-                return false;
+            case MmsDataKind.FloatingPoint when primary.Value is float single: result = single; return double.IsFinite(result);
+            case MmsDataKind.FloatingPoint when primary.Value is double floating: result = floating; return double.IsFinite(result);
+            case MmsDataKind.Integer when primary.Value is long signed: result = signed; return true;
+            case MmsDataKind.Unsigned when primary.Value is ulong unsigned: result = unsigned; return true;
+            default: result = 0; return false;
         }
     }
 
     private void PurgeExpiredSelections()
     {
-        if (_selections.Count == 0)
-            return;
-
         var now = DateTimeOffset.UtcNow;
         foreach (var key in _selections.Where(x => x.Value.ExpiresAtUtc <= now).Select(x => x.Key).ToArray())
             _selections.Remove(key);
@@ -509,9 +421,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
 
     private static string Normalize(string target)
     {
-        if (string.IsNullOrWhiteSpace(target))
-            return string.Empty;
-
+        if (string.IsNullOrWhiteSpace(target)) return string.Empty;
         var normalized = target.Trim().Replace('\\', '/');
         var slash = normalized.IndexOf('/');
         if (slash >= 0 && slash < normalized.Length - 1)
@@ -521,8 +431,7 @@ internal sealed class AvrIec61850ControlRuntime : IMmsAssociationRuntime, IDispo
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
         _disposed = true;
         _selections.Clear();
     }
