@@ -69,7 +69,7 @@ public sealed class VirtualInjectionProfilePersistenceTests
     }
 
     [TestMethod]
-    public void FutureSchemaTamperedFingerprintAndUnknownFieldsAreRejected()
+    public void FutureSchemaTamperedFingerprintUnknownAndDuplicateFieldsAreRejected()
     {
         var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
         var json = VirtualInjectionProfilePersistence.Serialize(profile, "unit-test", DateTimeOffset.UnixEpoch);
@@ -85,6 +85,11 @@ public sealed class VirtualInjectionProfilePersistenceTests
 
         var unknown = json.Insert(json.IndexOf('{') + 1, "\n  \"unexpected\": true,");
         Assert.ThrowsException<InvalidDataException>(() => VirtualInjectionProfilePersistence.Deserialize(unknown));
+
+        var duplicate = json.Insert(
+            json.LastIndexOf('}'),
+            $",\n  \"profileFingerprint\": \"{profile.Fingerprint()}\"\n");
+        Assert.ThrowsException<InvalidDataException>(() => VirtualInjectionProfilePersistence.Deserialize(duplicate));
     }
 
     [TestMethod]

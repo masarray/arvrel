@@ -75,6 +75,7 @@ public static class VirtualInjectionProfilePersistence
             });
             if (parsed.RootElement.ValueKind != JsonValueKind.Object)
                 throw new InvalidDataException("Virtual-injection profile root must be a JSON object.");
+            RejectDuplicateProperties(parsed.RootElement, "$");
 
             return parsed.RootElement.TryGetProperty("schemaVersion", out _)
                 ? DeserializeDocument(json)
@@ -134,6 +135,34 @@ public static class VirtualInjectionProfilePersistence
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException("Profile path is required.", nameof(path));
         return Deserialize(File.ReadAllText(Path.GetFullPath(path), Encoding.UTF8));
+    }
+
+    private static void RejectDuplicateProperties(JsonElement element, string path)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                var names = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (!names.Add(property.Name))
+                        throw new InvalidDataException($"Duplicate JSON property '{property.Name}' at {path}.");
+                    RejectDuplicateProperties(property.Value, $"{path}.{property.Name}");
+                }
+                break;
+            }
+            case JsonValueKind.Array:
+            {
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    RejectDuplicateProperties(item, $"{path}[{index}]");
+                    index++;
+                }
+                break;
+            }
+        }
     }
 
     private static VirtualInjectionProfileLoadResult DeserializeDocument(string json)
