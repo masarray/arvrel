@@ -5,10 +5,21 @@ namespace Arvrel.Protection;
 
 public sealed record TransformerDifferentialSettings
 {
-    public bool Enabled { get; init; }
+    /// <summary>
+    /// Minimum restrained differential pickup in per unit. This is the generic
+    /// equivalent of the commonly used transformer-differential Is1 setting.
+    /// </summary>
     public double MinimumPickupPu { get; init; } = 0.30;
+
+    public bool Enabled { get; init; }
+
+    /// <summary>Low-bias percentage slope as a ratio (K1; 0.25 = 25%).</summary>
     public double Slope1 { get; init; } = 0.25;
+
+    /// <summary>High-bias percentage slope as a ratio (K2; 0.60 = 60%).</summary>
     public double Slope2 { get; init; } = 0.60;
+
+    /// <summary>Bias-current breakpoint in per unit (generic Is2).</summary>
     public double SlopeBreakpointPu { get; init; } = 2.0;
     public TimeSpan OperateDelay { get; init; } = TimeSpan.FromMilliseconds(20);
     public double DropoutRatio { get; init; } = 0.90;
@@ -29,6 +40,27 @@ public sealed record TransformerDifferentialSettings
     public TransformerWindingCompensation LowVoltageCompensation { get; init; } = new();
 
     public bool AnyEnabled => Enabled || HighSetEnabled;
+
+    // Familiar aliases used in transformer differential application guides. They are
+    // read-only aliases so the persisted model remains vendor-neutral and unambiguous.
+    public double Is1Pu => MinimumPickupPu;
+    public double K1 => Slope1;
+    public double Is2Pu => SlopeBreakpointPu;
+    public double K2 => Slope2;
+
+    /// <summary>
+    /// Continuous two-slope percentage-biased characteristic:
+    /// Is1 + K1*Ibias below Is2, then a continuous K2 segment above Is2.
+    /// </summary>
+    public double StandardSlopeThresholdPu(double biasCurrentPu)
+    {
+        if (!double.IsFinite(biasCurrentPu) || biasCurrentPu < 0)
+            throw new ArgumentOutOfRangeException(nameof(biasCurrentPu));
+
+        var firstRegion = Math.Min(biasCurrentPu, SlopeBreakpointPu);
+        var secondRegion = Math.Max(0, biasCurrentPu - SlopeBreakpointPu);
+        return MinimumPickupPu + Slope1 * firstRegion + Slope2 * secondRegion;
+    }
 
     public void Validate()
     {
