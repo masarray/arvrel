@@ -72,6 +72,7 @@ public partial class MainWindow
         }
 
         var window = new TransformerIedWindow(_processBus) { Owner = this };
+        window.InitializeP14PractitionerUi();
         window.ShowDialog();
     }
 }
