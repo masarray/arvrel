@@ -91,16 +91,10 @@ public sealed class VirtualInjectionRuntime
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        // Validate and normalize the complete configured source before mutation.
-        // When the output is stopped this only changes the armed values; generated
-        // voltage and current remain zero until Start is explicitly requested.
         var normalized = profile.Normalize();
         if (string.Equals(normalized.Fingerprint(), _configuredProfile.Fingerprint(), StringComparison.Ordinal))
             return false;
 
-        // A source-event change restarts phase/DC time at t=0. Magnetic state is
-        // retained only when the physical CT model and signal frequency are unchanged.
-        // Replacing CT parameters represents a new transformer and resets its state.
         var preserveCtState = _isRunning && HasSameCtRuntimeIdentity(_configuredProfile, normalized);
         _configuredProfile = normalized;
         _sourceSampleIndex = 0;
@@ -140,6 +134,24 @@ public sealed class VirtualInjectionRuntime
         _ctRuntimeState = CtSaturationRuntimeState.Empty;
         OutputStateChangedAt = _timestamp;
         _coherenceRemaining = TimeSpan.Zero;
+        return true;
+    }
+
+    /// <summary>
+    /// Rebuilds the active CT numerical state without changing the source profile.
+    /// Demagnetize uses zero flux; reset reapplies configured signed remanence.
+    /// Source phase/DC time remains continuous and pickup/trip authority is restrained
+    /// for one nominal cycle while the measurement window becomes coherent again.
+    /// </summary>
+    public bool ResetCurrentTransformerState(bool demagnetize)
+    {
+        if (!_isRunning || !_configuredProfile.CurrentTransformer.Enabled)
+            return false;
+
+        _ctRuntimeState = demagnetize
+            ? CreateDemagnetizedCtRuntimeState(_configuredProfile)
+            : CreateInitialCtRuntimeState(_configuredProfile);
+        _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
         return true;
     }
 
@@ -251,6 +263,17 @@ public sealed class VirtualInjectionRuntime
             profile.FrequencyHz,
             profile.ExplicitNeutralCurrent);
 
+    private static CtSaturationRuntimeState CreateDemagnetizedCtRuntimeState(
+        VirtualInjectionProfile profile)
+    {
+        var zero = new CtSaturationChannelState(true, 0, 0, 0, 0);
+        return new CtSaturationRuntimeState(
+            zero,
+            zero,
+            zero,
+            profile.ExplicitNeutralCurrent ? zero : CtSaturationChannelState.Empty);
+    }
+
     private static VirtualInjectionProfile CreateZeroOutputProfile(VirtualInjectionProfile configured)
         => new(
             $"{configured.Name} · output stopped",
@@ -264,9 +287,6 @@ public sealed class VirtualInjectionRuntime
             Zero(configured.PhaseCCurrent),
             Zero(configured.NeutralCurrent))
         {
-            // STOP is an absolute virtual-output interlock. Configured CT parameters
-            // stay armed in ActiveProfile, while output and magnetic runtime state are
-            // cleared. The next Start deterministically reapplies configured remanence.
             CurrentTransformer = configured.CurrentTransformer with
             {
                 Enabled = false,
