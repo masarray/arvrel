@@ -19,10 +19,10 @@ public sealed class VirtualInjectionProfilePersistenceTests
 
         StringAssert.Contains(json, "\"schemaVersion\": 1");
         StringAssert.Contains(json, "\"profileFingerprint\"");
-        StringAssert.DoesNotContain(json, "fluxLinkageVoltSeconds");
-        StringAssert.DoesNotContain(json, "sourceSampleIndex");
-        StringAssert.DoesNotContain(json, "processedSampleCount");
-        StringAssert.DoesNotContain(json, "tripLatched");
+        Assert.IsFalse(json.Contains("fluxLinkageVoltSeconds", StringComparison.Ordinal));
+        Assert.IsFalse(json.Contains("sourceSampleIndex", StringComparison.Ordinal));
+        Assert.IsFalse(json.Contains("processedSampleCount", StringComparison.Ordinal));
+        Assert.IsFalse(json.Contains("tripLatched", StringComparison.Ordinal));
 
         var loaded = VirtualInjectionProfilePersistence.Deserialize(json);
 
