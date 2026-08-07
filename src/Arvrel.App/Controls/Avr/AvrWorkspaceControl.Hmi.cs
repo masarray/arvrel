@@ -58,6 +58,10 @@ public partial class AvrWorkspaceControl
         if (_hmiFastPickupActive && _running && _sourceEnergized)
             AdvanceInitialPickup();
 
+        // Drain accepted SAS controls on the same dispatcher/authority thread as
+        // the virtual AVR. The socket runtime never mutates the regulator engine.
+        ProcessIec61850ControlRuntime();
+
         // The IEC 61850 model follows the same authoritative AVR snapshot used by
         // the HMI. No independent network-side simulation state is introduced.
         PublishIec61850Snapshot();
