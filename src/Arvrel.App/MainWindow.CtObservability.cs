@@ -21,14 +21,22 @@ public partial class MainWindow
     {
         if (_ctObservabilityInitialized)
             return;
-        if (!_virtualInjectionInitialized || _virtualInjectionView is null || _virtualInjectionStatusBadge is null)
+        if (!_virtualInjectionInitialized ||
+            _virtualInjectionView is null ||
+            _virtualInjectionStatusBadge is null ||
+            _analysisModeButtons.Count == 0)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(InitializeCtObservability));
+            return;
+        }
+
+        if (!InstallCtToolbarButton())
         {
             Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(InitializeCtObservability));
             return;
         }
 
         _ctObservabilityInitialized = true;
-        InstallCtToolbarButton();
         ReplaceVirtualInjectionApplyHandler();
 
         _ctObservabilityTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -45,33 +53,34 @@ public partial class MainWindow
         RefreshCtObservability();
     }
 
-    private void InstallCtToolbarButton()
+    private bool InstallCtToolbarButton()
     {
-        if (_virtualInjectionStatusBadge?.Parent is not Grid toolbar)
-            return;
+        if (_ctObservabilityButton is not null)
+            return true;
 
-        toolbar.Children.Remove(_virtualInjectionStatusBadge);
-        var statusPanel = new StackPanel
+        var analysisButton = _analysisModeButtons.Values.FirstOrDefault();
+        if (analysisButton?.Parent is not StackPanel viewPanel ||
+            viewPanel.Parent is not Border viewGroup ||
+            viewGroup.Parent is not StackPanel controlsLine)
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetColumn(statusPanel, 6);
-        toolbar.Children.Add(statusPanel);
+            return false;
+        }
 
         _ctObservabilityButton = new Button
         {
             Style = FindResource("CompactButton") as Style,
-            Content = "CT IDEAL",
-            MinWidth = 92,
+            Content = "CT MODEL · IDEAL",
+            MinWidth = 116,
             Height = 28,
-            Margin = new Thickness(0, 0, 6, 0),
-            ToolTip = "Open current-transformer settings, magnetic state, per-channel diagnostics, and ideal-versus-secondary waveform comparison."
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(9, 0, 9, 0),
+            FontSize = 9.2,
+            FontWeight = FontWeights.SemiBold,
+            ToolTip = "Open CT Saturation & Observability. Source preset and CT model are independent in the INJECT workspace."
         };
         _ctObservabilityButton.Click += (_, _) => OpenCtObservabilityWindow();
-        statusPanel.Children.Add(_ctObservabilityButton);
-        statusPanel.Children.Add(_virtualInjectionStatusBadge);
+        controlsLine.Children.Add(_ctObservabilityButton);
+        return true;
     }
 
     private void ReplaceVirtualInjectionApplyHandler()
@@ -126,6 +135,7 @@ public partial class MainWindow
 
             var changed = _scenario.ApplyProfile(profile);
             UpdateVirtualInjectionProvenance();
+            SyncCtModelSelectorFromProfile(profile);
             if (changed)
             {
                 SetVirtualInjectionStatus("APPLIED · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
@@ -159,6 +169,7 @@ public partial class MainWindow
         if (_ctObservabilityWindow is null)
         {
             _ctObservabilityWindow = new CtObservabilityWindow(
+                RestartCtStudyEvent,
                 ResetCtRuntimeState,
                 DemagnetizeCtRuntimeState)
             {
@@ -182,24 +193,80 @@ public partial class MainWindow
             return;
 
         var step = _scenario.Advance(TimeSpan.Zero, _pickupPosition, _tripPosition);
-        var snapshot = CtObservabilityProjector.Project(
-            _scenario.ActiveProfile,
-            step.CtSaturation,
-            step.CurrentTransformerState,
-            step.SourceSampleIndex,
-            step.IsRunning);
-        UpdateCtToolbarButton(snapshot);
-
-        if (_ctObservabilityWindow is null)
-            return;
-        var comparison = new CtComparisonFrame(
+        var evidence = new CtObservabilityWaveformEvidence(
             step.IdealCurrentReference,
             step.Waveform.PhaseA,
             step.Waveform.PhaseB,
             step.Waveform.PhaseC,
             step.Waveform.Residual,
             step.Waveform.NominalSamplesPerCycle);
-        _ctObservabilityWindow.Update(snapshot, comparison);
+        var snapshot = CtObservabilityProjector.Project(
+            _scenario.ActiveProfile,
+            step.CtSaturation,
+            step.CurrentTransformerState,
+            step.SourceSampleIndex,
+            evidence,
+            step.IsRunning);
+        SyncCtModelSelectorFromProfile(_scenario.ActiveProfile);
+        UpdateCtToolbarButton(snapshot);
+
+        if (_ctObservabilityWindow is null)
+            return;
+
+        _ctObservabilityWindow.Update(snapshot, BuildCtComparisonFrame(step));
+    }
+
+    private CtComparisonFrame BuildCtComparisonFrame(Services.ScenarioStep step)
+    {
+        IReadOnlyList<double> phaseAFlux = Array.Empty<double>();
+        IReadOnlyList<double> phaseBFlux = Array.Empty<double>();
+        IReadOnlyList<double> phaseCFlux = Array.Empty<double>();
+        IReadOnlyList<double> neutralFlux = Array.Empty<double>();
+        var profile = _scenario.ActiveProfile;
+        if (step.IsRunning && profile.CurrentTransformer.Enabled)
+        {
+            var reference = step.IdealCurrentReference;
+            var settings = profile.CurrentTransformer;
+            phaseAFlux = CtSaturationModel.Apply(
+                reference.PhaseA,
+                reference.SampleRateHz,
+                profile.FrequencyHz,
+                settings,
+                step.CurrentTransformerState.PhaseA).FluxPerUnit;
+            phaseBFlux = CtSaturationModel.Apply(
+                reference.PhaseB,
+                reference.SampleRateHz,
+                profile.FrequencyHz,
+                settings,
+                step.CurrentTransformerState.PhaseB).FluxPerUnit;
+            phaseCFlux = CtSaturationModel.Apply(
+                reference.PhaseC,
+                reference.SampleRateHz,
+                profile.FrequencyHz,
+                settings,
+                step.CurrentTransformerState.PhaseC).FluxPerUnit;
+            if (profile.ExplicitNeutralCurrent)
+            {
+                neutralFlux = CtSaturationModel.Apply(
+                    reference.NeutralOrResidual,
+                    reference.SampleRateHz,
+                    profile.FrequencyHz,
+                    settings,
+                    step.CurrentTransformerState.Neutral).FluxPerUnit;
+            }
+        }
+
+        return new CtComparisonFrame(
+            step.IdealCurrentReference,
+            step.Waveform.PhaseA,
+            step.Waveform.PhaseB,
+            step.Waveform.PhaseC,
+            step.Waveform.Residual,
+            phaseAFlux,
+            phaseBFlux,
+            phaseCFlux,
+            neutralFlux,
+            step.Waveform.NominalSamplesPerCycle);
     }
 
     private void UpdateCtToolbarButton(CtObservabilitySnapshot snapshot)
@@ -207,14 +274,36 @@ public partial class MainWindow
         if (_ctObservabilityButton is null)
             return;
 
-        _ctObservabilityButton.Content = snapshot.BadgeText;
+        _ctObservabilityButton.Content = snapshot.Status switch
+        {
+            CtObservabilityStatus.Saturated => "CT MODEL · SAT",
+            CtObservabilityStatus.Nonlinear => "CT MODEL · ACTIVE",
+            _ => "CT MODEL · IDEAL"
+        };
         _ctObservabilityButton.Foreground = snapshot.Status switch
         {
             CtObservabilityStatus.Saturated => TripBrush,
             CtObservabilityStatus.Nonlinear => WarningBrush,
             _ => HealthyBrush
         };
-        _ctObservabilityButton.ToolTip = $"{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}";
+        _ctObservabilityButton.ToolTip =
+            $"Click to open CT Saturation & Observability.\n{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}\n{snapshot.EventSummary}";
+    }
+
+    private void RestartCtStudyEvent()
+    {
+        if (!_scenario.RestartEvent())
+        {
+            StatusText.Text = "CT study event restart is available only while the internal virtual source is running.";
+            return;
+        }
+
+        AddEvent("CT EVENT", "Source event restarted at t=0; CT remanence reapplied");
+        SetVirtualInjectionStatus("EVENT RESTART · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
+        StatusText.Text = "Virtual source event restarted at t=0 with configured CT remanence. Process sample counting remains continuous; pickup and trip are restrained for one coherent cycle.";
+        RenderInitialFrame();
+        RefreshPhasorFrame();
+        RefreshCtObservability();
     }
 
     private void ResetCtRuntimeState()
@@ -225,7 +314,7 @@ public partial class MainWindow
             return;
         }
 
-        AddEvent("CT RESET", "Configured remanence reapplied; source time retained");
+        AddEvent("CT RESET", "Configured remanence reapplied; source event time retained");
         SetVirtualInjectionStatus("CT RESET · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
         StatusText.Text = "CT magnetic state reset to configured remanence. Source phase and DC decay remain continuous; pickup and trip are restrained for one coherent cycle.";
         RenderInitialFrame();
@@ -243,7 +332,7 @@ public partial class MainWindow
 
         AddEvent("CT DEMAG", "Runtime flux forced to zero; configured remanence retained");
         SetVirtualInjectionStatus("CT DEMAG · REBUILDING", WarningBrush, "#FBF2E3", "#E2C58F");
-        StatusText.Text = "Runtime CT flux set to zero without changing the configured remanence. Source phase and DC decay remain continuous; pickup and trip are restrained for one coherent cycle.";
+        StatusText.Text = "Runtime CT flux set to zero without changing configured remanence. Source phase and DC decay remain continuous; pickup and trip are restrained for one coherent cycle.";
         RenderInitialFrame();
         RefreshPhasorFrame();
         RefreshCtObservability();

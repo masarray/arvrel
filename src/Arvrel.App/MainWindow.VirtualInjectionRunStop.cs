@@ -29,9 +29,9 @@ public partial class MainWindow
 
         _virtualInjectionRunStopInitialized = true;
 
-        // The top-right toolbar is the single START/STOP authority. Keeping a
-        // second pair of controls inside the editor created visual duplication
-        // and made the source state less obvious to the operator.
+        // RunButton is the source lifecycle authority. The product UX may place it
+        // inside the left injection workspace for the internal source, while live
+        // and replay sources keep it in the global connection context bar.
         RunButton.Click -= RunButton_Click;
         RunButton.Click += VirtualInjectionRunButton_Click;
         InjectFaultButton.Click -= InjectFault_Click;
@@ -225,13 +225,15 @@ public partial class MainWindow
             }
         }
 
+        // One compact lifecycle state in the analysis title is enough. Avoid the
+        // previous repeated RUNNING/STOPPED wording in both title and subtitle.
         var streamText = _scenario.SmvDegraded
-            ? "  ·  WARN"
+            ? "WARN"
             : !running
-                ? "  ·  STOPPED"
+                ? "STOPPED"
                 : _scenario.WindowStatus == "coherent"
-                    ? "  ·  RUNNING"
-                    : "  ·  STARTING";
+                    ? "RUNNING"
+                    : "STARTING";
         SetTextIfChanged(StreamHealthText, streamText);
 
         var streamBrush = _scenario.SmvDegraded
@@ -242,12 +244,7 @@ public partial class MainWindow
         if (!ReferenceEquals(StreamHealthText.Foreground, streamBrush))
             StreamHealthText.Foreground = streamBrush;
 
-        var stateText = !running
-            ? "STOPPED"
-            : _scenario.WindowStatus == "coherent"
-                ? "RUNNING"
-                : "STARTING";
-        SetTextIfChanged(WaveformSubtitleText, $"{_scenario.ActiveProfile.Name} · {stateText}");
+        SetTextIfChanged(WaveformSubtitleText, _scenario.ActiveProfile.Name);
 
         var tooltip =
             $"Configured profile {_scenario.ActiveProfile.Name}\n" +

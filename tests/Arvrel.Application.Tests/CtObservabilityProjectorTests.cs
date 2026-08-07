@@ -23,6 +23,7 @@ public sealed class CtObservabilityProjectorTests
         Assert.AreEqual("CT IDEAL", result.BadgeText);
         Assert.IsFalse(result.IsEnabled);
         Assert.IsFalse(result.CanResetState);
+        Assert.IsFalse(result.CanRestartEvent);
         Assert.AreEqual(4, result.Channels.Count);
         Assert.AreEqual("3I0", result.Channels[3].Channel);
         Assert.AreEqual("CALCULATED SUM", result.Channels[3].State);
@@ -48,14 +49,104 @@ public sealed class CtObservabilityProjectorTests
         Assert.IsTrue(result.IsEnabled);
         Assert.IsTrue(result.IsRunning);
         Assert.IsTrue(result.CanResetState);
-        StringAssert.Contains(result.SettingsSummary, "Vk 70");
+        Assert.IsTrue(result.CanRestartEvent);
+        StringAssert.Contains(result.SettingsSummary, "Vk 70 V RMS");
         StringAssert.Contains(result.RuntimeSummary, "source sample 20");
+        StringAssert.Contains(result.EventSummary, "EVENT +0.005 s");
+        StringAssert.Contains(result.EventSummary, "DC transient: active");
 
         var phaseA = result.Channels.Single(channel => channel.Channel == "IA");
         Assert.IsTrue(phaseA.Enabled);
         Assert.IsTrue(phaseA.Saturated);
         Assert.IsTrue(phaseA.MaximumAbsoluteFluxPerUnit >= 1);
         Assert.IsTrue(phaseA.WaveformErrorPercent > 0);
+    }
+
+    [TestMethod]
+    public void WaveformEvidenceProjectsRelayFundamentalMagnitudeAndPhaseError()
+    {
+        var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
+        var runtime = new VirtualInjectionRuntime(profile, initialTimestamp: DateTimeOffset.UnixEpoch);
+        runtime.Start();
+        var snapshot = runtime.Advance(TimeSpan.FromMilliseconds(500), trustDegraded: false);
+        var frame = snapshot.Frame;
+        var ideal = VirtualInjectionReferenceGenerator.GenerateCurrents(
+            profile,
+            snapshot.SourceSampleIndex,
+            frame.PhaseACurrentSamples.Length,
+            frame.SampleRateHz);
+        var evidence = new CtObservabilityWaveformEvidence(
+            ideal,
+            frame.PhaseACurrentSamples,
+            frame.PhaseBCurrentSamples,
+            frame.PhaseCCurrentSamples,
+            frame.ResidualCurrentSamples,
+            frame.SamplesPerCycle);
+
+        var result = CtObservabilityProjector.Project(
+            profile,
+            frame.CtSaturation,
+            snapshot.CurrentTransformerState,
+            snapshot.SourceSampleIndex,
+            evidence,
+            snapshot.IsRunning);
+
+        var phaseA = result.Channels.Single(channel => channel.Channel == "IA");
+        Assert.IsTrue(double.IsFinite(phaseA.FundamentalIdealRmsA));
+        Assert.IsTrue(double.IsFinite(phaseA.FundamentalSecondaryRmsA));
+        Assert.IsTrue(double.IsFinite(phaseA.FundamentalMagnitudeErrorPercent));
+        Assert.IsTrue(double.IsFinite(phaseA.PhaseDisplacementDegrees));
+        Assert.AreEqual(20, phaseA.FundamentalIdealRmsA, 1e-3);
+        Assert.IsTrue(Math.Abs(phaseA.FundamentalMagnitudeErrorPercent) > 0.01);
+        StringAssert.Contains(result.EventSummary, "EVENT +0.500 s");
+        StringAssert.Contains(result.EventSummary, "DC transient: decayed");
+
+        var phaseB = result.Channels.Single(channel => channel.Channel == "IB");
+        Assert.AreEqual("BELOW KNEE + HISTORY", phaseB.State);
+    }
+
+    [TestMethod]
+    public void SaturationOnsetUsesSourceTimelineAfterCtStateReset()
+    {
+        var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
+        var runtime = new VirtualInjectionRuntime(profile, initialTimestamp: DateTimeOffset.UnixEpoch);
+        runtime.Start();
+        runtime.Advance(TimeSpan.FromMilliseconds(500), trustDegraded: false);
+        var sourceBeforeReset = runtime.SourceSampleIndex;
+        Assert.IsTrue(runtime.ResetCurrentTransformerState(demagnetize: false));
+        Assert.AreEqual(sourceBeforeReset, runtime.SourceSampleIndex);
+
+        var snapshot = runtime.Advance(TimeSpan.Zero, trustDegraded: false);
+        var frame = snapshot.Frame;
+        var ideal = VirtualInjectionReferenceGenerator.GenerateCurrents(
+            profile,
+            snapshot.SourceSampleIndex,
+            frame.PhaseACurrentSamples.Length,
+            frame.SampleRateHz);
+        var evidence = new CtObservabilityWaveformEvidence(
+            ideal,
+            frame.PhaseACurrentSamples,
+            frame.PhaseBCurrentSamples,
+            frame.PhaseCCurrentSamples,
+            frame.ResidualCurrentSamples,
+            frame.SamplesPerCycle);
+
+        var result = CtObservabilityProjector.Project(
+            profile,
+            frame.CtSaturation,
+            snapshot.CurrentTransformerState,
+            snapshot.SourceSampleIndex,
+            evidence,
+            snapshot.IsRunning);
+        var phaseA = result.Channels.Single(channel => channel.Channel == "IA");
+
+        Assert.IsTrue(phaseA.Saturated);
+        Assert.IsTrue(frame.CtSaturation.PhaseA.FirstSaturatedSample >= 0);
+        Assert.AreEqual(
+            snapshot.SourceSampleIndex + frame.CtSaturation.PhaseA.FirstSaturatedSample,
+            phaseA.FirstSaturationAbsoluteSample);
+        Assert.IsTrue(phaseA.FirstSaturationAbsoluteSample >= sourceBeforeReset);
+        Assert.AreEqual(0L, snapshot.CurrentTransformerState.PhaseA.ProcessedSampleCount);
     }
 
     [TestMethod]
@@ -75,7 +166,9 @@ public sealed class CtObservabilityProjectorTests
         Assert.IsTrue(result.IsEnabled);
         Assert.IsFalse(result.CanResetState);
         Assert.IsFalse(result.CanDemagnetize);
+        Assert.IsFalse(result.CanRestartEvent);
         StringAssert.Contains(result.RuntimeSummary, "STOPPED");
+        StringAssert.Contains(result.EventSummary, "EVENT ARMED");
     }
 
     [TestMethod]
