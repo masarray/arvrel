@@ -25,6 +25,26 @@ public sealed class TransformerPractitionerP14UiSourceTests
     }
 
     [TestMethod]
+    public void P14_InitializesBeforeDialogWithoutAddingAnotherWindowLifecycleOverride()
+    {
+        var code = Read("src", "Arvrel.App", "TransformerIedWindow.P14.cs");
+        var entryPoint = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
+
+        StringAssert.Contains(code, "internal void InitializeP14PractitionerUi()");
+        StringAssert.Contains(entryPoint, "var window = new TransformerIedWindow(_processBus) { Owner = this };");
+        StringAssert.Contains(entryPoint, "window.InitializeP14PractitionerUi();");
+        StringAssert.Contains(entryPoint, "window.ShowDialog();");
+        Assert.IsFalse(code.Contains("OnContentRendered(", StringComparison.Ordinal),
+            "P14 must not add a second TransformerIedWindow.OnContentRendered override.");
+
+        var constructIndex = entryPoint.IndexOf("new TransformerIedWindow", StringComparison.Ordinal);
+        var initializeIndex = entryPoint.IndexOf("window.InitializeP14PractitionerUi();", StringComparison.Ordinal);
+        var showIndex = entryPoint.IndexOf("window.ShowDialog();", StringComparison.Ordinal);
+        Assert.IsTrue(constructIndex >= 0 && initializeIndex > constructIndex && showIndex > initializeIndex,
+            "P14 must initialize after the window constructor and before practitioner interaction begins.");
+    }
+
+    [TestMethod]
     public void P14_AppliesP13SettingsBeforeFirstRuntimeEvaluation()
     {
         var code = Read("src", "Arvrel.App", "TransformerIedWindow.P14.cs");
@@ -35,7 +55,7 @@ public sealed class TransformerPractitionerP14UiSourceTests
         StringAssert.Contains(code, "ExternalFaultSecurity = externalFaultSecurity");
         StringAssert.Contains(code, "var configuration = baseConfiguration with { ProtectionSettings = protectionSettings };");
 
-        var settingsIndex = code.IndexOf("ReadP14SecuritySettings()", StringComparison.Ordinal);
+        var settingsIndex = code.IndexOf("var externalFaultSecurity = ReadP14SecuritySettings();", StringComparison.Ordinal);
         var runtimeIndex = code.IndexOf("new TransformerProcessBusProtectionRuntime", StringComparison.Ordinal);
         var evaluateIndex = code.IndexOf("_runtime.EvaluateCurrent()", StringComparison.Ordinal);
         Assert.IsTrue(settingsIndex >= 0 && runtimeIndex > settingsIndex && evaluateIndex > runtimeIndex,
