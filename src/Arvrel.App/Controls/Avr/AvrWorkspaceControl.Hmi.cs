@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace Arvrel.App.Controls.Avr;
@@ -141,7 +144,7 @@ public partial class AvrWorkspaceControl
                 points.Add(new Point(x, Y(values[i])));
             }
 
-            var last = points[^1];
+            var last = points[points.Count - 1];
             Canvas.SetLeft(TrendValueDot, Math.Clamp(last.X - TrendValueDot.Width / 2.0, 0, width - TrendValueDot.Width));
             Canvas.SetTop(TrendValueDot, Math.Clamp(last.Y - TrendValueDot.Height / 2.0, 0, height - TrendValueDot.Height));
             TrendValueDot.Visibility = Visibility.Visible;
