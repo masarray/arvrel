@@ -145,7 +145,11 @@ public partial class AvrWorkspaceControl : UserControl
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
         {
-            MessageBox.Show(this, ex.Message, "AVR settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            var owner = Window.GetWindow(this);
+            if (owner is null)
+                MessageBox.Show(ex.Message, "AVR settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            else
+                MessageBox.Show(owner, ex.Message, "AVR settings", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -184,6 +188,8 @@ public partial class AvrWorkspaceControl : UserControl
             moved
                 ? $"Manual {(direction > 0 ? "RAISE" : "LOWER")} · tap {_engine.TapPosition:+0;-0;0}"
                 : direction > 0 ? "Maximum tap reached" : "Minimum tap reached");
+        if (moved)
+            _lastTapPosition = _engine.TapPosition;
         RenderCurrent();
     }
 
