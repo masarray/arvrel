@@ -4,6 +4,7 @@ namespace Arvrel.Protection.Tests;
 
 internal sealed record VectorManifest(
     int SchemaVersion,
+    string Contract,
     SolverContract SolverContract,
     double AbsoluteTolerance,
     double RelativeTolerance,

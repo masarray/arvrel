@@ -21,6 +21,7 @@ internal static class CtReferenceGoldenSet
             options) ?? throw new InvalidDataException("CT reference manifest is empty.");
 
         Assert.AreEqual(1, manifest.SchemaVersion);
+        StringAssert.Contains(manifest.Contract, "Independent CPython reference");
         Assert.AreEqual(6, manifest.SolverContract.Iterations);
         Assert.AreEqual(0.45, manifest.SolverContract.Relaxation, 1e-15);
         Assert.IsTrue(manifest.CaseFiles.Count >= 6);
