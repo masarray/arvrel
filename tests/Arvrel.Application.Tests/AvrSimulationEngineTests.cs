@@ -60,6 +60,45 @@ public sealed class AvrSimulationEngineTests
     }
 
     [TestMethod]
+    public void BenchInjection_DoesNotArtificiallyChangeInjectedVoltageAfterTap()
+    {
+        var engine = new AvrSimulationEngine(new AvrSettings
+        {
+            VoltageInputMode = AvrVoltageInputMode.BenchInjection,
+            TolerancePercent = 1,
+            T1Seconds = 0,
+            TapStepPercent = 1.25
+        });
+
+        var first = engine.Advance(TimeSpan.Zero, 95.0);
+        var second = engine.Advance(TimeSpan.Zero, 95.0);
+
+        Assert.AreEqual(95.0, first.MeasuredVoltageV, 0.0001);
+        Assert.AreEqual(95.0, second.MeasuredVoltageV, 0.0001);
+        Assert.IsTrue(first.RaiseOutput);
+        Assert.IsTrue(second.RaiseOutput);
+        Assert.AreEqual(2, second.TapPosition);
+    }
+
+    [TestMethod]
+    public void ClosedLoopPlantMode_AppliesTapFeedbackToMeasuredVoltage()
+    {
+        var engine = new AvrSimulationEngine(new AvrSettings
+        {
+            VoltageInputMode = AvrVoltageInputMode.ClosedLoopPlant,
+            TolerancePercent = 1,
+            T1Seconds = 0,
+            TapStepPercent = 1.25
+        });
+
+        var first = engine.Advance(TimeSpan.Zero, 95.0);
+        var second = engine.Advance(TimeSpan.Zero, 95.0);
+
+        Assert.IsTrue(first.RaiseOutput);
+        Assert.IsTrue(second.MeasuredVoltageV > first.MeasuredVoltageV);
+    }
+
+    [TestMethod]
     public void ExtremeUndervoltage_BlocksAutomaticOperation()
     {
         var engine = new AvrSimulationEngine(new AvrSettings
