@@ -31,6 +31,8 @@ public sealed class DeterministicLabScenario
     public bool SmvDegraded { get; set; }
     public bool IsRunning => _runtime.IsRunning;
     public long SampleCounter => _runtime.SampleCounter;
+    public long SourceSampleIndex => _runtime.SourceSampleIndex;
+    public CtSaturationRuntimeState CurrentTransformerState => _runtime.CurrentTransformerState;
     public VirtualInjectionProfile ActiveProfile => _runtime.ActiveProfile;
     public VirtualInjectionProfile OutputProfile => _runtime.OutputProfile;
     public DateTimeOffset AppliedAt => _runtime.AppliedAt;
@@ -56,6 +58,12 @@ public sealed class DeterministicLabScenario
 
     public bool StopInjection() => _runtime.Stop();
 
+    public bool ResetCurrentTransformerState()
+        => _runtime.ResetCurrentTransformerState(demagnetize: false);
+
+    public bool DemagnetizeCurrentTransformer()
+        => _runtime.ResetCurrentTransformerState(demagnetize: true);
+
     public ScenarioStep Advance(TimeSpan delta)
     {
         var snapshot = _runtime.Advance(delta, SmvDegraded);
@@ -68,7 +76,13 @@ public sealed class DeterministicLabScenario
             ActiveProfile.FrequencyHz,
             injection.SamplesPerCycle,
             injection.SampleRateHz);
-        return new ScenarioStep(injection.Measurement, waveform);
+        return new ScenarioStep(injection.Measurement, waveform)
+        {
+            CtSaturation = injection.CtSaturation,
+            CurrentTransformerState = snapshot.CurrentTransformerState,
+            SourceSampleIndex = snapshot.SourceSampleIndex,
+            IsRunning = snapshot.IsRunning
+        };
     }
 
     public void Restart(bool keepProfile)
@@ -93,4 +107,10 @@ public sealed record ScenarioWaveform(
 
 public sealed record ScenarioStep(
     MeasurementFrame Measurement,
-    ScenarioWaveform Waveform);
+    ScenarioWaveform Waveform)
+{
+    public CtSaturationFrameDiagnostics CtSaturation { get; init; } = CtSaturationFrameDiagnostics.Disabled;
+    public CtSaturationRuntimeState CurrentTransformerState { get; init; } = CtSaturationRuntimeState.Empty;
+    public long SourceSampleIndex { get; init; }
+    public bool IsRunning { get; init; }
+}

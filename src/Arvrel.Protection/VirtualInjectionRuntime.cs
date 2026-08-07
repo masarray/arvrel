@@ -10,12 +10,17 @@ public sealed record VirtualInjectionRuntimeSnapshot(
     string WindowStatus,
     bool IsRunning)
 {
+    public CtSaturationRuntimeState CurrentTransformerState { get; init; } = CtSaturationRuntimeState.Empty;
+    public long SourceSampleIndex { get; init; }
+
     public bool IsCoherent => IsRunning && string.Equals(WindowStatus, "coherent", StringComparison.Ordinal);
     public string OutputState => IsRunning ? (IsCoherent ? "running" : "starting") : "stopped";
 }
 
 public sealed class VirtualInjectionRuntime
 {
+    private const int StateAdvanceChunkSamples = 4_096;
+
     private readonly int _samplesPerCycle;
     private readonly int _cycles;
     private readonly double _nominalFrequencyHz;
@@ -24,6 +29,8 @@ public sealed class VirtualInjectionRuntime
     private long _sampleCounter;
     private TimeSpan _coherenceRemaining;
     private VirtualInjectionProfile _configuredProfile;
+    private CtSaturationRuntimeState _ctRuntimeState = CtSaturationRuntimeState.Empty;
+    private long _sourceSampleIndex;
     private bool _isRunning;
 
     public VirtualInjectionRuntime(
@@ -60,6 +67,8 @@ public sealed class VirtualInjectionRuntime
     public DateTimeOffset AppliedAt { get; private set; }
     public DateTimeOffset OutputStateChangedAt { get; private set; }
     public long SampleCounter => _sampleCounter;
+    public long SourceSampleIndex => _sourceSampleIndex;
+    public CtSaturationRuntimeState CurrentTransformerState => _ctRuntimeState;
     public int SamplesPerCycle => _samplesPerCycle;
     public int Cycles => _cycles;
     public double NominalFrequencyHz => _nominalFrequencyHz;
@@ -82,14 +91,20 @@ public sealed class VirtualInjectionRuntime
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        // Validate and normalize the complete configured source before mutation.
-        // When the output is stopped this only changes the armed values; generated
-        // voltage and current remain zero until Start is explicitly requested.
         var normalized = profile.Normalize();
         if (string.Equals(normalized.Fingerprint(), _configuredProfile.Fingerprint(), StringComparison.Ordinal))
             return false;
 
+        var preserveCtState = _isRunning && HasSameCtRuntimeIdentity(_configuredProfile, normalized);
         _configuredProfile = normalized;
+        _sourceSampleIndex = 0;
+        if (!preserveCtState)
+        {
+            _ctRuntimeState = _isRunning
+                ? CreateInitialCtRuntimeState(normalized)
+                : CtSaturationRuntimeState.Empty;
+        }
+
         AppliedAt = _timestamp;
         if (_isRunning)
             _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
@@ -102,6 +117,8 @@ public sealed class VirtualInjectionRuntime
             return false;
 
         _isRunning = true;
+        _sourceSampleIndex = 0;
+        _ctRuntimeState = CreateInitialCtRuntimeState(_configuredProfile);
         OutputStateChangedAt = _timestamp;
         _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
         return true;
@@ -113,8 +130,28 @@ public sealed class VirtualInjectionRuntime
             return false;
 
         _isRunning = false;
+        _sourceSampleIndex = 0;
+        _ctRuntimeState = CtSaturationRuntimeState.Empty;
         OutputStateChangedAt = _timestamp;
         _coherenceRemaining = TimeSpan.Zero;
+        return true;
+    }
+
+    /// <summary>
+    /// Rebuilds the active CT numerical state without changing the source profile.
+    /// Demagnetize uses zero flux; reset reapplies configured signed remanence.
+    /// Source phase/DC time remains continuous and pickup/trip authority is restrained
+    /// for one nominal cycle while the measurement window becomes coherent again.
+    /// </summary>
+    public bool ResetCurrentTransformerState(bool demagnetize)
+    {
+        if (!_isRunning || !_configuredProfile.CurrentTransformer.Enabled)
+            return false;
+
+        _ctRuntimeState = demagnetize
+            ? CreateDemagnetizedCtRuntimeState(_configuredProfile)
+            : CreateInitialCtRuntimeState(_configuredProfile);
+        _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
         return true;
     }
 
@@ -124,7 +161,11 @@ public sealed class VirtualInjectionRuntime
             throw new ArgumentOutOfRangeException(nameof(delta));
 
         _timestamp += delta;
-        _sampleCounter = (_sampleCounter + (long)Math.Round(delta.TotalSeconds * SampleRateHz)) % _counterWrap;
+        var elapsedSamples = checked((long)Math.Round(delta.TotalSeconds * SampleRateHz));
+        _sampleCounter = (_sampleCounter + elapsedSamples) % _counterWrap;
+
+        if (_isRunning && elapsedSamples > 0)
+            AdvanceCurrentTransformerState(elapsedSamples);
 
         if (delta > TimeSpan.Zero && _coherenceRemaining > TimeSpan.Zero)
         {
@@ -146,13 +187,24 @@ public sealed class VirtualInjectionRuntime
                     "Virtual output has started or changed and is rebuilding one coherent nominal measurement cycle.")
                 : SmvTrustState.Healthy;
 
-        var frame = VirtualInjectionGenerator.Generate(
-            OutputProfile,
-            _timestamp,
-            trust,
-            _samplesPerCycle,
-            _cycles,
-            _nominalFrequencyHz);
+        var frame = _isRunning
+            ? StatefulVirtualInjectionGenerator.GeneratePreview(
+                _configuredProfile,
+                _timestamp,
+                trust,
+                _samplesPerCycle,
+                _cycles,
+                _nominalFrequencyHz,
+                _sourceSampleIndex,
+                _ctRuntimeState)
+            : VirtualInjectionGenerator.Generate(
+                OutputProfile,
+                _timestamp,
+                trust,
+                _samplesPerCycle,
+                _cycles,
+                _nominalFrequencyHz);
+
         return new VirtualInjectionRuntimeSnapshot(
             frame,
             _configuredProfile,
@@ -161,19 +213,65 @@ public sealed class VirtualInjectionRuntime
             AppliedAt,
             OutputStateChangedAt,
             WindowStatus,
-            _isRunning);
+            _isRunning)
+        {
+            CurrentTransformerState = _ctRuntimeState,
+            SourceSampleIndex = _sourceSampleIndex
+        };
     }
 
     public void Reset(VirtualInjectionProfile? profile = null)
     {
         _timestamp = DateTimeOffset.UtcNow;
         _sampleCounter = 0;
+        _sourceSampleIndex = 0;
+        _ctRuntimeState = CtSaturationRuntimeState.Empty;
         _coherenceRemaining = TimeSpan.Zero;
         _isRunning = false;
         if (profile is not null)
             _configuredProfile = profile.Normalize();
         AppliedAt = _timestamp;
         OutputStateChangedAt = _timestamp;
+    }
+
+    private void AdvanceCurrentTransformerState(long elapsedSamples)
+    {
+        while (elapsedSamples > 0)
+        {
+            var chunk = (int)Math.Min(elapsedSamples, StateAdvanceChunkSamples);
+            _ctRuntimeState = StatefulVirtualInjectionGenerator.AdvanceCurrentTransformer(
+                _configuredProfile,
+                _sourceSampleIndex,
+                chunk,
+                SampleRateHz,
+                _ctRuntimeState);
+            _sourceSampleIndex = checked(_sourceSampleIndex + chunk);
+            elapsedSamples -= chunk;
+        }
+    }
+
+    private static bool HasSameCtRuntimeIdentity(
+        VirtualInjectionProfile previous,
+        VirtualInjectionProfile next)
+        => previous.FrequencyHz.Equals(next.FrequencyHz) &&
+           Equals(previous.CurrentTransformer, next.CurrentTransformer);
+
+    private static CtSaturationRuntimeState CreateInitialCtRuntimeState(
+        VirtualInjectionProfile profile)
+        => CtSaturationRuntimeState.CreateInitial(
+            profile.CurrentTransformer,
+            profile.FrequencyHz,
+            profile.ExplicitNeutralCurrent);
+
+    private static CtSaturationRuntimeState CreateDemagnetizedCtRuntimeState(
+        VirtualInjectionProfile profile)
+    {
+        var zero = new CtSaturationChannelState(true, 0, 0, 0, 0);
+        return new CtSaturationRuntimeState(
+            zero,
+            zero,
+            zero,
+            profile.ExplicitNeutralCurrent ? zero : CtSaturationChannelState.Empty);
     }
 
     private static VirtualInjectionProfile CreateZeroOutputProfile(VirtualInjectionProfile configured)
@@ -187,8 +285,20 @@ public sealed class VirtualInjectionRuntime
             Zero(configured.PhaseACurrent),
             Zero(configured.PhaseBCurrent),
             Zero(configured.PhaseCCurrent),
-            Zero(configured.NeutralCurrent));
+            Zero(configured.NeutralCurrent))
+        {
+            CurrentTransformer = configured.CurrentTransformer with
+            {
+                Enabled = false,
+                RemanencePercent = 0
+            }
+        };
 
     private static VirtualInjectionChannel Zero(VirtualInjectionChannel channel)
-        => new(channel.Enabled, 0, 0);
+        => channel with
+        {
+            Rms = 0,
+            AngleDegrees = 0,
+            DcOffsetPercent = 0
+        };
 }

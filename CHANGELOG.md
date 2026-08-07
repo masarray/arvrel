@@ -10,18 +10,23 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - validated debounced auto apply with last-valid retention and an explicit coherent-window rebuild state;
 - fixed 4 kHz nominal sampling grid feeding the existing mean-removed 50 Hz single-bin DFT, so off-nominal injection exposes the estimator response instead of changing the measurement grid;
 - normal, phase/ground-fault, voltage, and directional protection presets that populate the same editable table;
+- deterministic CT saturation study model using the CT equivalent circuit, burden voltage, integrated flux linkage, piecewise excitation curve, signed remanence, and decaying DC fault asymmetry;
+- built-in `CT saturation - A-G asymmetrical` severe study preset and per-channel saturation, flux, excitation, voltage-demand, ratio-error, and waveform-error diagnostics;
 - IN/VN explicit virtual channels with calculated `IA+IB+IC` and `VA+VB+VC` residual fallback;
 - interlocked **START** and **STOP** controls aligned with the ARSVIN publisher operating pattern;
 - configured-versus-effective output identity, state timestamps, and internal evidence schema version 4;
 - deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, stopped-zero output, protection operation/restraint, exact pickup threshold, configured delay, and trip-latch retention;
+- deterministic CT tests covering pass-through operation, below-knee accuracy, high-burden saturation, remanence, asymmetrical fault current, burden sensitivity, fingerprints, and relay-current integration;
 - modeless P4.2 **Advanced Injection Laboratory** foundation with single-window editor authority, an active Direct view, and clearly reserved future Symmetrical, Impedance, Ramp, Sequencer, and advanced Waveform stages.
 
 ### Changed
 
 - Internal demo is no longer limited to a fixed A-G scenario;
+- virtual current channels can include a fingerprinted decaying DC component before CT transformation;
+- calculated residual current is now formed from relay-side phase currents after any enabled CT saturation stage;
 - the Internal analysis workspace defaults to **DUAL** while Injection, Waveform, and Phasor-only views remain available;
 - configured injection values remain armed while stopped and energize only after START;
-- STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table;
+- STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table or armed CT study parameters;
 - the top-right toolbar is the single Start injection / Stop injection authority; duplicate editor-footer controls were removed;
 - changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions;
 - relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission;
