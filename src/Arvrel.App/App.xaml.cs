@@ -21,7 +21,10 @@ public partial class App : System.Windows.Application
         // application lifecycle point at which that instance is guaranteed to
         // exist. MainWindow handles the rare not-yet-loaded case itself.
         if (MainWindow is Arvrel.App.MainWindow window)
+        {
             window.InitializeP6VirtualRelay();
+            window.InitializeMultiIedWorkspace();
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
