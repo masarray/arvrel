@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Arvrel.Application.Ied;
 
@@ -18,6 +19,9 @@ internal sealed record AvrIec61850ServerStatus
     public long ServedRequests { get; init; }
     public long ReportsSent { get; init; }
     public long RejectedWrites { get; init; }
+    public long AcceptedControls { get; init; }
+    public long RejectedControls { get; init; }
+    public string LastControl { get; init; } = "No remote control received";
     public string LastActivity { get; init; } = "Server stopped";
 
     public string Endpoint => $"{Host}:{Port}";
@@ -25,11 +29,14 @@ internal sealed record AvrIec61850ServerStatus
 
 /// <summary>
 /// Bridges the AVR runtime into the sibling ARIEC61850 simulator/MMS server.
-/// The network stack remains owned by ARIEC61850; this class only defines the
-/// AVR logical model and mirrors live AVR snapshot values into that model.
+/// The network stack remains owned by ARIEC61850; this class defines the AVR
+/// logical model, mirrors live AVR values and queues accepted IEC controls back
+/// to the WPF/AVR authority thread.
 /// </summary>
 internal sealed class AvrIec61850ServerHost : IAsyncDisposable
 {
+    private readonly ConcurrentQueue<AvrIec61850Command> _commands = new();
+
 #if ARIEC61850_SIBLING
     private const string LogicalDevice = "ARVAVR1";
     private readonly object _gate = new();
@@ -38,6 +45,12 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
     private string _host = "0.0.0.0";
     private int _port = 102;
     private string _lastActivity = "Server stopped";
+    private string _lastControl = "No remote control received";
+    private long _acceptedControls;
+    private long _rejectedControls;
+    private AvrSnapshot _latestSnapshot = AvrSnapshot.Ready(new AvrSettings(), 0);
+    private AvrSettings _latestSettings = new();
+    private bool _latestRemoteBlock;
 
     public bool EngineAvailable => true;
 
@@ -53,6 +66,11 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             if (_server?.IsRunning == true)
                 throw new InvalidOperationException("The AVR IEC 61850 server is already running.");
 
+            while (_commands.TryDequeue(out _)) { }
+            Interlocked.Exchange(ref _acceptedControls, 0);
+            Interlocked.Exchange(ref _rejectedControls, 0);
+            _lastControl = "No remote control received";
+
             var profile = CreateAvrProfile();
             var engine = new IedSimulatorEngine(profile);
             var modelBuilder = new MmsReadOnlyServerModelBuilder();
@@ -60,7 +78,12 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             {
                 Host = host.Trim(),
                 Port = port,
-                ServerName = "ARVREL AVR-230 Virtual IED"
+                ServerName = "ARVREL AVR-230 Virtual IED",
+                AssociationRuntimeFactory = remote => new AvrIec61850ControlRuntime(
+                    remote,
+                    GetControlContext,
+                    EnqueueCommand,
+                    AuditControl)
             };
             var profileOptions = new MmsReadOnlyServerProfileOptions
             {
@@ -110,6 +133,7 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             _lastActivity = "Server stopping";
         }
 
+        while (_commands.TryDequeue(out _)) { }
         if (server is null)
             return;
 
@@ -121,28 +145,34 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             _lastActivity = "Server stopped";
     }
 
-    public void Publish(AvrSnapshot snapshot, AvrSettings settings, double frequencyHz)
+    public void Publish(AvrSnapshot snapshot, AvrSettings settings, double frequencyHz, bool remoteBlock)
     {
         lock (_gate)
         {
+            _latestSnapshot = snapshot;
+            _latestSettings = settings;
+            _latestRemoteBlock = remoteBlock;
             if (_engine is null)
                 return;
 
             var now = DateTimeOffset.UtcNow;
             SetMeasurement("ATCC1.CtlV.mag.f", snapshot.MeasuredVoltageV, now);
             SetMeasurement("ATCC1.LodA.mag.f", snapshot.SourceCurrentA, now);
-            SetMeasurement("ATCC1.BndCtr.setMag.f", snapshot.EffectiveSetpointVoltageV, now);
-            SetMeasurement("ATCC1.BndWid.setMag.f", snapshot.EffectiveSetpointVoltageV * settings.TolerancePercent * 2.0 / 100.0, now);
+            SetMeasurement("ATCC1.BndCtr.setMag.f", settings.SetpointVoltageV, now);
+            SetMeasurement("ATCC1.BndWid.setMag.f", settings.SetpointVoltageV * settings.TolerancePercent * 2.0 / 100.0, now);
+            SetInteger("ATCC1.CtlDlTmms.setVal", (int)Math.Round(settings.T1Seconds * 1000.0), now);
             SetMeasurement("ATCC1.BlkVLo.setMag.f", settings.NominalVoltageV * settings.UndervoltageBlockPercent / 100.0, now);
             SetMeasurement("ATCC1.BlkVHi.setMag.f", settings.NominalVoltageV * settings.OvervoltageBlockPercent / 100.0, now);
             SetStatus("ATCC1.Loc.stVal", snapshot.Authority == AvrControlAuthority.Local, now);
             SetStatus("ATCC1.Auto.stVal", snapshot.Mode == AvrOperatingMode.Automatic, now);
-            SetStatus("ATCC1.LTCBlk.stVal", snapshot.Blocked, now);
+            SetStatus("ATCC1.LTCBlk.stVal", remoteBlock, now);
             SetStatus("ATCC1.TapOpR.stVal", snapshot.RaiseOutput, now);
             SetStatus("ATCC1.TapOpL.stVal", snapshot.LowerOutput, now);
             SetText("ATCC1.Beh.stVal", snapshot.Blocked ? "blocked" : "on", now);
 
             SetInteger("YLTC1.TapPos.stVal", snapshot.TapPosition, now);
+            SetInteger("YLTC1.TapChg.valWTr.posVal", snapshot.RaiseOutput ? 2 : snapshot.LowerOutput ? 1 : 0, now);
+            SetStatus("YLTC1.TapChg.valWTr.transInd", snapshot.TapMoving, now);
             SetStatus("YLTC1.EndPosR.stVal", snapshot.TapPosition >= settings.MaximumTap, now);
             SetStatus("YLTC1.EndPosL.stVal", snapshot.TapPosition <= settings.MinimumTap, now);
             SetInteger("YLTC1.OpCnt.stVal", snapshot.OperationCount, now);
@@ -155,6 +185,9 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             SetStatus("GGIO1.TapMoving.stVal", snapshot.TapMoving, now);
         }
     }
+
+    public bool TryDequeueCommand(out AvrIec61850Command command)
+        => _commands.TryDequeue(out command!);
 
     public AvrIec61850ServerStatus GetStatus()
     {
@@ -173,9 +206,43 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
                 ServedRequests = server?.ServedRequestCount ?? 0,
                 ReportsSent = activity.LongCount(x => x.Kind == IedSimulatorServerActivityKind.ReportSent),
                 RejectedWrites = server?.RejectedWriteCount ?? 0,
+                AcceptedControls = Interlocked.Read(ref _acceptedControls),
+                RejectedControls = Interlocked.Read(ref _rejectedControls),
+                LastControl = _lastControl,
                 LastActivity = _lastActivity
             };
         }
+    }
+
+    private AvrIec61850ControlContext GetControlContext()
+    {
+        lock (_gate)
+        {
+            var width = _latestSettings.SetpointVoltageV * _latestSettings.TolerancePercent * 2.0 / 100.0;
+            return new AvrIec61850ControlContext(
+                _latestSnapshot.Authority,
+                _latestSnapshot.Mode,
+                _latestSnapshot.TapPosition,
+                _latestSettings.MinimumTap,
+                _latestSettings.MaximumTap,
+                _latestSnapshot.TapMoving,
+                _latestRemoteBlock,
+                _latestSettings.NominalVoltageV,
+                _latestSettings.SetpointVoltageV,
+                width);
+        }
+    }
+
+    private void EnqueueCommand(AvrIec61850Command command) => _commands.Enqueue(command);
+
+    private void AuditControl(bool accepted, string target, string message)
+    {
+        if (accepted)
+            Interlocked.Increment(ref _acceptedControls);
+        else
+            Interlocked.Increment(ref _rejectedControls);
+        lock (_gate)
+            _lastControl = $"{DateTime.Now:HH:mm:ss} {(accepted ? "ACCEPT" : "REJECT")} {target} · {message}";
     }
 
     private void Server_Activity(object? sender, IedSimulatorServerActivity activity)
@@ -207,12 +274,13 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
 
     private static IedSimulatorProfile CreateAvrProfile()
     {
-        var atccPoints = new IedSimulatorPoint[]
+        var atccPoints = new List<IedSimulatorPoint>
         {
             FixedMeasurement("ATCC1.CtlV.mag.f", "MX", "V"),
             FixedMeasurement("ATCC1.LodA.mag.f", "MX", "A"),
             FixedMeasurement("ATCC1.BndCtr.setMag.f", "SP", "V"),
             FixedMeasurement("ATCC1.BndWid.setMag.f", "SP", "V"),
+            FixedInteger("ATCC1.CtlDlTmms.setVal", "SP", "INT32U", "10000"),
             FixedMeasurement("ATCC1.BlkVLo.setMag.f", "SP", "V"),
             FixedMeasurement("ATCC1.BlkVHi.setMag.f", "SP", "V"),
             BooleanStatus("ATCC1.Loc.stVal"),
@@ -222,14 +290,19 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             BooleanStatus("ATCC1.TapOpL.stVal"),
             TextStatus("ATCC1.Beh.stVal", "on")
         };
+        atccPoints.AddRange(ControlObjectPoints("ATCC1.Auto", "BOOLEAN"));
+        atccPoints.AddRange(ControlObjectPoints("ATCC1.LTCBlk", "BOOLEAN"));
 
-        var yltcPoints = new IedSimulatorPoint[]
+        var yltcPoints = new List<IedSimulatorPoint>
         {
             IntegerStatus("YLTC1.TapPos.stVal"),
+            FixedInteger("YLTC1.TapChg.valWTr.posVal", "ST", "TCMD", "0"),
+            FixedBoolean("YLTC1.TapChg.valWTr.transInd", "ST", false),
             BooleanStatus("YLTC1.EndPosR.stVal"),
             BooleanStatus("YLTC1.EndPosL.stVal"),
             IntegerStatus("YLTC1.OpCnt.stVal")
         };
+        yltcPoints.AddRange(ControlObjectPoints("YLTC1.TapChg", "INT8"));
 
         var mmxuPoints = new IedSimulatorPoint[]
         {
@@ -245,12 +318,15 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             BooleanStatus("GGIO1.TapMoving.stVal")
         };
 
-        var allMeasurements = atccPoints.Where(x => x.FunctionalConstraint is "MX" or "SP")
+        var allMeasurements = atccPoints.Where(x => x.FunctionalConstraint == "MX")
             .Concat(mmxuPoints)
             .Select(x => $"{LogicalDevice}/{x.Reference}")
             .ToArray();
+        var allSettings = atccPoints.Where(x => x.FunctionalConstraint == "SP")
+            .Select(x => $"{LogicalDevice}/{x.Reference}")
+            .ToArray();
         var allStatus = atccPoints.Where(x => x.FunctionalConstraint == "ST")
-            .Concat(yltcPoints)
+            .Concat(yltcPoints.Where(x => x.FunctionalConstraint == "ST"))
             .Concat(ggioPoints)
             .Select(x => $"{LogicalDevice}/{x.Reference}")
             .ToArray();
@@ -269,8 +345,8 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
                     {
                         new() { Name = "LLN0", LnClass = "LLN0", Points = Array.Empty<IedSimulatorPoint>() },
                         new() { Name = "LPHD1", LnClass = "LPHD", Points = Array.Empty<IedSimulatorPoint>() },
-                        new() { Name = "ATCC1", LnClass = "ATCC", Points = atccPoints },
-                        new() { Name = "YLTC1", LnClass = "YLTC", Points = yltcPoints },
+                        new() { Name = "ATCC1", LnClass = "ATCC", Points = atccPoints.ToArray() },
+                        new() { Name = "YLTC1", LnClass = "YLTC", Points = yltcPoints.ToArray() },
                         new() { Name = "MMXU1", LnClass = "MMXU", Points = mmxuPoints },
                         new() { Name = "GGIO1", LnClass = "GGIO", Points = ggioPoints }
                     }
@@ -279,7 +355,8 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
             DataSets = new IedSimulatorDataSet[]
             {
                 new() { Reference = $"{LogicalDevice}/LLN0.dsMeas", Members = allMeasurements },
-                new() { Reference = $"{LogicalDevice}/LLN0.dsStatus", Members = allStatus }
+                new() { Reference = $"{LogicalDevice}/LLN0.dsStatus", Members = allStatus },
+                new() { Reference = $"{LogicalDevice}/LLN0.dsSettings", Members = allSettings }
             },
             ReportControlBlocks = new IedSimulatorReportControlBlock[]
             {
@@ -289,7 +366,7 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
                     Buffered = true,
                     DataSetReference = $"{LogicalDevice}/LLN0.dsMeas",
                     ReportId = "ARV_AVR_MEAS_01",
-                    ConfRev = 1,
+                    ConfRev = 2,
                     BufferTimeMs = 100,
                     IntegrityPeriodMs = 1000,
                     TriggerOptions = "data-change, integrity, GI",
@@ -301,7 +378,7 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
                     Buffered = false,
                     DataSetReference = $"{LogicalDevice}/LLN0.dsStatus",
                     ReportId = "ARV_AVR_STATUS_01",
-                    ConfRev = 1,
+                    ConfRev = 2,
                     BufferTimeMs = 0,
                     IntegrityPeriodMs = 1000,
                     TriggerOptions = "data-change, integrity, GI",
@@ -311,28 +388,63 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
         };
     }
 
+    private static IEnumerable<IedSimulatorPoint> ControlObjectPoints(string root, string controlType)
+    {
+        yield return FixedText($"{root}.SBO", "CO", "VISSTRING129", string.Empty);
+        foreach (var service in new[] { "SBOw", "Oper", "Cancel" })
+        {
+            yield return FixedText($"{root}.{service}.ctlVal", "CO", controlType, controlType == "BOOLEAN" ? "false" : "0");
+            yield return FixedInteger($"{root}.{service}.origin.orCat", "CO", "INT8", "0");
+            yield return FixedText($"{root}.{service}.origin.orIdent", "CO", "OCTET64", string.Empty);
+            yield return FixedInteger($"{root}.{service}.ctlNum", "CO", "INT8U", "0");
+            yield return FixedText($"{root}.{service}.T", "CO", "TIMESTAMP", string.Empty);
+            yield return FixedBoolean($"{root}.{service}.Test", "CO", false);
+            yield return FixedText($"{root}.{service}.Check", "CO", "CHECK", string.Empty);
+        }
+
+        yield return FixedInteger($"{root}.ctlModel", "CF", "ENUM", "4");
+        yield return FixedInteger($"{root}.sboTimeout", "CF", "INT32U", "5000");
+        yield return FixedInteger($"{root}.sboClass", "CF", "ENUM", "0");
+    }
+
     private static IedSimulatorPoint FixedMeasurement(string reference, string functionalConstraint, string unit)
         => IedSimulatorPoint.Measurement(reference, functionalConstraint, unit, 0, 0, 0, isDynamic: false, sclBType: "FLOAT32");
 
-    private static IedSimulatorPoint BooleanStatus(string reference)
+    private static IedSimulatorPoint FixedInteger(string reference, string functionalConstraint, string sclType, string value)
         => new()
         {
             Reference = reference,
-            FunctionalConstraint = "ST",
+            FunctionalConstraint = functionalConstraint,
             Kind = "status",
-            SclBType = "BOOLEAN",
-            InitialValue = "false"
+            SclBType = sclType,
+            InitialValue = value
         };
 
-    private static IedSimulatorPoint IntegerStatus(string reference)
+    private static IedSimulatorPoint FixedBoolean(string reference, string functionalConstraint, bool value)
         => new()
         {
             Reference = reference,
-            FunctionalConstraint = "ST",
+            FunctionalConstraint = functionalConstraint,
             Kind = "status",
-            SclBType = "INT32",
-            InitialValue = "0"
+            SclBType = "BOOLEAN",
+            InitialValue = value ? "true" : "false"
         };
+
+    private static IedSimulatorPoint FixedText(string reference, string functionalConstraint, string sclType, string value)
+        => new()
+        {
+            Reference = reference,
+            FunctionalConstraint = functionalConstraint,
+            Kind = "status",
+            SclBType = sclType,
+            InitialValue = value
+        };
+
+    private static IedSimulatorPoint BooleanStatus(string reference)
+        => FixedBoolean(reference, "ST", false);
+
+    private static IedSimulatorPoint IntegerStatus(string reference)
+        => FixedInteger(reference, "ST", "INT32", "0");
 
     private static IedSimulatorPoint TextStatus(string reference, string initialValue)
         => new()
@@ -350,8 +462,14 @@ internal sealed class AvrIec61850ServerHost : IAsyncDisposable
 
     public Task StopAsync() => Task.CompletedTask;
 
-    public void Publish(AvrSnapshot snapshot, AvrSettings settings, double frequencyHz)
+    public void Publish(AvrSnapshot snapshot, AvrSettings settings, double frequencyHz, bool remoteBlock)
     {
+    }
+
+    public bool TryDequeueCommand(out AvrIec61850Command command)
+    {
+        command = null!;
+        return false;
     }
 
     public AvrIec61850ServerStatus GetStatus()
