@@ -7,11 +7,6 @@ namespace Arvrel.App.Controls.Avr;
 
 public partial class AvrP0HmiControl
 {
-    /// <summary>
-    /// Applies the operator-facing transformer convention used by the AVR lab:
-    /// tap positions are physical positions 1..N, with the neutral position
-    /// shown explicitly instead of a signed offset around zero.
-    /// </summary>
     internal void ApplyTransformerConvention(AvrSnapshot snapshot, AvrSettings settings)
     {
         var tap = TapText(snapshot.TapPosition);
@@ -29,17 +24,15 @@ public partial class AvrP0HmiControl
                 : $"FEEDBACK VALID · N {neutral}";
         ControlTapRange.Text = $"{minimum} … {maximum} · neutral {neutral} · {settings.TapStepPercent:0.###}%/step";
 
-        // Keep the hierarchy compact inside the fixed physical chassis.
-        TapHero.FontSize = 54;
-        TapHero.MinWidth = 94;
+        // Fixed hardware display: preserve breathing room around the actual-voltage
+        // unit/setpoint column rather than letting the hero value collide with it.
+        TapHero.FontSize = 52;
+        TapHero.MinWidth = 90;
         TapHero.TextAlignment = TextAlignment.Left;
-        VoltageHero.FontSize = 38;
-        HomePage.Margin = new Thickness(8, 6, 8, 5);
+        VoltageHero.FontSize = 34;
+        HomePage.Margin = new Thickness(7, 5, 7, 5);
         TrendScale.FontSize = 7.0;
 
-        // The electrical-value card previously sat at the top of a taller card,
-        // leaving an untidy dead area below it. Center its content vertically so
-        // Tap and U remain visually balanced at the device's fixed aspect ratio.
         if (VoltageHero.Parent is StackPanel voltageLine &&
             voltageLine.Parent is StackPanel voltageBlock &&
             voltageBlock.Parent is Grid voltageTopGrid &&
