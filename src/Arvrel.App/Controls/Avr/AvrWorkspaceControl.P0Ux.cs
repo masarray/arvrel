@@ -111,8 +111,6 @@ public partial class AvrWorkspaceControl
     {
         if (VisualTreeHelper.GetParent(displayBorder) is Grid deviceGrid && deviceGrid.ColumnDefinitions.Count >= 5)
         {
-            // Compact icon keypad gives the LCD ~28 px more horizontal room while
-            // keeping the physical chassis width unchanged.
             deviceGrid.ColumnDefinitions[1].Width = new GridLength(7);
             deviceGrid.ColumnDefinitions[3].Width = new GridLength(7);
             deviceGrid.ColumnDefinitions[4].Width = new GridLength(48);
@@ -157,6 +155,10 @@ public partial class AvrWorkspaceControl
             var raw = button.Tag?.ToString()?.ToUpperInvariant();
             if (raw is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU" or "HOME"))
                 continue;
+
+            // The old direct XAML handler logged every navigation click as an AVR
+            // event. Remove it; the root routed handler below owns the keypad.
+            button.Click -= DeviceFunction_Click;
 
             var key = raw == "BACK" ? "HOME" : raw;
             button.Tag = key;
@@ -253,8 +255,6 @@ public partial class AvrWorkspaceControl
             return;
         }
 
-        // Navigation is operator interaction, not an AVR event. Do not pollute
-        // the engineering event trace with MENU/arrow/home key spam.
         if (key == "HOME")
             _p0Hmi.GoHome();
         else
