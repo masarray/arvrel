@@ -27,7 +27,9 @@ public partial class AvrWorkspaceControl
         _hmiLastSourceEnergized = _sourceEnergized;
         _hmiFastPickupActive = false;
         _hmiTrendTick = 0;
+        InitializeHmiNavigation();
         UpdateTrendGraphic();
+        RefreshHmiNavigation();
     }
 
     private void HmiUnloaded(object sender, RoutedEventArgs e)
@@ -37,6 +39,8 @@ public partial class AvrWorkspaceControl
             _timer.Tick -= HmiSupport_Tick;
             _hmiTickAttached = false;
         }
+
+        ShutdownHmiNavigation();
     }
 
     private void HmiSupport_Tick(object? sender, EventArgs e)
@@ -53,6 +57,11 @@ public partial class AvrWorkspaceControl
 
         if (_hmiFastPickupActive && _running && _sourceEnergized)
             AdvanceInitialPickup();
+
+        // The IEC 61850 model follows the same authoritative AVR snapshot used by
+        // the HMI. No independent network-side simulation state is introduced.
+        PublishIec61850Snapshot();
+        RefreshHmiNavigation();
 
         if (!_sourceEnergized)
         {
