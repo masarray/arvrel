@@ -106,6 +106,50 @@ public sealed class CtObservabilityProjectorTests
     }
 
     [TestMethod]
+    public void SaturationOnsetUsesSourceTimelineAfterCtStateReset()
+    {
+        var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
+        var runtime = new VirtualInjectionRuntime(profile, initialTimestamp: DateTimeOffset.UnixEpoch);
+        runtime.Start();
+        runtime.Advance(TimeSpan.FromMilliseconds(500), trustDegraded: false);
+        var sourceBeforeReset = runtime.SourceSampleIndex;
+        Assert.IsTrue(runtime.ResetCurrentTransformerState(demagnetize: false));
+        Assert.AreEqual(sourceBeforeReset, runtime.SourceSampleIndex);
+
+        var snapshot = runtime.Advance(TimeSpan.Zero, trustDegraded: false);
+        var frame = snapshot.Frame;
+        var ideal = VirtualInjectionReferenceGenerator.GenerateCurrents(
+            profile,
+            snapshot.SourceSampleIndex,
+            frame.PhaseACurrentSamples.Length,
+            frame.SampleRateHz);
+        var evidence = new CtObservabilityWaveformEvidence(
+            ideal,
+            frame.PhaseACurrentSamples,
+            frame.PhaseBCurrentSamples,
+            frame.PhaseCCurrentSamples,
+            frame.ResidualCurrentSamples,
+            frame.SamplesPerCycle);
+
+        var result = CtObservabilityProjector.Project(
+            profile,
+            frame.CtSaturation,
+            snapshot.CurrentTransformerState,
+            snapshot.SourceSampleIndex,
+            evidence,
+            snapshot.IsRunning);
+        var phaseA = result.Channels.Single(channel => channel.Channel == "IA");
+
+        Assert.IsTrue(phaseA.Saturated);
+        Assert.IsTrue(frame.CtSaturation.PhaseA.FirstSaturatedSample >= 0);
+        Assert.AreEqual(
+            snapshot.SourceSampleIndex + frame.CtSaturation.PhaseA.FirstSaturatedSample,
+            phaseA.FirstSaturationAbsoluteSample);
+        Assert.IsTrue(phaseA.FirstSaturationAbsoluteSample >= sourceBeforeReset);
+        Assert.AreEqual(0L, snapshot.CurrentTransformerState.PhaseA.ProcessedSampleCount);
+    }
+
+    [TestMethod]
     public void StoppedConfiguredCtRemainsVisibleButControlsAreDisabled()
     {
         var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
