@@ -242,11 +242,8 @@ public sealed class AvrSimulationEngine
         ResetRegulationTiming();
     }
 
-    public bool RaiseTap()
-        => IssueLocalManualTap(+1);
-
-    public bool LowerTap()
-        => IssueLocalManualTap(-1);
+    public bool RaiseTap() => IssueLocalManualTap(+1);
+    public bool LowerTap() => IssueLocalManualTap(-1);
 
     public void Reset()
     {
@@ -273,7 +270,12 @@ public sealed class AvrSimulationEngine
         if (!double.IsFinite(currentAngleDegrees))
             throw new ArgumentOutOfRangeException(nameof(currentAngleDegrees), "Current angle must be finite.");
 
+        // Motor travel and output-contact pulse are physical actuator timing. They must not
+        // also count as T1/T2 regulation delay. A UI stall therefore advances real motor
+        // travel, but regulation resumes on the next simulation slice after feedback arrives.
+        var wasMoving = _pendingTapPosition.HasValue;
         AdvanceActuator(elapsed.TotalSeconds);
+        var regulationElapsedSeconds = wasMoving ? 0 : elapsed.TotalSeconds;
 
         var effectiveSetpoint = _settings.SetpointVoltageV *
             (1 + (_settings.LineDropCompensationEnabled ? _settings.LineDropCompensationPercent / 100.0 : 0));
@@ -289,15 +291,8 @@ public sealed class AvrSimulationEngine
         if (_pendingTapPosition.HasValue)
         {
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.TapMoving,
                 $"Tap changer moving · {_tapPosition:+0;-0;0} → {_pendingTapPosition.Value:+0;-0;0}",
                 blocked: false,
@@ -319,15 +314,8 @@ public sealed class AvrSimulationEngine
                 : underCurrentBlock ? "Undercurrent blocking active"
                 : "Overcurrent blocking active";
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.Blocked,
                 reason,
                 blocked: true,
@@ -341,15 +329,8 @@ public sealed class AvrSimulationEngine
                 ? "Manual local mode · use RAISE / LOWER front-panel commands"
                 : "Manual remote mode · local tap commands inhibited";
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.Manual,
                 reason,
                 blocked: false,
@@ -361,15 +342,8 @@ public sealed class AvrSimulationEngine
         {
             ResetRegulationTiming();
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.InBand,
                 "Voltage inside tolerance band",
                 blocked: false,
@@ -386,7 +360,7 @@ public sealed class AvrSimulationEngine
         var delayTarget = _settings.FastT2Enabled && _consecutiveOperations > 0
             ? _settings.T2Seconds
             : _settings.T1Seconds;
-        _delayElapsedSeconds += elapsed.TotalSeconds;
+        _delayElapsedSeconds += regulationElapsedSeconds;
 
         var atLimit = direction > 0
             ? _tapPosition >= _settings.MaximumTap
@@ -394,15 +368,8 @@ public sealed class AvrSimulationEngine
         if (atLimit)
         {
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.TapLimit,
                 direction > 0 ? "Raise requested · maximum tap reached" : "Lower requested · minimum tap reached",
                 blocked: false,
@@ -415,31 +382,19 @@ public sealed class AvrSimulationEngine
             _delayElapsedSeconds = 0;
             _consecutiveOperations++;
             return Snapshot(
-                sourceVoltageV,
-                sourceCurrentA,
-                currentAngleDegrees,
-                powerFactor,
-                measuredVoltage,
-                effectiveSetpoint,
-                lowerBand,
-                upperBand,
-                deviationPercent,
+                sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+                measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
                 AvrControlState.TapMoving,
-                direction > 0 ? "Automatic RAISE command issued · awaiting tap feedback" : "Automatic LOWER command issued · awaiting tap feedback",
+                direction > 0
+                    ? "Automatic RAISE command issued · awaiting tap feedback"
+                    : "Automatic LOWER command issued · awaiting tap feedback",
                 blocked: false,
                 delayTargetSeconds: 0);
         }
 
         return Snapshot(
-            sourceVoltageV,
-            sourceCurrentA,
-            currentAngleDegrees,
-            powerFactor,
-            measuredVoltage,
-            effectiveSetpoint,
-            lowerBand,
-            upperBand,
-            deviationPercent,
+            sourceVoltageV, sourceCurrentA, currentAngleDegrees, powerFactor,
+            measuredVoltage, effectiveSetpoint, lowerBand, upperBand, deviationPercent,
             direction > 0 ? AvrControlState.TimingRaise : AvrControlState.TimingLower,
             direction > 0 ? "Voltage low · timing RAISE" : "Voltage high · timing LOWER",
             blocked: false,
