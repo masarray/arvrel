@@ -105,7 +105,11 @@ public sealed class VirtualInjectionRuntime
         _configuredProfile = normalized;
         _sourceSampleIndex = 0;
         if (!preserveCtState)
-            _ctRuntimeState = CtSaturationRuntimeState.Empty;
+        {
+            _ctRuntimeState = _isRunning
+                ? CreateInitialCtRuntimeState(normalized)
+                : CtSaturationRuntimeState.Empty;
+        }
 
         AppliedAt = _timestamp;
         if (_isRunning)
@@ -120,7 +124,7 @@ public sealed class VirtualInjectionRuntime
 
         _isRunning = true;
         _sourceSampleIndex = 0;
-        _ctRuntimeState = CtSaturationRuntimeState.Empty;
+        _ctRuntimeState = CreateInitialCtRuntimeState(_configuredProfile);
         OutputStateChangedAt = _timestamp;
         _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
         return true;
@@ -239,6 +243,13 @@ public sealed class VirtualInjectionRuntime
         VirtualInjectionProfile next)
         => previous.FrequencyHz.Equals(next.FrequencyHz) &&
            Equals(previous.CurrentTransformer, next.CurrentTransformer);
+
+    private static CtSaturationRuntimeState CreateInitialCtRuntimeState(
+        VirtualInjectionProfile profile)
+        => CtSaturationRuntimeState.CreateInitial(
+            profile.CurrentTransformer,
+            profile.FrequencyHz,
+            profile.ExplicitNeutralCurrent);
 
     private static VirtualInjectionProfile CreateZeroOutputProfile(VirtualInjectionProfile configured)
         => new(

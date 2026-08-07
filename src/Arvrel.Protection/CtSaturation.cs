@@ -104,6 +104,20 @@ public sealed record CtSaturationRuntimeState(
         CtSaturationChannelState.Empty,
         CtSaturationChannelState.Empty);
 
+    public static CtSaturationRuntimeState CreateInitial(
+        CtSaturationSettings settings,
+        double frequencyHz,
+        bool explicitNeutralCurrent)
+    {
+        var phaseA = CtSaturationModel.CreateInitialState(settings, frequencyHz);
+        var phaseB = CtSaturationModel.CreateInitialState(settings, frequencyHz);
+        var phaseC = CtSaturationModel.CreateInitialState(settings, frequencyHz);
+        var neutral = explicitNeutralCurrent
+            ? CtSaturationModel.CreateInitialState(settings, frequencyHz)
+            : CtSaturationChannelState.Empty;
+        return new CtSaturationRuntimeState(phaseA, phaseB, phaseC, neutral);
+    }
+
     public bool HasHistory => PhaseA.HasHistory || PhaseB.HasHistory || PhaseC.HasHistory || Neutral.HasHistory;
     public long MaximumProcessedSampleCount => Math.Max(
         Math.Max(PhaseA.ProcessedSampleCount, PhaseB.ProcessedSampleCount),
@@ -213,6 +227,27 @@ public static class CtSaturationModel
     private const int SolverIterations = 6;
     private const double Relaxation = 0.45;
 
+    public static CtSaturationChannelState CreateInitialState(
+        CtSaturationSettings settings,
+        double frequencyHz)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings.Validate();
+        if (!double.IsFinite(frequencyHz) || frequencyHz <= 0)
+            throw new ArgumentOutOfRangeException(nameof(frequencyHz));
+        if (!settings.Enabled)
+            return CtSaturationChannelState.Empty;
+
+        var angularFrequency = 2 * Math.PI * frequencyHz;
+        var kneeFluxLinkage = Math.Sqrt(2) * settings.KneePointVoltageRms / angularFrequency;
+        return new CtSaturationChannelState(
+            true,
+            settings.RemanencePercent / 100d * kneeFluxLinkage,
+            0,
+            0,
+            0);
+    }
+
     public static CtSaturationChannelResult Apply(
         IReadOnlyList<double> idealSecondaryCurrentA,
         double sampleRateHz,
@@ -260,12 +295,16 @@ public static class CtSaturationModel
         var maximumFlux = settings.MaximumFluxPerUnit * kneeFluxLinkage;
 
         var carriedState = initialState is { Initialized: true };
-        var previousFlux = carriedState
-            ? Math.Clamp(initialState!.FluxLinkageVoltSeconds, -maximumFlux, maximumFlux)
-            : settings.RemanencePercent / 100d * kneeFluxLinkage;
-        var previousSecondary = carriedState ? initialState!.PreviousSecondaryCurrentA : 0d;
-        var previousVoltage = carriedState ? initialState!.PreviousSecondaryVoltageV : 0d;
-        var initialProcessedSampleCount = carriedState ? initialState!.ProcessedSampleCount : 0;
+        var effectiveInitialState = carriedState
+            ? initialState!
+            : CreateInitialState(settings, frequencyHz);
+        var previousFlux = Math.Clamp(
+            effectiveInitialState.FluxLinkageVoltSeconds,
+            -maximumFlux,
+            maximumFlux);
+        var previousSecondary = effectiveInitialState.PreviousSecondaryCurrentA;
+        var previousVoltage = effectiveInitialState.PreviousSecondaryVoltageV;
+        var initialProcessedSampleCount = effectiveInitialState.ProcessedSampleCount;
         var initialFluxPerUnit = previousFlux / kneeFluxLinkage;
         var saturatedSamples = 0;
         var firstSaturatedSample = -1;
