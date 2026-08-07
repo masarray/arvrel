@@ -11,6 +11,7 @@ public enum LucideIconKind
     Pause,
     Zap,
     ShieldAlert,
+    ShieldCheck,
     RotateCcw,
     Download,
     ChevronUp,
@@ -133,6 +134,9 @@ public sealed class LucideIcon : FrameworkElement
                 P("M20,13 C20,18 16.5,20.5 12,22 C7.5,20.5 4,18 4,13 V5 L12,2 L20,5 Z"),
                 P("M12,8 V12"),
                 P("M12,16 H12.01")),
+            [LucideIconKind.ShieldCheck] = Def(
+                P("M20,13 C20,18 16.5,20.5 12,22 C7.5,20.5 4,18 4,13 V5 L12,2 L20,5 Z"),
+                P("M8.5,12 L11,14.5 L16,9.5")),
             [LucideIconKind.RotateCcw] = Def(
                 P("M3,12 A9,9 0 1 0 6,5.3"),
                 P("M3,3 V8 H8")),
