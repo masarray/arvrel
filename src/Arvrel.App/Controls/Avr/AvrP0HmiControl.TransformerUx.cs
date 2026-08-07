@@ -24,12 +24,12 @@ public partial class AvrP0HmiControl
         TapRange.Text = $"{minimum} … {maximum} · N {neutral}";
         TapFeedback.Text = snapshot.PendingTapPosition is int pending
             ? $"TARGET {TapText(pending)} · {snapshot.MotorTravelRemainingSeconds:0.0}s"
-            : $"FEEDBACK VALID · N {neutral}";
-        ControlTapRange.Text = $"{minimum} … {maximum} · N {neutral} · {settings.TapStepPercent:0.###}%/step";
+            : snapshot.TapPosition == settings.NeutralTap
+                ? "FEEDBACK VALID · NEUTRAL"
+                : $"FEEDBACK VALID · N {neutral}";
+        ControlTapRange.Text = $"{minimum} … {maximum} · neutral {neutral} · {settings.TapStepPercent:0.###}%/step";
 
-        // Keep the operator hierarchy compact and predictable inside the fixed
-        // hardware chassis. These are presentation constraints, not responsive
-        // desktop-card behaviour.
+        // Keep the hierarchy compact inside the fixed physical chassis.
         TapHero.FontSize = 54;
         TapHero.MinWidth = 94;
         TapHero.TextAlignment = TextAlignment.Left;
@@ -37,12 +37,23 @@ public partial class AvrP0HmiControl
         HomePage.Margin = new Thickness(8, 6, 8, 5);
         TrendScale.FontSize = 7.0;
 
+        // The electrical-value card previously sat at the top of a taller card,
+        // leaving an untidy dead area below it. Center its content vertically so
+        // Tap and U remain visually balanced at the device's fixed aspect ratio.
+        if (VoltageHero.Parent is StackPanel voltageLine &&
+            voltageLine.Parent is StackPanel voltageBlock &&
+            voltageBlock.Parent is Grid voltageTopGrid &&
+            voltageTopGrid.Parent is Grid measurementGrid)
+        {
+            measurementGrid.VerticalAlignment = VerticalAlignment.Center;
+        }
+
         FooterReason.Text = snapshot.SourceEnergized
             ? snapshot.Reason
             : $"Simulated transformer · neutral tap {neutral} · source OFF";
         BottomStatus.Text = snapshot.SourceEnergized
             ? $"{HomeAuthority.Text} · {HomeMode.Text} · TAP {tap}/{maximum} · {StateText(snapshot.State).ToUpperInvariant()}"
-            : $"SIMULATED TRANSFORMER · TAP {tap}/{maximum} · SOURCE OFF";
+            : $"SIMULATED TRANSFORMER · TAP {tap}/{maximum} · NEUTRAL {neutral} · SOURCE OFF";
     }
 
     private static string TapText(int tap) => tap.ToString("00", CultureInfo.InvariantCulture);
