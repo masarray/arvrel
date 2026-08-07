@@ -41,6 +41,12 @@ public enum AvrOperatingMode
     Manual
 }
 
+public enum AvrControlAuthority
+{
+    Local,
+    Remote
+}
+
 public enum AvrVoltageInputMode
 {
     BenchInjection,
@@ -52,6 +58,7 @@ public enum AvrControlState
     InBand,
     TimingRaise,
     TimingLower,
+    TapMoving,
     TapLimit,
     Blocked,
     Manual
@@ -70,8 +77,15 @@ public sealed record AvrSettings
     public int MaximumTap { get; init; } = 8;
     public int NeutralTap { get; init; }
     public double TapStepPercent { get; init; } = 1.25;
+    public double CommandPulseSeconds { get; init; } = 0.5;
+    public double MotorDriveTravelSeconds { get; init; } = 3.0;
     public double UndervoltageBlockPercent { get; init; } = 80.0;
     public double OvervoltageBlockPercent { get; init; } = 120.0;
+    public double NominalCurrentA { get; init; } = 1.0;
+    public bool UndercurrentBlockingEnabled { get; init; }
+    public double UndercurrentBlockPercent { get; init; } = 10.0;
+    public bool OvercurrentBlockingEnabled { get; init; }
+    public double OvercurrentBlockPercent { get; init; } = 150.0;
     public bool LineDropCompensationEnabled { get; init; }
     public double LineDropCompensationPercent { get; init; }
     public AvrVoltageInputMode VoltageInputMode { get; init; } = AvrVoltageInputMode.BenchInjection;
@@ -94,10 +108,20 @@ public sealed record AvrSettings
             throw new ArgumentOutOfRangeException(nameof(NeutralTap), "Neutral tap must be inside the configured tap range.");
         if (!double.IsFinite(TapStepPercent) || TapStepPercent <= 0 || TapStepPercent > 10)
             throw new ArgumentOutOfRangeException(nameof(TapStepPercent), "Tap step must be greater than zero and no more than 10%.");
+        if (!double.IsFinite(CommandPulseSeconds) || CommandPulseSeconds < 0.05 || CommandPulseSeconds > 10)
+            throw new ArgumentOutOfRangeException(nameof(CommandPulseSeconds), "Tap command pulse must be between 0.05 and 10 seconds.");
+        if (!double.IsFinite(MotorDriveTravelSeconds) || MotorDriveTravelSeconds < 0 || MotorDriveTravelSeconds > 60)
+            throw new ArgumentOutOfRangeException(nameof(MotorDriveTravelSeconds), "Motor-drive travel time must be between 0 and 60 seconds.");
         if (!double.IsFinite(UndervoltageBlockPercent) || UndervoltageBlockPercent <= 0 || UndervoltageBlockPercent >= 100)
             throw new ArgumentOutOfRangeException(nameof(UndervoltageBlockPercent), "Undervoltage blocking must be between 0 and 100%.");
         if (!double.IsFinite(OvervoltageBlockPercent) || OvervoltageBlockPercent <= 100 || OvervoltageBlockPercent > 200)
             throw new ArgumentOutOfRangeException(nameof(OvervoltageBlockPercent), "Overvoltage blocking must be above 100% and no more than 200%.");
+        if (!double.IsFinite(NominalCurrentA) || NominalCurrentA <= 0 || NominalCurrentA > 20)
+            throw new ArgumentOutOfRangeException(nameof(NominalCurrentA), "Nominal secondary current must be greater than zero and no more than 20 A.");
+        if (!double.IsFinite(UndercurrentBlockPercent) || UndercurrentBlockPercent < 0 || UndercurrentBlockPercent >= 100)
+            throw new ArgumentOutOfRangeException(nameof(UndercurrentBlockPercent), "Undercurrent blocking must be between 0 and less than 100% In.");
+        if (!double.IsFinite(OvercurrentBlockPercent) || OvercurrentBlockPercent <= 100 || OvercurrentBlockPercent > 1000)
+            throw new ArgumentOutOfRangeException(nameof(OvercurrentBlockPercent), "Overcurrent blocking must be above 100% and no more than 1000% In.");
         if (!double.IsFinite(LineDropCompensationPercent) || Math.Abs(LineDropCompensationPercent) > 20)
             throw new ArgumentOutOfRangeException(nameof(LineDropCompensationPercent), "Line-drop compensation must be between -20% and +20%.");
     }
@@ -106,51 +130,72 @@ public sealed record AvrSettings
 public sealed record AvrSnapshot(
     DateTimeOffset Timestamp,
     AvrOperatingMode Mode,
+    AvrControlAuthority Authority,
     AvrControlState State,
     double SourceVoltageV,
+    double SourceCurrentA,
+    double CurrentAngleDegrees,
+    double PowerFactor,
     double MeasuredVoltageV,
     double EffectiveSetpointVoltageV,
     double LowerBandVoltageV,
     double UpperBandVoltageV,
     double DeviationPercent,
     int TapPosition,
+    int? PendingTapPosition,
     int OperationCount,
     bool RaiseOutput,
     bool LowerOutput,
+    bool TapMoving,
     bool Blocked,
     string Reason,
     double DelayElapsedSeconds,
-    double DelayTargetSeconds)
+    double DelayTargetSeconds,
+    double MotorTravelRemainingSeconds,
+    double CommandPulseRemainingSeconds)
 {
     public static AvrSnapshot Ready(AvrSettings settings, int tapPosition) => new(
         DateTimeOffset.UtcNow,
         AvrOperatingMode.Automatic,
+        AvrControlAuthority.Local,
         AvrControlState.InBand,
         settings.SetpointVoltageV,
+        settings.NominalCurrentA,
+        0,
+        1,
         settings.SetpointVoltageV,
         settings.SetpointVoltageV,
         settings.SetpointVoltageV * (1 - (settings.TolerancePercent / 100.0)),
         settings.SetpointVoltageV * (1 + (settings.TolerancePercent / 100.0)),
         0,
         tapPosition,
+        null,
         0,
+        false,
         false,
         false,
         false,
         "Ready",
         0,
-        settings.T1Seconds);
+        settings.T1Seconds,
+        0,
+        0);
 }
 
 public sealed class AvrSimulationEngine
 {
     private AvrSettings _settings;
     private AvrOperatingMode _mode = AvrOperatingMode.Automatic;
+    private AvrControlAuthority _authority = AvrControlAuthority.Local;
     private int _tapPosition;
     private int _operationCount;
     private int _consecutiveOperations;
     private int _lastDirection;
+    private int _lastCommandDirection;
+    private int? _pendingTapPosition;
     private double _delayElapsedSeconds;
+    private double _motorTravelRemainingSeconds;
+    private double _commandPulseRemainingSeconds;
 
     public AvrSimulationEngine(AvrSettings settings)
     {
@@ -161,8 +206,12 @@ public sealed class AvrSimulationEngine
 
     public AvrSettings Settings => _settings;
     public AvrOperatingMode Mode => _mode;
+    public AvrControlAuthority Authority => _authority;
     public int TapPosition => _tapPosition;
     public int OperationCount => _operationCount;
+    public bool TapMoving => _pendingTapPosition.HasValue;
+    public bool CanAcceptLocalManualCommand =>
+        _authority == AvrControlAuthority.Local && _mode == AvrOperatingMode.Manual && !_pendingTapPosition.HasValue;
 
     public void ApplySettings(AvrSettings settings, bool keepTapPosition = true)
     {
@@ -171,7 +220,8 @@ public sealed class AvrSimulationEngine
         _tapPosition = keepTapPosition
             ? Math.Clamp(_tapPosition, settings.MinimumTap, settings.MaximumTap)
             : settings.NeutralTap;
-        ResetTiming();
+        ClearActuator();
+        ResetRegulationTiming();
     }
 
     public void SetMode(AvrOperatingMode mode)
@@ -180,81 +230,128 @@ public sealed class AvrSimulationEngine
             return;
 
         _mode = mode;
-        ResetTiming();
+        ResetRegulationTiming();
+    }
+
+    public void SetAuthority(AvrControlAuthority authority)
+    {
+        if (_authority == authority)
+            return;
+
+        _authority = authority;
+        ResetRegulationTiming();
     }
 
     public bool RaiseTap()
-    {
-        ResetTiming();
-        return MoveTap(+1);
-    }
+        => IssueLocalManualTap(+1);
 
     public bool LowerTap()
-    {
-        ResetTiming();
-        return MoveTap(-1);
-    }
+        => IssueLocalManualTap(-1);
 
     public void Reset()
     {
         _tapPosition = _settings.NeutralTap;
         _operationCount = 0;
         _mode = AvrOperatingMode.Automatic;
-        ResetTiming();
+        _authority = AvrControlAuthority.Local;
+        ClearActuator();
+        ResetRegulationTiming();
     }
 
-    public AvrSnapshot Advance(TimeSpan elapsed, double sourceVoltageV)
+    public AvrSnapshot Advance(
+        TimeSpan elapsed,
+        double sourceVoltageV,
+        double sourceCurrentA = 1.0,
+        double currentAngleDegrees = 0)
     {
         if (elapsed < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(elapsed));
         if (!double.IsFinite(sourceVoltageV) || sourceVoltageV <= 0)
             throw new ArgumentOutOfRangeException(nameof(sourceVoltageV), "Source voltage must be greater than zero.");
+        if (!double.IsFinite(sourceCurrentA) || sourceCurrentA < 0)
+            throw new ArgumentOutOfRangeException(nameof(sourceCurrentA), "Source current must be zero or greater.");
+        if (!double.IsFinite(currentAngleDegrees))
+            throw new ArgumentOutOfRangeException(nameof(currentAngleDegrees), "Current angle must be finite.");
+
+        AdvanceActuator(elapsed.TotalSeconds);
 
         var effectiveSetpoint = _settings.SetpointVoltageV *
             (1 + (_settings.LineDropCompensationEnabled ? _settings.LineDropCompensationPercent / 100.0 : 0));
         var lowerBand = effectiveSetpoint * (1 - (_settings.TolerancePercent / 100.0));
         var upperBand = effectiveSetpoint * (1 + (_settings.TolerancePercent / 100.0));
         var tapFactor = 1 + ((_tapPosition - _settings.NeutralTap) * _settings.TapStepPercent / 100.0);
-
-        // Bench-injection mode intentionally keeps measured voltage equal to the injected VT source.
-        // A relay test set (OMICRON-style workflow) does not magically change its output when the AVR
-        // issues a tap command. ClosedLoopPlant is available when users explicitly want transformer
-        // feedback to be simulated by the virtual lab.
         var measuredVoltage = _settings.VoltageInputMode == AvrVoltageInputMode.ClosedLoopPlant
             ? sourceVoltageV * tapFactor
             : sourceVoltageV;
         var deviationPercent = ((measuredVoltage - effectiveSetpoint) / effectiveSetpoint) * 100.0;
+        var powerFactor = Math.Cos(currentAngleDegrees * Math.PI / 180.0);
 
-        var underBlock = measuredVoltage < _settings.NominalVoltageV * (_settings.UndervoltageBlockPercent / 100.0);
-        var overBlock = measuredVoltage > _settings.NominalVoltageV * (_settings.OvervoltageBlockPercent / 100.0);
-        if (underBlock || overBlock)
+        if (_pendingTapPosition.HasValue)
         {
-            ResetTiming();
             return Snapshot(
                 sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
+                measuredVoltage,
+                effectiveSetpoint,
+                lowerBand,
+                upperBand,
+                deviationPercent,
+                AvrControlState.TapMoving,
+                $"Tap changer moving · {_tapPosition:+0;-0;0} → {_pendingTapPosition.Value:+0;-0;0}",
+                blocked: false,
+                delayTargetSeconds: 0);
+        }
+
+        var underVoltageBlock = measuredVoltage < _settings.NominalVoltageV * (_settings.UndervoltageBlockPercent / 100.0);
+        var overVoltageBlock = measuredVoltage > _settings.NominalVoltageV * (_settings.OvervoltageBlockPercent / 100.0);
+        var underCurrentBlock = _settings.UndercurrentBlockingEnabled &&
+            sourceCurrentA < _settings.NominalCurrentA * (_settings.UndercurrentBlockPercent / 100.0);
+        var overCurrentBlock = _settings.OvercurrentBlockingEnabled &&
+            sourceCurrentA > _settings.NominalCurrentA * (_settings.OvercurrentBlockPercent / 100.0);
+
+        if (underVoltageBlock || overVoltageBlock || underCurrentBlock || overCurrentBlock)
+        {
+            ResetRegulationTiming();
+            var reason = underVoltageBlock ? "Undervoltage blocking active"
+                : overVoltageBlock ? "Overvoltage blocking active"
+                : underCurrentBlock ? "Undercurrent blocking active"
+                : "Overcurrent blocking active";
+            return Snapshot(
+                sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
                 measuredVoltage,
                 effectiveSetpoint,
                 lowerBand,
                 upperBand,
                 deviationPercent,
                 AvrControlState.Blocked,
-                underBlock ? "Undervoltage blocking active" : "Overvoltage blocking active",
+                reason,
                 blocked: true,
                 delayTargetSeconds: 0);
         }
 
         if (_mode == AvrOperatingMode.Manual)
         {
-            ResetTiming();
+            ResetRegulationTiming();
+            var reason = _authority == AvrControlAuthority.Local
+                ? "Manual local mode · use RAISE / LOWER front-panel commands"
+                : "Manual remote mode · local tap commands inhibited";
             return Snapshot(
                 sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
                 measuredVoltage,
                 effectiveSetpoint,
                 lowerBand,
                 upperBand,
                 deviationPercent,
                 AvrControlState.Manual,
-                "Manual mode · automatic tap commands inhibited",
+                reason,
                 blocked: false,
                 delayTargetSeconds: 0);
         }
@@ -262,9 +359,12 @@ public sealed class AvrSimulationEngine
         var direction = measuredVoltage < lowerBand ? +1 : measuredVoltage > upperBand ? -1 : 0;
         if (direction == 0)
         {
-            ResetTiming();
+            ResetRegulationTiming();
             return Snapshot(
                 sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
                 measuredVoltage,
                 effectiveSetpoint,
                 lowerBand,
@@ -295,6 +395,9 @@ public sealed class AvrSimulationEngine
         {
             return Snapshot(
                 sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
                 measuredVoltage,
                 effectiveSetpoint,
                 lowerBand,
@@ -306,37 +409,102 @@ public sealed class AvrSimulationEngine
                 delayTargetSeconds: delayTarget);
         }
 
-        var operated = false;
         if (_delayElapsedSeconds + 1e-9 >= delayTarget)
         {
-            operated = MoveTap(direction);
+            IssueTapCommand(direction);
             _delayElapsedSeconds = 0;
-            if (operated)
-                _consecutiveOperations++;
+            _consecutiveOperations++;
+            return Snapshot(
+                sourceVoltageV,
+                sourceCurrentA,
+                currentAngleDegrees,
+                powerFactor,
+                measuredVoltage,
+                effectiveSetpoint,
+                lowerBand,
+                upperBand,
+                deviationPercent,
+                AvrControlState.TapMoving,
+                direction > 0 ? "Automatic RAISE command issued · awaiting tap feedback" : "Automatic LOWER command issued · awaiting tap feedback",
+                blocked: false,
+                delayTargetSeconds: 0);
         }
-
-        var state = direction > 0 ? AvrControlState.TimingRaise : AvrControlState.TimingLower;
-        var reason = operated
-            ? direction > 0 ? "Automatic RAISE tap command issued" : "Automatic LOWER tap command issued"
-            : direction > 0 ? "Voltage low · timing RAISE" : "Voltage high · timing LOWER";
 
         return Snapshot(
             sourceVoltageV,
+            sourceCurrentA,
+            currentAngleDegrees,
+            powerFactor,
             measuredVoltage,
             effectiveSetpoint,
             lowerBand,
             upperBand,
             deviationPercent,
-            state,
-            reason,
+            direction > 0 ? AvrControlState.TimingRaise : AvrControlState.TimingLower,
+            direction > 0 ? "Voltage low · timing RAISE" : "Voltage high · timing LOWER",
             blocked: false,
-            delayTargetSeconds: delayTarget,
-            raiseOutput: operated && direction > 0,
-            lowerOutput: operated && direction < 0);
+            delayTargetSeconds: delayTarget);
+    }
+
+    private bool IssueLocalManualTap(int direction)
+    {
+        if (!CanAcceptLocalManualCommand)
+            return false;
+
+        ResetRegulationTiming();
+        return IssueTapCommand(direction);
+    }
+
+    private bool IssueTapCommand(int direction)
+    {
+        if (_pendingTapPosition.HasValue)
+            return false;
+
+        var next = Math.Clamp(_tapPosition + Math.Sign(direction), _settings.MinimumTap, _settings.MaximumTap);
+        if (next == _tapPosition)
+            return false;
+
+        _pendingTapPosition = next;
+        _lastCommandDirection = Math.Sign(direction);
+        _commandPulseRemainingSeconds = _settings.CommandPulseSeconds;
+        _motorTravelRemainingSeconds = _settings.MotorDriveTravelSeconds;
+        _operationCount++;
+
+        if (_settings.MotorDriveTravelSeconds <= 1e-9)
+            CompletePendingTap();
+
+        return true;
+    }
+
+    private void AdvanceActuator(double elapsedSeconds)
+    {
+        if (elapsedSeconds <= 0)
+            return;
+
+        _commandPulseRemainingSeconds = Math.Max(0, _commandPulseRemainingSeconds - elapsedSeconds);
+        if (!_pendingTapPosition.HasValue)
+            return;
+
+        _motorTravelRemainingSeconds = Math.Max(0, _motorTravelRemainingSeconds - elapsedSeconds);
+        if (_motorTravelRemainingSeconds <= 1e-9)
+            CompletePendingTap();
+    }
+
+    private void CompletePendingTap()
+    {
+        if (_pendingTapPosition is not int target)
+            return;
+
+        _tapPosition = target;
+        _pendingTapPosition = null;
+        _motorTravelRemainingSeconds = 0;
     }
 
     private AvrSnapshot Snapshot(
         double sourceVoltageV,
+        double sourceCurrentA,
+        double currentAngleDegrees,
+        double powerFactor,
         double measuredVoltageV,
         double effectiveSetpointVoltageV,
         double lowerBandVoltageV,
@@ -345,39 +513,42 @@ public sealed class AvrSimulationEngine
         AvrControlState state,
         string reason,
         bool blocked,
-        double delayTargetSeconds,
-        bool raiseOutput = false,
-        bool lowerOutput = false) => new(
+        double delayTargetSeconds) => new(
             DateTimeOffset.UtcNow,
             _mode,
+            _authority,
             state,
             sourceVoltageV,
+            sourceCurrentA,
+            currentAngleDegrees,
+            powerFactor,
             measuredVoltageV,
             effectiveSetpointVoltageV,
             lowerBandVoltageV,
             upperBandVoltageV,
             deviationPercent,
             _tapPosition,
+            _pendingTapPosition,
             _operationCount,
-            raiseOutput,
-            lowerOutput,
+            _commandPulseRemainingSeconds > 0 && _lastCommandDirection > 0,
+            _commandPulseRemainingSeconds > 0 && _lastCommandDirection < 0,
+            _pendingTapPosition.HasValue,
             blocked,
             reason,
             _delayElapsedSeconds,
-            delayTargetSeconds);
+            delayTargetSeconds,
+            _motorTravelRemainingSeconds,
+            _commandPulseRemainingSeconds);
 
-    private bool MoveTap(int direction)
+    private void ClearActuator()
     {
-        var next = Math.Clamp(_tapPosition + Math.Sign(direction), _settings.MinimumTap, _settings.MaximumTap);
-        if (next == _tapPosition)
-            return false;
-
-        _tapPosition = next;
-        _operationCount++;
-        return true;
+        _pendingTapPosition = null;
+        _motorTravelRemainingSeconds = 0;
+        _commandPulseRemainingSeconds = 0;
+        _lastCommandDirection = 0;
     }
 
-    private void ResetTiming()
+    private void ResetRegulationTiming()
     {
         _delayElapsedSeconds = 0;
         _consecutiveOperations = 0;
