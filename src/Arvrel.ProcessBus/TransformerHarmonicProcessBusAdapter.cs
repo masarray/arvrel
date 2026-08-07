@@ -94,10 +94,6 @@ public sealed class TransformerHarmonicProcessBusAdapter
         {
             return HarmonicUnavailable(pair, ex.Message);
         }
-        catch (ArgumentOutOfRangeException ex)
-        {
-            return HarmonicUnavailable(pair, ex.Message);
-        }
     }
 
     private static int CountReliable(TransformerThreePhaseHarmonicEstimate estimate)
