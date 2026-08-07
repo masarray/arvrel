@@ -17,6 +17,12 @@
     <ProjectReference Include="..\Arvrel.ProcessBus\Arvrel.ProcessBus.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
+    <!-- AVR IED server reuses the sibling ARIEC61850 simulation/MMS engine.
+         Do not add a second MMS implementation inside ARVREL. -->
+    <ProjectReference Include="$(ARIEC61850Root)\src\AR.Iec61850.Simulation\AR.Iec61850.Simulation.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <Resource Include="..\..\Asset\icon\favicon.ico">
       <Link>Assets\Branding\favicon.ico</Link>
