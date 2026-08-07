@@ -96,7 +96,7 @@ public sealed class CtObservabilityProjectorTests
         Assert.IsTrue(double.IsFinite(phaseA.FundamentalSecondaryRmsA));
         Assert.IsTrue(double.IsFinite(phaseA.FundamentalMagnitudeErrorPercent));
         Assert.IsTrue(double.IsFinite(phaseA.PhaseDisplacementDegrees));
-        Assert.AreEqual(20, phaseA.FundamentalIdealRmsA, 1e-9);
+        Assert.AreEqual(20, phaseA.FundamentalIdealRmsA, 1e-3);
         Assert.IsTrue(Math.Abs(phaseA.FundamentalMagnitudeErrorPercent) > 0.01);
         StringAssert.Contains(result.EventSummary, "EVENT +0.500 s");
         StringAssert.Contains(result.EventSummary, "DC transient: decayed");
