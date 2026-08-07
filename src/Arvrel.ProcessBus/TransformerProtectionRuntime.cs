@@ -114,7 +114,7 @@ public sealed class TransformerProtectionRuntime
     private TransformerProtectionRuntimeConfiguration _configuration;
     private TransformerEngineeringPlan _engineering;
     private TransformerProtectionSettings _effectiveSettings;
-    private readonly TransformerProtectionEngine _engine;
+    private TransformerProtectionEngine _engine;
     private TransformerRuntimePairIdentity? _lastEvaluatedPair;
     private TransformerProtectionRuntimeSnapshot _snapshot;
 
@@ -170,12 +170,19 @@ public sealed class TransformerProtectionRuntime
                 _configuration.HarmonicSettings);
             var identity = BuildIdentity(highVoltage, lowVoltage);
             var timestamp = Latest(highVoltage.Timestamp, lowVoltage.Timestamp);
+            var priorProtection = _snapshot.Protection;
 
             if (!pair.IsAligned || pair.Measurement is null)
             {
-                _engine.ObserveMeasurementUnavailable();
+                // Never let definite-time pickup bridge an interval for which a valid
+                // paired transformer measurement did not exist. Before a virtual trip
+                // latches, rebuild the deterministic engine so its next valid frame
+                // starts from delta=0. A latched trip is historical evidence and stays
+                // frozen until explicit Reset().
+                if (priorProtection?.TripLatched != true)
+                    _engine = new TransformerProtectionEngine(_effectiveSettings);
                 _lastEvaluatedPair = null;
-                var priorProtection = _snapshot.Protection;
+
                 var state = priorProtection?.TripLatched == true
                     ? TransformerRuntimeState.TripLatched
                     : IsWaitingCode(pair.Diagnostics.Code)
@@ -214,6 +221,30 @@ public sealed class TransformerProtectionRuntime
                     EvaluatedNewPair = false
                 };
                 changed = !Equals(_snapshot, result);
+                _snapshot = result;
+            }
+            else if (priorProtection?.TripLatched == true)
+            {
+                // Freeze the protection decision after a virtual trip latch. Continue
+                // updating aligned measurement evidence without changing the operated
+                // element until the operator explicitly resets the runtime.
+                _lastEvaluatedPair = identity;
+                result = new TransformerProtectionRuntimeSnapshot(
+                    pair.Measurement.Timestamp,
+                    sourceMode,
+                    TransformerRuntimeState.TripLatched,
+                    _configuration.HighVoltageStreamKey,
+                    _configuration.LowVoltageStreamKey,
+                    _engineering,
+                    _effectiveSettings,
+                    _effectiveSettings.Fingerprint(),
+                    pair.Diagnostics,
+                    identity,
+                    pair.Measurement,
+                    priorProtection,
+                    true,
+                    priorProtection.DecisionReason);
+                changed = true;
                 _snapshot = result;
             }
             else
@@ -269,12 +300,24 @@ public sealed class TransformerProtectionRuntime
         TransformerProtectionRuntimeSnapshot snapshot;
         lock (_gate)
         {
+            var priorProtection = keepTripLatch && _snapshot.Protection?.TripLatched == true
+                ? _snapshot.Protection
+                : null;
             _configuration = validated;
             _engineering = engineering;
             _effectiveSettings = effective;
-            _engine.UpdateSettings(effective, keepTripLatch);
+            _engine = new TransformerProtectionEngine(effective);
             _lastEvaluatedPair = null;
             snapshot = InitialSnapshot(_snapshot.SourceMode, "Transformer runtime configuration updated; waiting for a new aligned pair.");
+            if (priorProtection is not null)
+            {
+                snapshot = snapshot with
+                {
+                    State = TransformerRuntimeState.TripLatched,
+                    Protection = priorProtection,
+                    DecisionReason = $"{priorProtection.DecisionReason} · configuration updated with latch preserved"
+                };
+            }
             _snapshot = snapshot;
         }
         SnapshotChanged?.Invoke(this, new TransformerProtectionRuntimeSnapshotChangedEventArgs(snapshot));
@@ -285,7 +328,7 @@ public sealed class TransformerProtectionRuntime
         TransformerProtectionRuntimeSnapshot snapshot;
         lock (_gate)
         {
-            _engine.Reset();
+            _engine = new TransformerProtectionEngine(_effectiveSettings);
             _lastEvaluatedPair = null;
             snapshot = InitialSnapshot(_snapshot.SourceMode, "Transformer runtime and virtual trip latch reset.");
             _snapshot = snapshot;
