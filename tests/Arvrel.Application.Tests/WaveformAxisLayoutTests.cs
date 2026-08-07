@@ -68,7 +68,7 @@ public sealed class WaveformAxisLayoutTests
         Assert.AreEqual(0, WaveformAxisLayout.NormalizeSamplePosition(0, 160), 1e-9);
         Assert.AreEqual(0.5, WaveformAxisLayout.NormalizeSamplePosition(80, 160), 1e-9);
         Assert.AreEqual(159d / 160d, WaveformAxisLayout.NormalizeSamplePosition(159, 160), 1e-9);
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+        Assert.ThrowsException<ArgumentOutOfRangeException>(
             () => WaveformAxisLayout.NormalizeSamplePosition(160, 160));
     }
 
@@ -112,7 +112,7 @@ public sealed class WaveformAxisLayoutTests
             80,
             0);
 
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => WaveformAxisLayout.Create(invalid));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => WaveformAxisLayout.Create(invalid));
     }
 
     private static ScenarioWaveform CreateWaveform(
