@@ -102,7 +102,7 @@ public partial class AvrP0HmiControl : UserControl
         }
     }
 
-    public void UpdateState(
+    internal void UpdateState(
         AvrSnapshot snapshot,
         AvrSettings settings,
         double frequencyHz,
