@@ -17,32 +17,38 @@ internal sealed class CtObservabilityWindow : Window
     private readonly TextBlock _statusText;
     private readonly TextBlock _settingsText;
     private readonly TextBlock _runtimeText;
+    private readonly TextBlock _eventText;
     private readonly TextBlock _boundaryText;
     private readonly DataGrid _table;
     private readonly CtComparisonScope _scope;
+    private readonly Button _restartEventButton;
     private readonly Button _resetButton;
     private readonly Button _demagnetizeButton;
+    private readonly Action _restartEvent;
     private readonly Action _resetState;
     private readonly Action _demagnetize;
 
-    public CtObservabilityWindow(Action resetState, Action demagnetize)
+    public CtObservabilityWindow(Action restartEvent, Action resetState, Action demagnetize)
     {
+        _restartEvent = restartEvent ?? throw new ArgumentNullException(nameof(restartEvent));
         _resetState = resetState ?? throw new ArgumentNullException(nameof(resetState));
         _demagnetize = demagnetize ?? throw new ArgumentNullException(nameof(demagnetize));
 
         Title = "ARVREL · CT Observability";
-        Width = 1040;
-        Height = 690;
-        MinWidth = 820;
-        MinHeight = 560;
+        Width = 1240;
+        Height = 760;
+        MinWidth = 980;
+        MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = new SolidColorBrush(Color.FromRgb(244, 247, 249));
+        SnapsToDevicePixels = true;
+        UseLayoutRounding = true;
 
         var root = new Grid { Margin = new Thickness(14) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(220) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 280 });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         Content = root;
 
@@ -102,8 +108,11 @@ internal sealed class CtObservabilityWindow : Window
         facts.Child = factsStack;
         _settingsText = FactText();
         _runtimeText = FactText();
+        _eventText = FactText();
+        _eventText.FontWeight = FontWeights.SemiBold;
         factsStack.Children.Add(_settingsText);
         factsStack.Children.Add(_runtimeText);
+        factsStack.Children.Add(_eventText);
 
         _table = new DataGrid
         {
@@ -112,6 +121,7 @@ internal sealed class CtObservabilityWindow : Window
             CanUserAddRows = false,
             CanUserDeleteRows = false,
             CanUserReorderColumns = false,
+            CanUserResizeRows = false,
             CanUserSortColumns = false,
             IsReadOnly = true,
             SelectionMode = DataGridSelectionMode.Single,
@@ -124,23 +134,33 @@ internal sealed class CtObservabilityWindow : Window
             BorderThickness = new Thickness(1),
             RowHeight = 31,
             ColumnHeaderHeight = 31,
+            Height = 160,
+            FontSize = 10.1,
             Margin = new Thickness(0, 0, 0, 10)
         };
-        AddColumn("Channel", nameof(CtObservationRow.Channel), 72);
-        AddColumn("State", nameof(CtObservationRow.State), 104);
-        AddColumn("Flux start", nameof(CtObservationRow.InitialFlux), 86);
-        AddColumn("Flux end", nameof(CtObservationRow.FinalFlux), 86);
-        AddColumn("Flux max", nameof(CtObservationRow.MaximumFlux), 86);
-        AddColumn("Ideal → sec RMS", nameof(CtObservationRow.Rms), 130);
-        AddColumn("Ratio err", nameof(CtObservationRow.RatioError), 86);
-        AddColumn("Wave err", nameof(CtObservationRow.WaveformError), 86);
-        AddColumn("Excitation", nameof(CtObservationRow.Excitation), 92);
-        AddColumn("V sec max", nameof(CtObservationRow.SecondaryVoltage), 92);
-        AddColumn("Onset", nameof(CtObservationRow.Onset), 108);
+        ScrollViewer.SetHorizontalScrollBarVisibility(_table, ScrollBarVisibility.Disabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(_table, ScrollBarVisibility.Disabled);
+        AddColumn("Channel", nameof(CtObservationRow.Channel), 0.65, 54);
+        AddColumn("State", nameof(CtObservationRow.State), 1.35, 108);
+        AddColumn("Flux start", nameof(CtObservationRow.InitialFlux), 0.82, 66);
+        AddColumn("Flux end", nameof(CtObservationRow.FinalFlux), 0.82, 66);
+        AddColumn("Flux max", nameof(CtObservationRow.MaximumFlux), 0.82, 66);
+        AddColumn("Total RMS", nameof(CtObservationRow.Rms), 1.25, 96);
+        AddColumn("RMS mag err", nameof(CtObservationRow.RmsMagnitudeError), 0.9, 74);
+        AddColumn("Fund. RMS", nameof(CtObservationRow.FundamentalRms), 1.25, 96);
+        AddColumn("Fund. mag err", nameof(CtObservationRow.FundamentalMagnitudeError), 0.95, 78);
+        AddColumn("Phase err", nameof(CtObservationRow.PhaseDisplacement), 0.82, 68);
+        AddColumn("Wave err", nameof(CtObservationRow.WaveformError), 0.82, 68);
+        AddColumn("Iexc peak", nameof(CtObservationRow.Excitation), 0.9, 72);
+        AddColumn("Vsec peak", nameof(CtObservationRow.SecondaryVoltage), 0.9, 72);
+        AddColumn("Window onset", nameof(CtObservationRow.Onset), 1.2, 104);
         Grid.SetRow(_table, 2);
         root.Children.Add(_table);
 
-        _scope = new CtComparisonScope();
+        _scope = new CtComparisonScope
+        {
+            MinHeight = 280
+        };
         _table.SelectionChanged += (_, _) =>
         {
             if (_table.SelectedItem is CtObservationRow selected)
@@ -173,11 +193,22 @@ internal sealed class CtObservabilityWindow : Window
         Grid.SetColumn(actions, 1);
         footer.Children.Add(actions);
 
-        _resetButton = ActionButton("Reset CT state", "Reapply configured signed remanence while keeping source phase and DC time continuous.");
+        _restartEventButton = ActionButton(
+            "Restart event",
+            "Restart virtual source event time at t=0 and reapply configured CT remanence while keeping process sample counting continuous.");
+        _restartEventButton.Click += (_, _) => _restartEvent();
+        actions.Children.Add(_restartEventButton);
+
+        _resetButton = ActionButton(
+            "Reset CT state",
+            "Reapply configured signed remanence while keeping source phase and DC event time continuous.");
+        _resetButton.Margin = new Thickness(6, 0, 0, 0);
         _resetButton.Click += (_, _) => _resetState();
         actions.Children.Add(_resetButton);
 
-        _demagnetizeButton = ActionButton("Demagnetize CT", "Set runtime CT flux to zero without changing configured remanence or source event time.");
+        _demagnetizeButton = ActionButton(
+            "Demagnetize CT",
+            "Set runtime CT flux to zero without changing configured remanence or source event time.");
         _demagnetizeButton.Margin = new Thickness(6, 0, 0, 0);
         _demagnetizeButton.Click += (_, _) => _demagnetize();
         actions.Children.Add(_demagnetizeButton);
@@ -193,26 +224,31 @@ internal sealed class CtObservabilityWindow : Window
         _statusText.Text = snapshot.StatusText;
         _settingsText.Text = snapshot.SettingsSummary;
         _runtimeText.Text = snapshot.RuntimeSummary;
+        _eventText.Text = snapshot.EventSummary;
         _boundaryText.Text = snapshot.EngineeringBoundary;
+        _restartEventButton.IsEnabled = snapshot.CanRestartEvent;
         _resetButton.IsEnabled = snapshot.CanResetState;
         _demagnetizeButton.IsEnabled = snapshot.CanDemagnetize;
 
+        var selectedChannel = (_table.SelectedItem as CtObservationRow)?.Channel;
         _rows.Clear();
         foreach (var channel in snapshot.Channels)
             _rows.Add(CtObservationRow.From(channel));
-        if (_rows.Count > 0)
-            _table.SelectedIndex = Math.Clamp(_table.SelectedIndex, 0, _rows.Count - 1);
+        _table.SelectedItem = selectedChannel is null
+            ? _rows.FirstOrDefault()
+            : _rows.FirstOrDefault(row => row.Channel == selectedChannel) ?? _rows.FirstOrDefault();
 
         _scope.Frame = frame;
         if (_table.SelectedItem is CtObservationRow selected)
             _scope.SelectedChannel = selected.Channel;
     }
 
-    private void AddColumn(string header, string path, double width)
+    private void AddColumn(string header, string path, double starWidth, double minimumWidth)
         => _table.Columns.Add(new DataGridTextColumn
         {
             Header = header,
-            Width = new DataGridLength(width),
+            Width = new DataGridLength(starWidth, DataGridLengthUnitType.Star),
+            MinWidth = minimumWidth,
             Binding = new Binding(path)
         });
 
@@ -259,7 +295,10 @@ internal sealed class CtObservabilityWindow : Window
         string FinalFlux,
         string MaximumFlux,
         string Rms,
-        string RatioError,
+        string RmsMagnitudeError,
+        string FundamentalRms,
+        string FundamentalMagnitudeError,
+        string PhaseDisplacement,
         string WaveformError,
         string Excitation,
         string SecondaryVoltage,
@@ -277,6 +316,9 @@ internal sealed class CtObservabilityWindow : Window
                     "—",
                     "phase sum",
                     "—",
+                    "phase sum",
+                    "—",
+                    "—",
                     "—",
                     "—",
                     "—",
@@ -284,7 +326,7 @@ internal sealed class CtObservabilityWindow : Window
             }
 
             var onset = source.Saturated && source.FirstSaturationAbsoluteSample >= 0
-                ? FormattableString.Invariant($"{source.FirstSaturationMilliseconds:0.###} ms / #{source.FirstSaturationAbsoluteSample:N0}")
+                ? FormattableString.Invariant($"{source.FirstSaturationMilliseconds:0.###} ms · #{source.FirstSaturationAbsoluteSample:N0}")
                 : "—";
             return new CtObservationRow(
                 source.Channel,
@@ -293,7 +335,10 @@ internal sealed class CtObservabilityWindow : Window
                 FormatPu(source.FinalFluxPerUnit),
                 FormatPu(source.MaximumAbsoluteFluxPerUnit),
                 FormattableString.Invariant($"{source.IdealRmsA:0.###} → {source.SecondaryRmsA:0.###} A"),
-                FormattableString.Invariant($"{source.RmsMagnitudeErrorPercent:+0.##;-0.##;0}%"),
+                FormatPercent(source.RmsMagnitudeErrorPercent),
+                FormatRmsPair(source.FundamentalIdealRmsA, source.FundamentalSecondaryRmsA),
+                FormatPercent(source.FundamentalMagnitudeErrorPercent),
+                FormatDegrees(source.PhaseDisplacementDegrees),
                 FormattableString.Invariant($"{source.WaveformErrorPercent:0.##}%"),
                 FormattableString.Invariant($"{source.MaximumExcitationCurrentA:0.###} A"),
                 FormattableString.Invariant($"{source.MaximumSecondaryVoltageV:0.###} V"),
@@ -302,5 +347,20 @@ internal sealed class CtObservabilityWindow : Window
 
         private static string FormatPu(double value)
             => FormattableString.Invariant($"{value:+0.###;-0.###;0} pu");
+
+        private static string FormatRmsPair(double ideal, double secondary)
+            => double.IsFinite(ideal) && double.IsFinite(secondary)
+                ? FormattableString.Invariant($"{ideal:0.###} → {secondary:0.###} A")
+                : "—";
+
+        private static string FormatPercent(double value)
+            => double.IsFinite(value)
+                ? FormattableString.Invariant($"{value:+0.##;-0.##;0}%")
+                : "—";
+
+        private static string FormatDegrees(double value)
+            => double.IsFinite(value)
+                ? FormattableString.Invariant($"{value:+0.###;-0.###;0}°")
+                : "—";
     }
 }
