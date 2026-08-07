@@ -70,7 +70,7 @@ public sealed class TransformerPractitionerUiSourceTests
         StringAssert.Contains(xaml, "Idiff pu");
         StringAssert.Contains(xaml, "Ibias pu");
         StringAssert.Contains(xaml, "Threshold");
-        StringAssert.Contains(xaml, "SV pairing &amp; trust");
+        StringAssert.Contains(xaml, "SV pairing / trust");
         StringAssert.Contains(xaml, "smpCnt");
         StringAssert.Contains(xaml, "smpSynch");
         StringAssert.Contains(xaml, "Engineering evidence");
