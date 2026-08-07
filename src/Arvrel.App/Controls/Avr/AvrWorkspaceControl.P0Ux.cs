@@ -159,6 +159,19 @@ public partial class AvrWorkspaceControl
         if (e.Source is not Button button)
             return;
 
+        // The legacy Restore Defaults handler constructs AvrSettings directly.
+        // Re-apply the transformer operating convention after that target handler
+        // has executed so Restore Defaults always returns to tap 09/17 and the
+        // closed-loop plant instead of the historical bench / -8..+8 profile.
+        if (string.Equals(button.Content?.ToString(), "Restore defaults", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyTransformerOperatingDefaults();
+            PopulateSettingsUi();
+            RenderCurrent();
+            AddEvent("DEFAULT", "Transformer defaults restored · tap 09/17 · simulated plant");
+            return;
+        }
+
         var key = HardwareKey(button);
         if (key is null)
             return;
