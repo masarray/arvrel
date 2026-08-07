@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: masarray/ARIEC61850
-          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          ref: 0e1e2de693bc3f5427f6b1f23fcc6c3e6fe1f60e
           path: ARIEC61850
           persist-credentials: false
 
