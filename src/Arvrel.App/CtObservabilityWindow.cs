@@ -3,11 +3,12 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Arvrel.App.Controls;
 using Arvrel.Application.Laboratory;
 
 namespace Arvrel.App;
 
-internal partial class CtObservabilityWindow : Window
+public partial class CtObservabilityWindow : Window
 {
     private readonly ObservableCollection<CtObservationRow> _rows = new();
     private readonly Action _resetState;
