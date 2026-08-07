@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
         {
             window.InitializeP6VirtualRelay();
             window.InitializeGlobalUxFoundation();
+            window.InitializeRelayReadabilityHotfix();
         }
     }
 
