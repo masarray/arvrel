@@ -9,9 +9,9 @@ using Arvrel.Protection;
 namespace Arvrel.App;
 
 /// <summary>
-/// Product HMI for the P6 virtual protection relay. This layer owns only relay
-/// presentation/navigation: all measurements, protection states, records and
-/// settings remain sourced from the existing laboratory/protection authorities.
+/// Production HMI for the P6 virtual protection relay. This layer owns only
+/// relay-local navigation and presentation; protection state remains authoritative
+/// in the existing protection/laboratory services.
 /// </summary>
 public partial class MainWindow
 {
@@ -129,8 +129,7 @@ public partial class MainWindow
             Foreground = FindResource("LcdTextBrush") as Brush,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = fontSize,
-            FontWeight = weight,
-            TextOptions = { }
+            FontWeight = weight
         };
 
     internal void StopRelayFaceplate()
@@ -189,7 +188,6 @@ public partial class MainWindow
                 trip.TripTimestamp ?? frame.Snapshot.Timestamp,
                 "TRIP",
                 $"{trip.TripElement} · {operate:0.0} ms · {trip.QuantitySymbol} {trip.TripQuantity:0.00} {trip.QuantityUnit}");
-            CloseRelayMenu();
             NavigateRelayPage(RelayLcdPage.TripRecord, remember: true);
         }
 
@@ -293,23 +291,17 @@ public partial class MainWindow
     private void RelayNavigateLeft()
     {
         if (_relayMenuOpen)
-        {
             BackRelayMenu();
-            return;
-        }
-
-        CycleRelayTopPage(-1);
+        else
+            CycleRelayTopPage(-1);
     }
 
     private void RelayNavigateRight()
     {
         if (_relayMenuOpen)
-        {
             ActivateRelayMenuSelection();
-            return;
-        }
-
-        CycleRelayTopPage(+1);
+        else
+            CycleRelayTopPage(+1);
     }
 
     private void RelayAccept()
@@ -339,13 +331,13 @@ public partial class MainWindow
 
         if (_relayPageHistory.Count > 0)
         {
-            var previous = _relayPageHistory.Pop();
-            _relayLcdPage = previous;
+            _relayLcdPage = _relayPageHistory.Pop();
             _relayEventIndex = 0;
-            return;
         }
-
-        _relayLcdPage = RelayLcdPage.Measurements;
+        else
+        {
+            _relayLcdPage = RelayLcdPage.Measurements;
+        }
     }
 
     private void HandleRelayFunctionKey(int index)
@@ -379,40 +371,20 @@ public partial class MainWindow
                 break;
             case RelayLcdPage.Protection:
             case RelayLcdPage.Feeder:
-                if (index == 0) NavigateRelayPage(RelayLcdPage.Protection);
-                else if (index == 1) NavigateRelayPage(RelayLcdPage.Feeder);
-                else if (index == 2) NavigateRelayPage(RelayLcdPage.TripRecord);
-                else if (index == 3) NavigateRelayPage(RelayLcdPage.Events);
-                else SetRelayFavorite();
+                HandleProtectionSoftKey(index);
                 break;
             case RelayLcdPage.Events:
-                if (index == 0) BrowseRelayEvents(+1);
-                else if (index == 1) BrowseRelayEvents(-1);
-                else if (index == 2) NavigateRelayPage(RelayLcdPage.TripRecord);
-                else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
-                else SetRelayFavorite();
+                HandleEventsSoftKey(index);
                 break;
             case RelayLcdPage.TripRecord:
-                if (index == 0) NavigateRelayPage(RelayLcdPage.Protection);
-                else if (index == 1) NavigateRelayPage(RelayLcdPage.Feeder);
-                else if (index == 2) NavigateRelayPage(RelayLcdPage.Events);
-                else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
-                else SetRelayFavorite();
+                HandleTripSoftKey(index);
                 break;
             case RelayLcdPage.Settings:
-                if (index == 0) OpenRelaySettingsEditor();
-                else if (index == 1) NavigateRelayPage(RelayLcdPage.Protection);
-                else if (index == 2) NavigateRelayPage(RelayLcdPage.Feeder);
-                else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
-                else SetRelayFavorite();
+                HandleSettingsSoftKey(index);
                 break;
             case RelayLcdPage.Diagnostics:
             case RelayLcdPage.DeviceInfo:
-                if (index == 0) NavigateRelayPage(RelayLcdPage.Diagnostics);
-                else if (index == 1) NavigateRelayPage(RelayLcdPage.DeviceInfo);
-                else if (index == 2) NavigateRelayPage(RelayLcdPage.Events);
-                else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
-                else SetRelayFavorite();
+                HandleDiagnosticsSoftKey(index);
                 break;
         }
     }
@@ -426,24 +398,56 @@ public partial class MainWindow
         else SetRelayFavorite();
     }
 
+    private void HandleProtectionSoftKey(int index)
+    {
+        if (index == 0) NavigateRelayPage(RelayLcdPage.Protection);
+        else if (index == 1) NavigateRelayPage(RelayLcdPage.Feeder);
+        else if (index == 2) NavigateRelayPage(RelayLcdPage.TripRecord);
+        else if (index == 3) NavigateRelayPage(RelayLcdPage.Events);
+        else SetRelayFavorite();
+    }
+
+    private void HandleEventsSoftKey(int index)
+    {
+        if (index == 0) BrowseRelayEvents(+1);
+        else if (index == 1) BrowseRelayEvents(-1);
+        else if (index == 2) NavigateRelayPage(RelayLcdPage.TripRecord);
+        else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
+        else SetRelayFavorite();
+    }
+
+    private void HandleTripSoftKey(int index)
+    {
+        if (index == 0) NavigateRelayPage(RelayLcdPage.Protection);
+        else if (index == 1) NavigateRelayPage(RelayLcdPage.Feeder);
+        else if (index == 2) NavigateRelayPage(RelayLcdPage.Events);
+        else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
+        else SetRelayFavorite();
+    }
+
+    private void HandleSettingsSoftKey(int index)
+    {
+        if (index == 0) OpenRelaySettingsEditor();
+        else if (index == 1) NavigateRelayPage(RelayLcdPage.Protection);
+        else if (index == 2) NavigateRelayPage(RelayLcdPage.Feeder);
+        else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
+        else SetRelayFavorite();
+    }
+
+    private void HandleDiagnosticsSoftKey(int index)
+    {
+        if (index == 0) NavigateRelayPage(RelayLcdPage.Diagnostics);
+        else if (index == 1) NavigateRelayPage(RelayLcdPage.DeviceInfo);
+        else if (index == 2) NavigateRelayPage(RelayLcdPage.Events);
+        else if (index == 3) NavigateRelayPage(RelayLcdPage.Measurements);
+        else SetRelayFavorite();
+    }
+
     private void SetRelayFavorite()
     {
-        if (_relayLcdPage is RelayLcdPage.Measurements or
-            RelayLcdPage.CurrentMeasurements or
-            RelayLcdPage.VoltageMeasurements or
-            RelayLcdPage.SequenceMeasurements or
-            RelayLcdPage.Protection or
-            RelayLcdPage.Feeder or
-            RelayLcdPage.Settings or
-            RelayLcdPage.Events or
-            RelayLcdPage.Diagnostics or
-            RelayLcdPage.DeviceInfo or
-            RelayLcdPage.TripRecord)
-        {
-            _relayFavoritePage = _relayLcdPage;
-            AddRelayFaceplateEvent(DateTimeOffset.Now, "FAVORITE", RelayPageLabel(_relayFavoritePage));
-            StatusText.Text = $"Relay favorite page set to {RelayPageLabel(_relayFavoritePage)}.";
-        }
+        _relayFavoritePage = _relayLcdPage;
+        AddRelayFaceplateEvent(DateTimeOffset.Now, "FAVORITE", RelayPageLabel(_relayFavoritePage));
+        StatusText.Text = $"Relay favorite page set to {RelayPageLabel(_relayFavoritePage)}.";
     }
 
     private void OpenRelaySettingsEditor()
@@ -472,7 +476,9 @@ public partial class MainWindow
     private static RelayLcdPage TopRelayPageFor(RelayLcdPage page)
         => page switch
         {
-            RelayLcdPage.CurrentMeasurements or RelayLcdPage.VoltageMeasurements or RelayLcdPage.SequenceMeasurements => RelayLcdPage.Measurements,
+            RelayLcdPage.CurrentMeasurements or
+            RelayLcdPage.VoltageMeasurements or
+            RelayLcdPage.SequenceMeasurements => RelayLcdPage.Measurements,
             RelayLcdPage.DeviceInfo => RelayLcdPage.Diagnostics,
             _ => page
         };
@@ -481,7 +487,9 @@ public partial class MainWindow
     {
         _relayMenuOpen = true;
         _relayMenuLevel = level == RelayMenuLevel.None ? RelayMenuLevel.Root : level;
-        _relayMenuIndex = FindRelayMenuIndex(_relayMenuLevel, _relayLcdPage);
+        _relayMenuIndex = _relayMenuLevel == RelayMenuLevel.Root
+            ? FindRelayRootIndex(_relayLcdPage)
+            : FindRelayMenuIndex(_relayMenuLevel, _relayLcdPage);
     }
 
     private void CloseRelayMenu()
@@ -535,7 +543,10 @@ public partial class MainWindow
     private static RelayMenuLevel MenuForRelayPage(RelayLcdPage page)
         => page switch
         {
-            RelayLcdPage.Measurements or RelayLcdPage.CurrentMeasurements or RelayLcdPage.VoltageMeasurements or RelayLcdPage.SequenceMeasurements => RelayMenuLevel.Measurements,
+            RelayLcdPage.Measurements or
+            RelayLcdPage.CurrentMeasurements or
+            RelayLcdPage.VoltageMeasurements or
+            RelayLcdPage.SequenceMeasurements => RelayMenuLevel.Measurements,
             RelayLcdPage.Protection or RelayLcdPage.Feeder => RelayMenuLevel.Protection,
             RelayLcdPage.Events or RelayLcdPage.TripRecord => RelayMenuLevel.Records,
             RelayLcdPage.Diagnostics or RelayLcdPage.DeviceInfo => RelayMenuLevel.Diagnostics,
@@ -559,7 +570,10 @@ public partial class MainWindow
     private static int FindRelayRootIndex(RelayLcdPage page)
         => page switch
         {
-            RelayLcdPage.Measurements or RelayLcdPage.CurrentMeasurements or RelayLcdPage.VoltageMeasurements or RelayLcdPage.SequenceMeasurements => 0,
+            RelayLcdPage.Measurements or
+            RelayLcdPage.CurrentMeasurements or
+            RelayLcdPage.VoltageMeasurements or
+            RelayLcdPage.SequenceMeasurements => 0,
             RelayLcdPage.Protection or RelayLcdPage.Feeder => 1,
             RelayLcdPage.Events or RelayLcdPage.TripRecord => 2,
             RelayLcdPage.Settings => 3,
@@ -632,13 +646,18 @@ public partial class MainWindow
         }
 
         var m = RelayHomeDisplayMeasurement(frame.Measurement, ViewCombo.SelectedIndex == 1);
-        var phasors = m.Phasors;
+        var p = m.Phasors;
         var domain = ViewCombo.SelectedIndex == 1 ? "PRIMARY" : "SECONDARY";
+        var body = p is null
+            ? $"IR {m.PhaseA,8:0.00} A\nIS {m.PhaseB,8:0.00} A\nIT {m.PhaseC,8:0.00} A\n3I0{m.Residual,8:0.00} A"
+            : $"I1 {p.PositiveSequenceCurrent.Magnitude,8:0.00} A\n" +
+              $"3I0{p.ResidualCurrent.Magnitude,8:0.00} A\n" +
+              $"U1 {p.PositiveSequenceVoltage.Magnitude,8:0.00} V\n" +
+              $"3U0{p.ResidualVoltage.Magnitude,8:0.00} V\n" +
+              $"F  {p.FrequencyHz,8:0.000} Hz";
         SetRelayLcd(
             $"MEASUREMENTS · {domain}",
-            phasors is null
-                ? $"IR {m.PhaseA,8:0.00} A\nIS {m.PhaseB,8:0.00} A\nIT {m.PhaseC,8:0.00} A\n3I0{m.Residual,8:0.00} A"
-                : $"I1 {phasors.PositiveSequenceCurrent.Magnitude,8:0.00} A\n3I0{phasors.ResidualCurrent.Magnitude,8:0.00} A\nU1 {phasors.PositiveSequenceVoltage.Magnitude,8:0.00} V\n3U0{phasors.ResidualVoltage.Magnitude,8:0.00} V\nF  {phasors.FrequencyHz,8:0.000} Hz",
+            body,
             frame.Snapshot.TripLatched ? "TRIP LATCHED · MENU" : "READY · OK MEASUREMENT MENU");
     }
 
@@ -688,14 +707,19 @@ public partial class MainWindow
 
     private void RenderSequenceMeasurementsPage(RelayFaceplateFrame? frame)
     {
-        if (frame?.Measurement.Phasors is not { })
+        if (frame is null)
+        {
+            SetRelayLcd("SEQUENCE", "WAITING FOR DATA", "HOME · MENU");
+            return;
+        }
+
+        var m = RelayHomeDisplayMeasurement(frame.Measurement, ViewCombo.SelectedIndex == 1);
+        if (m.Phasors is not { } p)
         {
             SetRelayLcd("SEQUENCE", "SEQUENCE DATA\nUNAVAILABLE", "CHECK SOURCE / SV DATA");
             return;
         }
 
-        var m = RelayHomeDisplayMeasurement(frame.Measurement, ViewCombo.SelectedIndex == 1);
-        var p = m.Phasors!;
         SetRelayLcd(
             "SEQUENCE / RESIDUAL",
             $"I1       {p.PositiveSequenceCurrent.Magnitude,8:0.00} A\n" +
@@ -756,7 +780,9 @@ public partial class MainWindow
     }
 
     private static string DirectionLabel(DirectionalDecision decision)
-        => !decision.PolarizingAvailable ? "NO VPOL" : decision.InSelectedDirection ? "SELECTED" : "RESTRAIN";
+        => !decision.PolarizingAvailable
+            ? "NO VPOL"
+            : decision.InSelectedDirection ? "SELECTED" : "RESTRAIN";
 
     private void RenderSettingsPage()
     {
@@ -807,7 +833,7 @@ public partial class MainWindow
             $"EVENT {item.Sequence:000} · {item.Code}",
             $"DATE  {item.Timestamp:yyyy-MM-dd}\n" +
             $"TIME  {item.Timestamp:HH:mm:ss.fff}\n" +
-            $"{TrimLine(item.Detail, 27)}",
+            TrimLine(item.Detail, 27),
             $"▲ OLDER · ▼ NEWER · {_relayEventIndex + 1}/{events.Length}");
     }
 
@@ -984,18 +1010,11 @@ public partial class MainWindow
             return;
 
         if (frame.Snapshot.TripLatched)
-        {
             _p6VirtualRelay.SetLcdTrustState("TRIP LATCH", VirtualRelayLcdTone.Trip);
-            return;
-        }
-
-        if (!frame.Snapshot.SmvTrust.AllowsTrip)
-        {
+        else if (!frame.Snapshot.SmvTrust.AllowsTrip)
             _p6VirtualRelay.SetLcdTrustState("SV BLOCK", VirtualRelayLcdTone.Warning);
-            return;
-        }
-
-        _p6VirtualRelay.SetLcdTrustState("SV READY", VirtualRelayLcdTone.Normal);
+        else
+            _p6VirtualRelay.SetLcdTrustState("SV READY", VirtualRelayLcdTone.Normal);
     }
 
     private void AddRelayFaceplateEvent(DateTimeOffset timestamp, string code, string detail)
