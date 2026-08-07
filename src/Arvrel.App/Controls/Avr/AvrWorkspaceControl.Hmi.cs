@@ -30,6 +30,7 @@ public partial class AvrWorkspaceControl
         InitializeHmiNavigation();
         UpdateTrendGraphic();
         RefreshHmiNavigation();
+        RefreshIecControlPresentation();
     }
 
     private void HmiUnloaded(object sender, RoutedEventArgs e)
@@ -66,6 +67,7 @@ public partial class AvrWorkspaceControl
         // the HMI. No independent network-side simulation state is introduced.
         PublishIec61850Snapshot();
         RefreshHmiNavigation();
+        RefreshIecControlPresentation();
 
         if (!_sourceEnergized)
         {
