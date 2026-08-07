@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "contract": "Independent CPython reference for the ARVREL protective-CT equivalent-circuit study model.",
+  "solverContract": {
+    "iterations": 6,
+    "relaxation": 0.45
+  },
+  "absoluteTolerance": 1e-10,
+  "relativeTolerance": 1e-10,
+  "caseFiles": [
+    "cases/disabled-pass-through.json",
+    "cases/below-knee-50hz.json",
+    "cases/severe-asymmetrical-positive-remanence.json",
+    "cases/negative-remanence-opposed-dc.json",
+    "cases/off-nominal-60hz-fixed-4khz.json",
+    "cases/carried-runtime-state.json"
+  ]
+}
