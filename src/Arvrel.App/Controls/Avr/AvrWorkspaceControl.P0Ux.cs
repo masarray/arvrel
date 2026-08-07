@@ -1,29 +1,58 @@
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Arvrel.Application.Ied;
 
 namespace Arvrel.App.Controls.Avr;
 
 public partial class AvrWorkspaceControl
 {
     private const double PhysicalFaceplateWidth = 680.0;
+    private const int DefaultMinimumTap = 1;
+    private const int DefaultMaximumTap = 17;
+    private const int DefaultNeutralTap = 9;
 
     private AvrP0HmiControl? _p0Hmi;
     private bool _p0HmiInstalled;
     private bool _p0RefreshAttached;
+    private string? _lastPointerHardwareKey;
+    private long _lastPointerHardwareDispatchMs;
 
     protected override void OnInitialized(EventArgs e)
     {
+        ApplyTransformerOperatingDefaults();
         base.OnInitialized(e);
         Loaded += P0NativeHmi_Loaded;
         Unloaded += P0NativeHmi_Unloaded;
 
-        // Hardware navigation is a bubbled Button.Click route. Owning the route
-        // here is deterministic even when the LCD child is replaced at runtime.
-        // Do not depend on visual-tree button discovery / Loaded ordering.
+        // Front-panel keys must behave like physical keys, independent of the
+        // legacy Click handler or which LCD child is currently hosted. Pointer
+        // input is intercepted on the tunnelling route before child handlers.
+        AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(P0FrontPanelPreviewMouseDown), handledEventsToo: true);
+        // Retain Click routing for keyboard activation / accessibility. A short
+        // duplicate guard prevents one physical mouse press dispatching twice.
         AddHandler(Button.ClickEvent, new RoutedEventHandler(P0FrontPanelNavigation_Click), handledEventsToo: true);
+    }
+
+    private void ApplyTransformerOperatingDefaults()
+    {
+        _settings = _settings with
+        {
+            ProfileName = "ARV-AVR · 17-position OLTC",
+            MinimumTap = DefaultMinimumTap,
+            MaximumTap = DefaultMaximumTap,
+            NeutralTap = DefaultNeutralTap,
+            VoltageInputMode = AvrVoltageInputMode.ClosedLoopPlant
+        };
+
+        _engine.ApplySettings(_settings, keepTapPosition: false);
+        _snapshot = AvrSnapshot.Ready(_settings, _settings.NeutralTap);
+        _lastTapPosition = _settings.NeutralTap;
+        _lastPendingTapPosition = null;
+        _lastState = AvrControlState.SourceOff;
     }
 
     private void P0NativeHmi_Loaded(object sender, RoutedEventArgs e)
@@ -52,16 +81,11 @@ public partial class AvrWorkspaceControl
             return;
         }
 
-        // Device geometry is physical, not a responsive dashboard. The workspace
-        // can gain/lose room when the configuration rail changes, but the AVR
-        // chassis itself must retain the same width like a real panel device.
         LockPhysicalFaceplateGeometry(displayBorder);
         SetConfigurationExpanded(false);
 
         _p0Hmi = new AvrP0HmiControl
         {
-            // The native HMI must reflow inside the fixed chassis instead of
-            // forcing its parent to become wider.
             MinWidth = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
@@ -79,7 +103,7 @@ public partial class AvrWorkspaceControl
         }
 
         RefreshP0NativeHmi();
-        AddEvent("HMI", $"Operational AVR HMI loaded · fixed chassis {PhysicalFaceplateWidth:0}px");
+        AddEvent("HMI", $"Operational AVR HMI loaded · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} neutral · simulated transformer default");
     }
 
     private static void LockPhysicalFaceplateGeometry(Border displayBorder)
@@ -113,31 +137,75 @@ public partial class AvrWorkspaceControl
         return null;
     }
 
+    private void P0FrontPanelPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+
+        var button = FindAncestorButton(e.OriginalSource as DependencyObject);
+        var key = HardwareKey(button);
+        if (key is null)
+            return;
+
+        DispatchHardwareKey(key);
+        _lastPointerHardwareKey = key;
+        _lastPointerHardwareDispatchMs = Environment.TickCount64;
+        // Do not mark the mouse event handled: the physical button should retain
+        // its normal pressed visual. The following Click is duplicate-guarded.
+    }
+
     private void P0FrontPanelNavigation_Click(object sender, RoutedEventArgs e)
     {
-        // Button.Click bubbles with the Button as Source. This survives all LCD
-        // replacement/retemplating and does not rely on discovering the buttons.
         if (e.Source is not Button button)
             return;
 
-        var key = button.Tag?.ToString()?.ToUpperInvariant();
-        if (key is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU"))
+        var key = HardwareKey(button);
+        if (key is null)
             return;
 
-        // In the unlikely event of an early click during initial Loaded dispatch,
-        // install the HMI synchronously before forwarding the hardware key.
+        var duplicatePointerClick = string.Equals(key, _lastPointerHardwareKey, StringComparison.Ordinal) &&
+                                    Environment.TickCount64 - _lastPointerHardwareDispatchMs < 500;
+        if (!duplicatePointerClick)
+            DispatchHardwareKey(key);
+
+        _lastPointerHardwareKey = null;
+        e.Handled = true;
+    }
+
+    private void DispatchHardwareKey(string key)
+    {
         if (_p0Hmi is null)
             InstallP0NativeHmi();
+
         if (_p0Hmi is null)
         {
             AddEvent("KEY ERR", $"Front-panel {key} ignored · HMI unavailable");
-            e.Handled = true;
             return;
         }
 
         AddEvent("KEY", $"Front-panel {key} pressed");
         _p0Hmi.HandleHardwareKey(key);
-        e.Handled = true;
+    }
+
+    private static string? HardwareKey(Button? button)
+    {
+        var key = button?.Tag?.ToString()?.ToUpperInvariant();
+        return key is "ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU" ? key : null;
+    }
+
+    private static Button? FindAncestorButton(DependencyObject? source)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (current is Button button)
+                return button;
+
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     private void P0NativeHmi_Tick(object? sender, EventArgs e) => RefreshP0NativeHmi();
@@ -153,6 +221,7 @@ public partial class AvrWorkspaceControl
             _frequencyHz,
             _events.ToArray(),
             _iec61850Server.GetStatus());
+        _p0Hmi.ApplyTransformerConvention(_snapshot, _settings);
     }
 
     private void P0StartServerRequested(string host, int port)
