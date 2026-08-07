@@ -112,9 +112,9 @@ public partial class MainWindow
             Margin = new Thickness(0, 0, 8, 0),
             ItemsSource = VirtualIedCatalog.All,
             DisplayMemberPath = nameof(VirtualIedDescriptor.DisplayName),
-            TextSearch = { TextPath = nameof(VirtualIedDescriptor.DisplayName) },
             ToolTip = "Select the virtual IED to configure and test"
         };
+        TextSearch.SetTextPath(_iedTypeCombo, nameof(VirtualIedDescriptor.DisplayName));
         _iedTypeCombo.SelectionChanged += IedTypeCombo_SelectionChanged;
 
         headerActions.Children.Insert(insertAt, label);
