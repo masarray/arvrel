@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: masarray/ARIEC61850
-          ref: 6b4577a2feef1ceaefc48eed5fc1196dffe73cc5
+          ref: 0d0aa4e31c17f9e5a10901ad52fa75e9c4581daf
           path: ARIEC61850
           persist-credentials: false
 
@@ -53,21 +53,15 @@ jobs:
           $output = dotnet list .\ARVREL.sln package --vulnerable --include-transitive
           $text = $output | Out-String
           $text | Write-Host
-          if ($LASTEXITCODE -ne 0) {
-            throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE."
-          }
-          if ($text -match 'has the following vulnerable packages') {
-            throw 'The dependency audit reported one or more vulnerable packages.'
-          }
+          if ($LASTEXITCODE -ne 0) { throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE." }
+          if ($text -match 'has the following vulnerable packages') { throw 'The dependency audit reported one or more vulnerable packages.' }
 
       - name: Install Inno Setup for release-candidate packaging
         if: startsWith(github.head_ref, 'release/')
         shell: pwsh
         run: |
           choco install innosetup --yes --no-progress
-          if ($LASTEXITCODE -ne 0) {
-            throw "Inno Setup installation failed with exit code $LASTEXITCODE."
-          }
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed with exit code $LASTEXITCODE." }
 
       - name: Package release candidate
         if: startsWith(github.head_ref, 'release/')
