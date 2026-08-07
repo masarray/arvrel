@@ -58,6 +58,8 @@ public sealed class DeterministicLabScenario
 
     public bool StopInjection() => _runtime.Stop();
 
+    public bool RestartEvent() => _runtime.RestartEvent();
+
     public bool ResetCurrentTransformerState()
         => _runtime.ResetCurrentTransformerState(demagnetize: false);
 
