@@ -1,11 +1,10 @@
 <UserControl x:Class="Arvrel.App.Controls.Avr.AvrWorkspaceControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="1080"
-             MinHeight="620"
+             MinWidth="1180"
+             MinHeight="650"
              Background="#0D1620">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="AvrShell" Color="#0D1620" />
         <SolidColorBrush x:Key="AvrPanel" Color="#142331" />
         <SolidColorBrush x:Key="AvrPanel2" Color="#192B3A" />
         <SolidColorBrush x:Key="AvrLine" Color="#314657" />
@@ -17,7 +16,6 @@
         <SolidColorBrush x:Key="AvrTrip" Color="#EA6B67" />
         <SolidColorBrush x:Key="DeviceMetal" Color="#AAB2B7" />
         <SolidColorBrush x:Key="DeviceDark" Color="#20292E" />
-        <SolidColorBrush x:Key="DeviceBlack" Color="#050809" />
 
         <Style x:Key="SectionLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource AvrMuted}" />
@@ -29,7 +27,7 @@
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
         </Style>
         <Style x:Key="DarkTextBox" TargetType="TextBox">
-            <Setter Property="Height" Value="30" />
+            <Setter Property="Height" Value="29" />
             <Setter Property="Padding" Value="7,3" />
             <Setter Property="Foreground" Value="{StaticResource AvrText}" />
             <Setter Property="Background" Value="#0E1B26" />
@@ -39,7 +37,7 @@
         </Style>
         <Style x:Key="PanelButton" TargetType="Button">
             <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Padding" Value="9,4" />
             <Setter Property="Foreground" Value="{StaticResource AvrText}" />
             <Setter Property="Background" Value="#203747" />
             <Setter Property="BorderBrush" Value="#405A6D" />
@@ -55,7 +53,6 @@
             <Setter Property="Background" Value="#26343B" />
             <Setter Property="BorderBrush" Value="#6A7A82" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="10.5" />
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="7,3" />
@@ -64,18 +61,14 @@
             <Setter Property="Foreground" Value="{StaticResource AvrMuted}" />
             <Setter Property="Background" Value="#142331" />
             <Setter Property="BorderBrush" Value="{StaticResource AvrLine}" />
-            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Padding" Value="9,6" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="Chrome"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="0,0,0,2"
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0,0,0,2"
                                 Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
@@ -96,91 +89,89 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="365" MinWidth="330" />
+            <ColumnDefinition Width="390" MinWidth="365" />
             <ColumnDefinition Width="10" />
-            <ColumnDefinition Width="*" MinWidth="430" />
+            <ColumnDefinition Width="*" MinWidth="470" />
             <ColumnDefinition Width="10" />
-            <ColumnDefinition x:Name="ConfigurationColumn" Width="365" MinWidth="38" MaxWidth="420" />
+            <ColumnDefinition x:Name="ConfigurationColumn" Width="380" MinWidth="38" MaxWidth="430" />
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Row="0" Grid.Column="0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E" VerticalAlignment="Center">
-                <TextBlock Text="1" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
-            </Border>
-            <TextBlock Grid.Column="1" Text="INJECT" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E"><TextBlock Text="1" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/></Border>
+                <TextBlock Text="INJECT" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" Margin="8,3,0,0"/>
+            </StackPanel>
         </Grid>
         <Grid Grid.Row="0" Grid.Column="2">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E" VerticalAlignment="Center">
-                <TextBlock Text="2" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
-            </Border>
-            <TextBlock Grid.Column="1" Text="VIRTUAL DEVICE RESPONSE" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E"><TextBlock Text="2" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/></Border>
+                <TextBlock Text="VIRTUAL DEVICE RESPONSE" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" Margin="8,3,0,0"/>
+            </StackPanel>
         </Grid>
         <Grid Grid.Row="0" Grid.Column="4">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E" VerticalAlignment="Center">
-                <TextBlock Text="3" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
-            </Border>
-            <TextBlock Grid.Column="1" Text="CONFIGURE / VALIDATE" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="22" Height="22" CornerRadius="11" Background="#1E6D9E"><TextBlock Text="3" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/></Border>
+                <TextBlock Text="CONFIGURE / VALIDATE" Foreground="{StaticResource AvrText}" FontSize="11" FontWeight="SemiBold" Margin="8,3,0,0"/>
+            </StackPanel>
         </Grid>
 
+        <!-- 1. Injection / test-set workspace -->
         <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource AvrPanel}" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="6">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Border Background="#182A38" BorderBrush="{StaticResource AvrLine}" BorderThickness="0,0,0,1" Padding="12,9">
                     <StackPanel>
                         <TextBlock Text="INJECTION FORM" Foreground="{StaticResource AvrText}" FontWeight="SemiBold" FontSize="12"/>
-                        <TextBlock Text="Test-set stimulus at AVR voltage input · bench injection mode" Foreground="{StaticResource AvrMuted}" FontSize="9.2" Margin="0,2,0,0"/>
+                        <TextBlock Text="Test-set stimulus at AVR terminals · U/I phasor bench workflow" Foreground="{StaticResource AvrMuted}" FontSize="9.2" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="12">
-                        <TextBlock Text="TEST PROFILE" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="TEST PLANT" Style="{StaticResource SectionLabel}"/>
+                        <RadioButton x:Name="BenchModeRadio" Content="External test set / bench injection" IsChecked="True" Foreground="{StaticResource AvrText}" Margin="0,6,0,4" Checked="InputModel_Changed"/>
+                        <RadioButton x:Name="ClosedLoopModeRadio" Content="Simulated transformer + OLTC feedback" Foreground="{StaticResource AvrText}" Checked="InputModel_Changed"/>
+
+                        <TextBlock Text="TEST PROFILE" Style="{StaticResource SectionLabel}" Margin="0,13,0,0"/>
                         <ComboBox x:Name="TestProfileCombo" Height="30" Margin="0,5,0,12" SelectedIndex="0">
-                            <ComboBoxItem Content="AVR · Manual injection"/>
-                            <ComboBoxItem Content="AVR · Low U / RAISE test"/>
-                            <ComboBoxItem Content="AVR · High U / LOWER test"/>
+                            <ComboBoxItem Content="AVR · Manual U/I injection"/>
+                            <ComboBoxItem Content="AVR · Low U / RAISE"/>
+                            <ComboBoxItem Content="AVR · High U / LOWER"/>
                             <ComboBoxItem Content="AVR · Band sweep"/>
-                            <ComboBoxItem Content="AVR · Blocking test"/>
+                            <ComboBoxItem Content="AVR · U blocking"/>
+                            <ComboBoxItem Content="AVR · I&lt; blocking"/>
+                            <ComboBoxItem Content="AVR · I&gt; blocking"/>
                         </ComboBox>
 
-                        <TextBlock Text="INJECTED SOURCE" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="INJECTED SOURCE" Style="{StaticResource SectionLabel}"/>
                         <Grid Margin="0,5,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.25*" />
-                                <ColumnDefinition Width="7" />
-                                <ColumnDefinition Width="0.82*" />
-                                <ColumnDefinition Width="7" />
-                                <ColumnDefinition Width="0.72*" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <StackPanel>
-                                <TextBlock Text="U (V secondary)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
+                                <TextBlock Text="Voltage U (V sec)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
                                 <TextBox x:Name="InjectionVoltageBox" Text="100.00" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
+                                <TextBlock Text="Current I (A sec)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
+                                <TextBox x:Name="InjectionCurrentBox" Text="1.00" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2">
+                                <TextBlock Text="Current angle φ (° vs U)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
+                                <TextBox x:Name="CurrentAngleBox" Text="0.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="2">
                                 <TextBlock Text="Frequency (Hz)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
                                 <TextBox x:Name="FrequencyBox" Text="50.00" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="Phase (°)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                                <TextBox x:Name="PhaseBox" Text="0.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
                             </StackPanel>
                         </Grid>
 
                         <Grid Margin="0,11,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <TextBlock Text="Voltage target" Style="{StaticResource SectionLabel}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Voltage target" Style="{StaticResource SectionLabel}"/>
                             <TextBlock Grid.Column="1" x:Name="InjectionTargetText" Text="100.00 V" Style="{StaticResource MonoValue}" FontSize="10.5"/>
                         </Grid>
                         <Slider x:Name="SourceVoltageSlider" Minimum="70" Maximum="130" Value="100" TickFrequency="0.5" Margin="0,5,0,0" ValueChanged="SourceVoltageSlider_ValueChanged"/>
-                        <Grid Margin="0,2,0,12">
+                        <Grid Margin="0,2,0,9">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <TextBlock Text="70 V" Foreground="{StaticResource AvrMuted}" FontSize="8.5"/>
                             <TextBlock Grid.Column="1" Text="100 V" Foreground="{StaticResource AvrMuted}" FontSize="8.5" HorizontalAlignment="Center"/>
@@ -188,42 +179,29 @@
                         </Grid>
 
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="7" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="7" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Ramp (V/s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                                <TextBox x:Name="RampBox" Text="20.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Pre-delay (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                                <TextBox x:Name="DelayBox" Text="0.5" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="Dwell (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                                <TextBox x:Name="DwellBox" Text="12.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/>
-                            </StackPanel>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="Ramp U (V/s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="RampBox" Text="20.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/></StackPanel>
+                            <StackPanel Grid.Column="2"><TextBlock Text="Pre-delay (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="DelayBox" Text="0.5" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/></StackPanel>
+                            <StackPanel Grid.Column="4"><TextBlock Text="Dwell (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="DwellBox" Text="12.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0" LostFocus="InjectionForm_LostFocus"/></StackPanel>
                         </Grid>
 
-                        <TextBlock Text="QUICK SCENARIOS" Style="{StaticResource SectionLabel}" Margin="0,14,0,6"/>
-                        <UniformGrid Columns="2" Rows="2">
+                        <TextBlock Text="QUICK SCENARIOS" Style="{StaticResource SectionLabel}" Margin="0,13,0,6"/>
+                        <UniformGrid Columns="2" Rows="3">
                             <Button Style="{StaticResource PanelButton}" Margin="0,0,5,5" Click="ScenarioRaise_Click" Content="Low U → RAISE"/>
                             <Button Style="{StaticResource PanelButton}" Margin="0,0,0,5" Click="ScenarioLower_Click" Content="High U → LOWER"/>
-                            <Button Style="{StaticResource PanelButton}" Margin="0,0,5,0" Click="ScenarioBandSweep_Click" Content="Band sweep"/>
-                            <Button Style="{StaticResource PanelButton}" Click="ScenarioBlocking_Click" Content="U&lt; / U&gt; block"/>
+                            <Button Style="{StaticResource PanelButton}" Margin="0,0,5,5" Click="ScenarioBandSweep_Click" Content="Bandwidth sweep"/>
+                            <Button Style="{StaticResource PanelButton}" Margin="0,0,0,5" Click="ScenarioVoltageBlocking_Click" Content="U&lt; / U&gt; block"/>
+                            <Button Style="{StaticResource PanelButton}" Margin="0,0,5,0" Click="ScenarioUnderCurrent_Click" Content="I&lt; block"/>
+                            <Button Style="{StaticResource PanelButton}" Click="ScenarioOverCurrent_Click" Content="I&gt; block"/>
                         </UniformGrid>
 
-                        <Grid Margin="0,14,0,6">
+                        <Grid Margin="0,13,0,6">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <TextBlock Text="TEST SEQUENCE" Style="{StaticResource SectionLabel}"/>
                             <TextBlock Grid.Column="1" x:Name="SequenceStepText" Text="MANUAL" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="8.8"/>
                         </Grid>
                         <Border Background="#0F1D28" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="3" Padding="6">
-                            <ListBox x:Name="InjectionSequenceList" Height="106" Background="Transparent" BorderThickness="0" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="9"/>
+                            <ListBox x:Name="InjectionSequenceList" Height="92" Background="Transparent" BorderThickness="0" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="8.8"/>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
@@ -231,320 +209,185 @@
                 <Border Grid.Row="2" Background="#101E29" BorderBrush="{StaticResource AvrLine}" BorderThickness="0,1,0,0" Padding="10">
                     <StackPanel>
                         <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="1*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="50"/></Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="1*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
                             <Button x:Name="InjectionStartButton" Style="{StaticResource PrimaryPanelButton}" Click="StartInjection_Click" Content="▶  Start injection"/>
                             <Button x:Name="InjectionPauseButton" Grid.Column="2" Style="{StaticResource PanelButton}" Click="PauseInjection_Click" Content="Ⅱ  Pause" IsEnabled="False"/>
                             <Button Grid.Column="4" Style="{StaticResource PanelButton}" Click="StopInjection_Click" Content="■"/>
                         </Grid>
                         <Grid Margin="0,9,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse x:Name="InjectionLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="InjectionStatusText" Text="READY" Foreground="{StaticResource AvrMuted}" FontSize="9" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" x:Name="InjectedVoltageText" Text="U = 100.00 V" Style="{StaticResource MonoValue}" FontSize="9.5"/>
+                            <StackPanel Orientation="Horizontal"><Ellipse x:Name="InjectionLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,6,0" VerticalAlignment="Center"/><TextBlock x:Name="InjectionStatusText" Text="READY" Foreground="{StaticResource AvrMuted}" FontSize="9"/></StackPanel>
+                            <TextBlock Grid.Column="1" x:Name="InjectedSourceText" Text="U 100.00 V · I 1.00 A" Style="{StaticResource MonoValue}" FontSize="9.2"/>
                         </Grid>
                     </StackPanel>
                 </Border>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Grid.Column="2" Background="#101820" BorderBrush="#40515C" BorderThickness="1" CornerRadius="7" Padding="8">
-            <Border Background="{StaticResource DeviceMetal}" BorderBrush="#6A7479" BorderThickness="2" CornerRadius="7" Padding="10">
+        <!-- 2. Real-device-like AVR faceplate -->
+        <Border Grid.Row="1" Grid.Column="2" Background="#77838A" BorderBrush="#5B676E" BorderThickness="1" CornerRadius="7" Padding="10">
+            <Border Background="{StaticResource DeviceMetal}" BorderBrush="#6E7A80" BorderThickness="1" CornerRadius="5" Padding="10">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="8"/>
-                        <RowDefinition Height="36"/>
-                        <RowDefinition Height="8"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="9"/><RowDefinition Height="Auto"/><RowDefinition Height="9"/><RowDefinition Height="*"/><RowDefinition Height="9"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="ARVREL" Foreground="#20282D" FontSize="17" FontWeight="Bold"/>
-                            <TextBlock Text="  AVR-230 LAB" Foreground="#3D484E" FontSize="14" VerticalAlignment="Bottom" Margin="0,0,0,1"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="ARVREL" Foreground="#263238" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="  AVR-230 LAB" Foreground="#45545B" FontSize="14" VerticalAlignment="Bottom" Margin="0,0,0,2"/></StackPanel>
+                        <StackPanel Grid.Column="1"><TextBlock Text="VOLTAGE CONTROL" Foreground="#44545B" FontSize="8.5" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="VIRTUAL IED" Foreground="#66757B" FontSize="8" HorizontalAlignment="Right"/></StackPanel>
+                    </Grid>
+
+                    <Border Grid.Row="2" Height="34" Background="#1E292E" BorderBrush="#62737B" BorderThickness="1" CornerRadius="4" Padding="8,5">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,14,0"><Ellipse x:Name="PowerLed" Width="8" Height="8" Fill="#66C878" Margin="0,0,5,0"/><TextBlock Text="PWR" Foreground="#C2D0D7" FontSize="8.5"/></StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,14,0"><Ellipse x:Name="RunLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="RUN" Foreground="#C2D0D7" FontSize="8.5"/></StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,14,0"><Ellipse x:Name="BlockLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="BLOCK" Foreground="#C2D0D7" FontSize="8.5"/></StackPanel>
+                                <StackPanel Orientation="Horizontal"><Ellipse x:Name="LimitLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="TAP LIMIT" Foreground="#C2D0D7" FontSize="8.5"/></StackPanel>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" x:Name="DeviceClockText" Text="15:22:46" Foreground="#8FA7B8" FontFamily="Cascadia Mono, Consolas" FontSize="9" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="78"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="70"/></Grid.ColumnDefinitions>
+
+                        <StackPanel VerticalAlignment="Center">
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,7" Click="RaiseTap_Click" Content="▲ RAISE"/>
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,14" Click="LowerTap_Click" Content="▼ LOWER"/>
+                            <Button x:Name="LocalAuthorityButton" Style="{StaticResource DeviceButton}" Margin="0,0,0,7" Click="LocalAuthority_Click" Content="LOCAL"/>
+                            <Button x:Name="RemoteAuthorityButton" Style="{StaticResource DeviceButton}" Margin="0,0,0,14" Click="RemoteAuthority_Click" Content="REMOTE"/>
+                            <Button x:Name="AutoModeButton" Style="{StaticResource DeviceButton}" Margin="0,0,0,7" Click="AutoMode_Click" Content="AUTO"/>
+                            <Button x:Name="ManualModeButton" Style="{StaticResource DeviceButton}" Click="ManualMode_Click" Content="MANUAL"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                            <TextBlock Text="VOLTAGE CONTROL" Foreground="#37434A" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Right"/>
-                            <TextBlock Text="VIRTUAL IED" Foreground="#59656B" FontSize="8.5" HorizontalAlignment="Right"/>
+
+                        <Border Grid.Column="2" Background="#050809" BorderBrush="#121B1F" BorderThickness="4" CornerRadius="4" Padding="13,10">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Background="#173226" BorderBrush="#3B8152" BorderThickness="1" CornerRadius="2" Padding="7,3"><TextBlock x:Name="AuthorityBadgeText" Text="LOCAL" Foreground="#73D78C" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" FontWeight="SemiBold"/></Border>
+                                    <Border Grid.Column="2" Background="#173226" BorderBrush="#3B8152" BorderThickness="1" CornerRadius="2" Padding="7,3"><TextBlock x:Name="ModeBadgeText" Text="AUTO" Foreground="#73D78C" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" FontWeight="SemiBold"/></Border>
+                                    <TextBlock Grid.Column="4" x:Name="DeviceStateText" Text="IN BAND" Foreground="#91B6C4" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="0.8*"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="MEASURED VOLTAGE" Foreground="#7895A3" FontSize="8.5"/>
+                                        <StackPanel Orientation="Horizontal"><TextBlock x:Name="LcdMeasuredText" Text="100.00" Foreground="#F1FBFF" FontFamily="Cascadia Mono, Consolas" FontSize="34"/><TextBlock Text=" V" Foreground="#B4D5E2" FontFamily="Cascadia Mono, Consolas" FontSize="14" VerticalAlignment="Bottom" Margin="2,0,0,5"/></StackPanel>
+                                        <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="SETPOINT" Foreground="#7895A3" FontSize="8"/><TextBlock x:Name="LcdSetpointText" Text="100.00 V" Foreground="#B9E4F2" FontFamily="Cascadia Mono, Consolas" FontSize="10.5"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="DEVIATION" Foreground="#7895A3" FontSize="8"/><TextBlock x:Name="LcdDeviationText" Text="0.00 %" Foreground="#B9E4F2" FontFamily="Cascadia Mono, Consolas" FontSize="10.5"/></StackPanel></Grid>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="#0B1418" BorderBrush="#24353D" BorderThickness="1" CornerRadius="3" Padding="10,7">
+                                        <StackPanel>
+                                            <TextBlock Text="TAP POSITION" Foreground="#7895A3" FontSize="8.5" HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="LcdTapText" Text="00" Foreground="#F5FCFF" FontFamily="Cascadia Mono, Consolas" FontSize="48" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,-3,0,-4"/>
+                                            <TextBlock x:Name="LcdPendingTapText" Text="FEEDBACK VALID" Foreground="#82BFD6" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="4">
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="5"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="REGULATION BAND" Foreground="#7895A3" FontSize="8"/><TextBlock x:Name="LcdBandText" Text="99.00 — 101.00 V" Foreground="#9FC9D9" FontFamily="Cascadia Mono, Consolas" FontSize="9" Margin="0,2,0,0"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="INJECTED CURRENT" Foreground="#7895A3" FontSize="8"/><TextBlock x:Name="LcdCurrentText" Text="1.000 A" Foreground="#D6EEF7" FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="0,2,0,0"/></StackPanel>
+                                    <StackPanel Grid.Row="2"><TextBlock Text="CONTROL TIMER" Foreground="#7895A3" FontSize="8"/><ProgressBar x:Name="DelayProgress" Height="7" Minimum="0" Maximum="100" Margin="0,5,8,0"/></StackPanel>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" x:Name="LcdPowerText" Text="φ 0.0° · PF 1.000" Foreground="#9FC9D9" FontFamily="Cascadia Mono, Consolas" FontSize="9.2" VerticalAlignment="Bottom"/>
+                                </Grid>
+
+                                <Grid Grid.Row="6">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="COMMAND / MOTOR" Foreground="#7895A3" FontSize="8"/><TextBlock x:Name="LcdCommandText" Text="OUTPUT IDLE" Foreground="#B9E4F2" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" Margin="0,2,0,0"/></StackPanel>
+                                    <TextBlock Grid.Column="1" x:Name="DelayText" Text="—" Foreground="#A8DDF1" FontFamily="Cascadia Mono, Consolas" FontSize="9" VerticalAlignment="Bottom"/>
+                                </Grid>
+
+                                <Border Grid.Row="8" Background="#0B1418" BorderBrush="#1C2D34" BorderThickness="1" CornerRadius="2" Padding="7,5">
+                                    <TextBlock x:Name="LcdReasonText" Text="Voltage inside tolerance band" Foreground="#91B6C4" FontFamily="Cascadia Mono, Consolas" FontSize="8.8" TextWrapping="Wrap"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F1" Content="F1"/>
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F2" Content="F2"/>
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F3" Content="F3"/>
+                            <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F4" Content="F4"/>
+                            <Button Style="{StaticResource DeviceButton}" Click="DeviceFunction_Click" Tag="F5" Content="F5"/>
                         </StackPanel>
                     </Grid>
 
-                    <Border Grid.Row="2" Background="#1D2529" BorderBrush="#657177" BorderThickness="1" CornerRadius="4">
-                        <Grid>
-                            <Border Margin="16,9" CornerRadius="4" Background="#30A8E8" Opacity="0.78"/>
-                            <Border Margin="26,12" CornerRadius="3" Background="#96E1FF" Opacity="0.58"/>
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Row="4" Background="{StaticResource DeviceDark}" BorderBrush="#111719" BorderThickness="2" CornerRadius="4" Padding="12">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="32"/>
-                                <RowDefinition Height="8"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="10"/>
-                                <RowDefinition Height="48"/>
-                            </Grid.RowDefinitions>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,11,0"><Ellipse x:Name="PowerLed" Width="8" Height="8" Fill="#66C878" Margin="0,0,4,0"/><TextBlock Text="PWR" Foreground="#AAB7BE" FontSize="8.5"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,11,0"><Ellipse x:Name="RunLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,4,0"/><TextBlock Text="RUN" Foreground="#AAB7BE" FontSize="8.5"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,11,0"><Ellipse x:Name="BlockLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,4,0"/><TextBlock Text="BLOCK" Foreground="#AAB7BE" FontSize="8.5"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal"><Ellipse x:Name="LimitLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,4,0"/><TextBlock Text="TAP LIMIT" Foreground="#AAB7BE" FontSize="8.5"/></StackPanel>
-                                </StackPanel>
-                                <Border Grid.Column="1" x:Name="StateBadge" Background="#1B3926" BorderBrush="#66C878" BorderThickness="1" CornerRadius="3" Padding="8,3">
-                                    <TextBlock x:Name="StateBadgeText" Text="IN BAND" Foreground="#7CE28D" FontSize="8.5" FontWeight="SemiBold"/>
-                                </Border>
-                            </Grid>
-
-                            <Grid Grid.Row="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="70"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel VerticalAlignment="Center">
-                                    <Button Style="{StaticResource DeviceButton}" Height="45" Margin="0,0,0,8" Click="RaiseTap_Click" Content="▲"/>
-                                    <Button Style="{StaticResource DeviceButton}" Height="45" Margin="0,0,0,18" Click="LowerTap_Click" Content="▼"/>
-                                    <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,7" Click="DeviceFunction_Click" Tag="REMOTE" Content="REMOTE"/>
-                                    <Button x:Name="ManualModeButton" Style="{StaticResource DeviceButton}" Margin="0,0,0,7" Click="ManualMode_Click" Content="MANUAL"/>
-                                    <Button x:Name="AutoModeButton" Style="{StaticResource DeviceButton}" Click="AutoMode_Click" Content="AUTO"/>
-                                </StackPanel>
-
-                                <Border Grid.Column="2" Background="{StaticResource DeviceBlack}" BorderBrush="#000000" BorderThickness="4" CornerRadius="3" Padding="12">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="6"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="7"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="8"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-
-                                        <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <TextBlock x:Name="LcdModeText" Text="AUTO · IN BAND" Foreground="#A8DDF1" FontFamily="Cascadia Mono, Consolas" FontSize="9"/>
-                                            <TextBlock Grid.Column="1" x:Name="DeviceClockText" Text="14:33:22" Foreground="#6F8996" FontFamily="Cascadia Mono, Consolas" FontSize="8.5"/>
-                                        </Grid>
-
-                                        <Grid Grid.Row="2">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.45*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="MEASURED" Foreground="#7895A3" FontSize="8.2"/>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock x:Name="LcdMeasuredText" Text="100.00" Foreground="#EDF9FF" FontFamily="Cascadia Mono, Consolas" FontSize="35" FontWeight="SemiBold"/>
-                                                    <TextBlock Text=" V" Foreground="#A8DDF1" FontFamily="Cascadia Mono, Consolas" FontSize="13" VerticalAlignment="Bottom" Margin="1,0,0,7"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                                <TextBlock Text="SETPOINT" Foreground="#7895A3" FontSize="8.2"/>
-                                                <TextBlock x:Name="LcdSetpointText" Text="100.00 V" Foreground="#E2F1F7" FontFamily="Cascadia Mono, Consolas" FontSize="13"/>
-                                                <TextBlock Text="DEVIATION" Foreground="#7895A3" FontSize="8.2" Margin="0,5,0,0"/>
-                                                <TextBlock x:Name="LcdDeviationText" Text="0.00 %" Foreground="#E2F1F7" FontFamily="Cascadia Mono, Consolas" FontSize="13"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <Grid Grid.Row="4">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="REGULATION BAND" Foreground="#7895A3" FontSize="8.2"/>
-                                                <Grid Height="18" Margin="0,3,10,0">
-                                                    <Border Height="4" Background="#29424E" VerticalAlignment="Center"/>
-                                                    <Border Width="34" Height="7" Background="#4A8C55" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    <Border Width="2" Height="13" Background="#DAF7FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Grid>
-                                                <TextBlock x:Name="LcdBandText" Text="99.00 — 101.00 V" Foreground="#88A9B7" FontFamily="Cascadia Mono, Consolas" FontSize="8.5"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                                <TextBlock Text="TAP POSITION" Foreground="#7895A3" FontSize="8.2"/>
-                                                <TextBlock x:Name="LcdTapText" Text="0" Foreground="#EDF9FF" FontFamily="Cascadia Mono, Consolas" FontSize="25" HorizontalAlignment="Right"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <Grid Grid.Row="6">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="CONTROL TIMER" Foreground="#7895A3" FontSize="8.2"/>
-                                                <ProgressBar x:Name="DelayProgress" Height="7" Minimum="0" Maximum="100" Value="0" Margin="0,4,8,0"/>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1" x:Name="DelayText" Text="0.0 / 10.0 s" Foreground="#A8DDF1" FontFamily="Cascadia Mono, Consolas" FontSize="9" VerticalAlignment="Bottom"/>
-                                        </Grid>
-
-                                        <TextBlock Grid.Row="8" x:Name="LcdReasonText" Text="Voltage inside tolerance band" Foreground="#91B6C4" FontFamily="Cascadia Mono, Consolas" FontSize="8.8" TextWrapping="Wrap"/>
-                                    </Grid>
-                                </Border>
-
-                                <StackPanel Grid.Column="4" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F1" Content="F1"/>
-                                    <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F2" Content="F2"/>
-                                    <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F3" Content="F3"/>
-                                    <Button Style="{StaticResource DeviceButton}" Margin="0,0,0,8" Click="DeviceFunction_Click" Tag="F4" Content="F4"/>
-                                    <Button Style="{StaticResource DeviceButton}" Click="DeviceFunction_Click" Tag="F5" Content="F5"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid Grid.Row="4">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0"><Ellipse x:Name="AutoLed" Width="8" Height="8" Fill="#66C878" Margin="0,0,5,0"/><TextBlock Text="AUTO" Foreground="#BAC8CF" FontSize="8.5"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0"><Ellipse x:Name="RaiseLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="RAISE" Foreground="#BAC8CF" FontSize="8.5"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal"><Ellipse x:Name="LowerLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="LOWER" Foreground="#BAC8CF" FontSize="8.5"/></StackPanel>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Style="{StaticResource DeviceButton}" Width="46" Margin="0,0,5,0" Click="DeviceFunction_Click" Tag="LEFT" Content="←"/>
-                                    <Button Style="{StaticResource DeviceButton}" Width="46" Margin="0,0,5,0" Click="DeviceFunction_Click" Tag="RIGHT" Content="→"/>
-                                    <Button Style="{StaticResource DeviceButton}" Width="46" Margin="0,0,5,0" Click="DeviceFunction_Click" Tag="ENTER" Content="↵"/>
-                                    <Button Style="{StaticResource DeviceButton}" Width="50" Margin="0,0,5,0" Click="DeviceFunction_Click" Tag="ESC" Content="ESC"/>
-                                    <Button Style="{StaticResource DeviceButton}" Width="56" Click="DeviceFunction_Click" Tag="MENU" Content="MENU"/>
-                                </StackPanel>
-                            </Grid>
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Row="6" Background="#8E999F" BorderBrush="#6F7A80" BorderThickness="1" CornerRadius="4" Padding="9,6">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="BENCH I/O" Foreground="#263238" FontSize="8.5" FontWeight="SemiBold" Margin="0,0,10,0"/>
-                                <TextBlock x:Name="DeviceOutputText" Text="OUTPUT: IDLE" Foreground="#263238" FontFamily="Cascadia Mono, Consolas" FontSize="8.5"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="SIMULATION ONLY · NO PHYSICAL OLTC AUTHORITY" Foreground="#39474D" FontFamily="Cascadia Mono, Consolas" FontSize="7.8"/>
-                        </Grid>
-                    </Border>
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0"><Ellipse x:Name="LocalLed" Width="8" Height="8" Fill="#66C878" Margin="0,0,5,0"/><TextBlock Text="LOCAL" Foreground="#324147" FontSize="8.5"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0"><Ellipse x:Name="AutoLed" Width="8" Height="8" Fill="#66C878" Margin="0,0,5,0"/><TextBlock Text="AUTO" Foreground="#324147" FontSize="8.5"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0"><Ellipse x:Name="RaiseLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="RAISE" Foreground="#324147" FontSize="8.5"/></StackPanel>
+                            <StackPanel Orientation="Horizontal"><Ellipse x:Name="LowerLed" Width="8" Height="8" Fill="#51606A" Margin="0,0,5,0"/><TextBlock Text="LOWER" Foreground="#324147" FontSize="8.5"/></StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal"><TextBlock Text="BENCH I/O  " Foreground="#3C4B52" FontSize="8.5" FontWeight="SemiBold"/><TextBlock x:Name="DeviceOutputText" Text="OUTPUT: IDLE" Foreground="#263238" FontFamily="Cascadia Mono, Consolas" FontSize="8.5"/></StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
         </Border>
 
+        <!-- 3. Sliding configuration rail -->
         <Border Grid.Row="1" Grid.Column="4" x:Name="ConfigurationPanel" Background="{StaticResource AvrPanel}" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid x:Name="ConfigurationExpanded">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Border Background="#182A38" BorderBrush="{StaticResource AvrLine}" BorderThickness="0,0,0,1" Padding="11,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="AVR CONFIGURATION" Foreground="{StaticResource AvrText}" FontWeight="SemiBold" FontSize="12"/>
-                                <TextBlock x:Name="ProfileText" Text="ARV-AVR Bench" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" Style="{StaticResource PanelButton}" Width="30" Height="27" Padding="0" Click="ConfigurePanelToggle_Click" Content="›"/>
-                        </Grid>
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="AVR CONFIGURATION" Foreground="{StaticResource AvrText}" FontWeight="SemiBold" FontSize="12"/><TextBlock x:Name="ProfileText" Text="ARV-AVR Bench" Foreground="{StaticResource AvrMuted}" FontSize="9"/></StackPanel><Button Grid.Column="1" Style="{StaticResource PanelButton}" Width="30" Height="27" Padding="0" Click="ConfigurePanelToggle_Click" Content="›"/></Grid>
                     </Border>
 
-                    <TabControl Grid.Row="1" x:Name="ConfigurationTabs" Background="{StaticResource AvrPanel}" BorderThickness="0" Margin="0">
+                    <TabControl Grid.Row="1" x:Name="ConfigurationTabs" Background="{StaticResource AvrPanel}" BorderThickness="0">
                         <TabItem Header="General" Style="{StaticResource ConfigTab}">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="CONTROL" Style="{StaticResource SectionLabel}"/>
-                                    <Grid Margin="0,7,0,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <StackPanel><TextBlock Text="Setpoint (V)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="SetpointBox" Text="100" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                        <StackPanel Grid.Column="2"><TextBlock Text="Tolerance ± (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="ToleranceBox" Text="1.0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                    </Grid>
-
-                                    <TextBlock Text="INPUT MODEL" Style="{StaticResource SectionLabel}" Margin="0,16,0,6"/>
-                                    <RadioButton x:Name="BenchModeRadio" Content="Bench injection · measured U follows test set" IsChecked="True" Foreground="{StaticResource AvrText}" Margin="0,0,0,6"/>
-                                    <RadioButton x:Name="ClosedLoopModeRadio" Content="Closed-loop transformer feedback" Foreground="{StaticResource AvrText}"/>
-                                    <TextBlock Text="Use Bench injection for OMICRON-style validation. Tap commands do not alter the injected voltage." Foreground="{StaticResource AvrMuted}" FontSize="8.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
-                                </StackPanel>
-                            </ScrollViewer>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="VOLTAGE CONTROL" Style="{StaticResource SectionLabel}"/>
+                                <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Setpoint (V)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="SetpointBox" Text="100" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Tolerance ± (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="ToleranceBox" Text="1" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel></Grid>
+                                <TextBlock Text="DEVICE CONTROL" Style="{StaticResource SectionLabel}" Margin="0,16,0,6"/>
+                                <TextBlock Text="LOCAL / REMOTE is independent from AUTO / MANUAL. In REMOTE + MANUAL, local RAISE / LOWER keys are inhibited." Foreground="{StaticResource AvrMuted}" FontSize="8.8" TextWrapping="Wrap"/>
+                            </StackPanel>
                         </TabItem>
 
-                        <TabItem Header="T1 / T2" Style="{StaticResource ConfigTab}">
-                            <StackPanel Margin="12">
-                                <TextBlock Text="TIME RESPONSE" Style="{StaticResource SectionLabel}"/>
-                                <Grid Margin="0,7,0,0">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                    <StackPanel><TextBlock Text="T1 delay (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="T1Box" Text="10" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                    <StackPanel Grid.Column="2"><TextBlock Text="T2 fast (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="T2Box" Text="2" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                </Grid>
-                                <CheckBox x:Name="FastT2Check" Content="Enable fast T2 after first tap command" IsChecked="True" Foreground="{StaticResource AvrText}" Margin="0,12,0,0"/>
-                                <TextBlock Text="T1 starts on the first out-of-band condition. Persistent deviation can use T2 for subsequent tap commands." Foreground="{StaticResource AvrMuted}" FontSize="8.8" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                            </StackPanel>
+                        <TabItem Header="Time" Style="{StaticResource ConfigTab}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12">
+                                <TextBlock Text="REGULATION" Style="{StaticResource SectionLabel}"/>
+                                <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="T1 delay (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="T1Box" Text="10" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="T2 fast (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="T2Box" Text="2" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel></Grid>
+                                <CheckBox x:Name="FastT2Check" Content="Enable fast T2 after completed tap feedback" IsChecked="True" Foreground="{StaticResource AvrText}" Margin="0,10,0,0"/>
+                                <TextBlock Text="OLTC ACTUATOR" Style="{StaticResource SectionLabel}" Margin="0,16,0,0"/>
+                                <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Command pulse (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="CommandPulseBox" Text="0.5" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Motor travel (s)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="MotorTravelBox" Text="3" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel></Grid>
+                            </StackPanel></ScrollViewer>
                         </TabItem>
 
                         <TabItem Header="LDC" Style="{StaticResource ConfigTab}">
-                            <StackPanel Margin="12">
-                                <TextBlock Text="LINE-DROP COMPENSATION" Style="{StaticResource SectionLabel}"/>
-                                <CheckBox x:Name="LdcCheck" Content="Enable compensation" Foreground="{StaticResource AvrText}" Margin="0,8,0,10"/>
-                                <TextBlock Text="Compensation (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/>
-                                <TextBox x:Name="LdcBox" Text="0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/>
-                                <TextBlock Text="Current implementation applies a vendor-neutral percentage setpoint compensation. R/X current-vector compensation can be added as the next model layer." Foreground="{StaticResource AvrMuted}" FontSize="8.8" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                            </StackPanel>
+                            <StackPanel Margin="12"><TextBlock Text="LINE-DROP COMPENSATION" Style="{StaticResource SectionLabel}"/><CheckBox x:Name="LdcCheck" Content="Enable vendor-neutral compensation" Foreground="{StaticResource AvrText}" Margin="0,8,0,10"/><TextBlock Text="Compensation (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="LdcBox" Text="0" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/><TextBlock Text="P0 exposes injected current and current protection. Full R/X phasor LDC remains the next model layer." Foreground="{StaticResource AvrMuted}" FontSize="8.8" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel>
                         </TabItem>
 
                         <TabItem Header="Limits" Style="{StaticResource ConfigTab}">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="TAP CHANGER" Style="{StaticResource SectionLabel}"/>
-                                    <Grid Margin="0,7,0,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <StackPanel><TextBlock Text="Min" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="MinTapBox" Text="-8" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                        <StackPanel Grid.Column="2"><TextBlock Text="Max" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="MaxTapBox" Text="8" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                        <StackPanel Grid.Column="4"><TextBlock Text="Step (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="TapStepBox" Text="1.25" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                    </Grid>
-
-                                    <TextBlock Text="VOLTAGE BLOCKING" Style="{StaticResource SectionLabel}" Margin="0,16,0,0"/>
-                                    <Grid Margin="0,7,0,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <StackPanel><TextBlock Text="U&lt; block (% Un)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="UnderBlockBox" Text="80" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                        <StackPanel Grid.Column="2"><TextBlock Text="U&gt; block (% Un)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="OverBlockBox" Text="120" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </ScrollViewer>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12">
+                                <TextBlock Text="TAP CHANGER" Style="{StaticResource SectionLabel}"/>
+                                <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Min" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="MinTapBox" Text="-8" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Max" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="MaxTapBox" Text="8" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Step (%)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="TapStepBox" Text="1.25" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel></Grid>
+                                <TextBlock Text="VOLTAGE BLOCKING" Style="{StaticResource SectionLabel}" Margin="0,15,0,0"/>
+                                <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="U&lt; (% Un)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="UnderBlockBox" Text="80" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="U&gt; (% Un)" Foreground="{StaticResource AvrMuted}" FontSize="9"/><TextBox x:Name="OverBlockBox" Text="120" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/></StackPanel></Grid>
+                                <TextBlock Text="CURRENT INPUT / BLOCKING" Style="{StaticResource SectionLabel}" Margin="0,15,0,0"/>
+                                <TextBlock Text="Nominal current In (A secondary)" Foreground="{StaticResource AvrMuted}" FontSize="9" Margin="0,7,0,0"/><TextBox x:Name="NominalCurrentBox" Text="1" Style="{StaticResource DarkTextBox}" Margin="0,3,0,0"/>
+                                <CheckBox x:Name="UnderCurrentCheck" Content="Enable I&lt; blocking" Foreground="{StaticResource AvrText}" Margin="0,10,0,4"/>
+                                <TextBox x:Name="UnderCurrentBox" Text="10" Style="{StaticResource DarkTextBox}" ToolTip="I< threshold in % In"/>
+                                <CheckBox x:Name="OverCurrentCheck" Content="Enable I&gt; blocking" Foreground="{StaticResource AvrText}" Margin="0,10,0,4"/>
+                                <TextBox x:Name="OverCurrentBox" Text="150" Style="{StaticResource DarkTextBox}" ToolTip="I> threshold in % In"/>
+                            </StackPanel></ScrollViewer>
                         </TabItem>
 
                         <TabItem Header="Events" Style="{StaticResource ConfigTab}">
-                            <Grid Margin="12">
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="7"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="EVENT TRACE" Style="{StaticResource SectionLabel}"/>
-                                    <TextBlock Grid.Column="1" x:Name="OperationCountText" Text="OPS 0" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="9"/>
-                                </Grid>
-                                <Border Grid.Row="2" Background="#0F1D28" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="3" Padding="8">
-                                    <TextBlock x:Name="EventTraceText" Text="READY      AVR simulator initialized" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="9" TextWrapping="Wrap"/>
-                                </Border>
-                            </Grid>
+                            <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="7"/><RowDefinition Height="*"/></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="EVENT TRACE" Style="{StaticResource SectionLabel}"/><TextBlock Grid.Column="1" x:Name="OperationCountText" Text="OPS 0" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="9"/></Grid><Border Grid.Row="2" Background="#0F1D28" BorderBrush="{StaticResource AvrLine}" BorderThickness="1" CornerRadius="3" Padding="8"><TextBlock x:Name="EventTraceText" Text="READY      AVR simulator initialized" Foreground="{StaticResource AvrMuted}" FontFamily="Cascadia Mono, Consolas" FontSize="9" TextWrapping="Wrap"/></Border></Grid>
                         </TabItem>
                     </TabControl>
 
-                    <Border Grid.Row="2" Background="#101E29" BorderBrush="{StaticResource AvrLine}" BorderThickness="0,1,0,0" Padding="9">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <Button Style="{StaticResource PrimaryPanelButton}" Click="ApplySettings_Click" Content="Apply"/>
-                            <Button Grid.Column="2" Style="{StaticResource PanelButton}" Click="RestoreDefaults_Click" Content="Restore defaults"/>
-                        </Grid>
-                    </Border>
+                    <Border Grid.Row="2" Background="#101E29" BorderBrush="{StaticResource AvrLine}" BorderThickness="0,1,0,0" Padding="9"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Button Style="{StaticResource PrimaryPanelButton}" Click="ApplySettings_Click" Content="Apply"/><Button Grid.Column="2" Style="{StaticResource PanelButton}" Click="RestoreDefaults_Click" Content="Restore defaults"/></Grid></Border>
                 </Grid>
-
-                <Button x:Name="ConfigurationRail" Visibility="Collapsed" Style="{StaticResource PanelButton}" Width="36" Padding="0" Click="ConfigurePanelToggle_Click">
-                    <TextBlock Text="CONFIG" Foreground="{StaticResource AvrText}" FontSize="9" FontWeight="SemiBold">
-                        <TextBlock.LayoutTransform><RotateTransform Angle="90"/></TextBlock.LayoutTransform>
-                    </TextBlock>
-                </Button>
+                <Button x:Name="ConfigurationRail" Visibility="Collapsed" Style="{StaticResource PanelButton}" Width="36" Padding="0" Click="ConfigurePanelToggle_Click"><TextBlock Text="CONFIG" Foreground="{StaticResource AvrText}" FontSize="9" FontWeight="SemiBold"><TextBlock.LayoutTransform><RotateTransform Angle="90"/></TextBlock.LayoutTransform></TextBlock></Button>
             </Grid>
         </Border>
-
-        <StackPanel Visibility="Collapsed">
-            <TextBlock x:Name="SourceVoltageText"/>
-            <TextBlock x:Name="MeasuredVoltageText"/>
-            <TextBlock x:Name="SetpointValueText"/>
-            <TextBlock x:Name="DeviationValueText"/>
-            <TextBlock x:Name="TapValueText"/>
-        </StackPanel>
     </Grid>
 </UserControl>
