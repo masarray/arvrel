@@ -8,6 +8,8 @@ namespace Arvrel.App.Controls.Avr;
 
 public partial class AvrWorkspaceControl
 {
+    private const double PhysicalFaceplateWidth = 680.0;
+
     private AvrP0HmiControl? _p0Hmi;
     private bool _p0HmiInstalled;
     private bool _p0RefreshAttached;
@@ -45,12 +47,18 @@ public partial class AvrWorkspaceControl
             return;
         }
 
-        // The virtual device is the primary commissioning surface. Keep the
-        // configuration workspace one click away, but do not consume its full
-        // width on every AVR startup.
-        SetConfigurationExpanded(false);
+        // Device geometry is physical, not a responsive dashboard. The workspace
+        // can gain/lose room when the configuration rail changes, but the AVR
+        // chassis itself must retain the same width like a real panel device.
+        LockPhysicalFaceplateGeometry(displayBorder);
 
-        _p0Hmi = new AvrP0HmiControl();
+        _p0Hmi = new AvrP0HmiControl
+        {
+            // The native HMI must reflow inside the fixed chassis instead of
+            // forcing its parent to become wider.
+            MinWidth = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         _p0Hmi.StartServerRequested += P0StartServerRequested;
         _p0Hmi.StopServerRequested += P0StopServerRequested;
         displayBorder.Child = _p0Hmi;
@@ -66,7 +74,26 @@ public partial class AvrWorkspaceControl
         }
 
         RefreshP0NativeHmi();
-        AddEvent("HMI", "Operational AVR HMI loaded · configuration rail collapsed");
+        AddEvent("HMI", $"Operational AVR HMI loaded · fixed chassis {PhysicalFaceplateWidth:0}px");
+    }
+
+    private static void LockPhysicalFaceplateGeometry(Border displayBorder)
+    {
+        DependencyObject? current = displayBorder;
+        while (current is not null)
+        {
+            if (current is Border border && Grid.GetRow(border) == 1 && Grid.GetColumn(border) == 2)
+            {
+                border.Width = PhysicalFaceplateWidth;
+                border.MinWidth = PhysicalFaceplateWidth;
+                border.MaxWidth = PhysicalFaceplateWidth;
+                border.HorizontalAlignment = HorizontalAlignment.Center;
+                border.VerticalAlignment = VerticalAlignment.Stretch;
+                return;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
     }
 
     private Border? FindLegacyHmiDisplayBorder()
