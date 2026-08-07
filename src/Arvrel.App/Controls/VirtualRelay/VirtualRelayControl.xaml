@@ -5,6 +5,8 @@
              xmlns:vr="clr-namespace:Arvrel.App.Controls.VirtualRelay"
              SnapsToDevicePixels="True"
              UseLayoutRounding="True"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
              Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -14,7 +16,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Viewbox Stretch="Uniform" StretchDirection="Both">
+    <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
         <Grid Width="560" Height="710" Margin="8">
             <Border CornerRadius="25"
                     Background="{StaticResource VrOuterShellBrush}"
@@ -77,11 +79,11 @@
                                 <TextBlock Text="ARV-650"
                                            Foreground="{StaticResource VrTextBrush}"
                                            FontFamily="Cascadia Mono, Consolas"
-                                           FontSize="10.5"
+                                           FontSize="10.8"
                                            FontWeight="SemiBold" />
                                 <TextBlock Text="IEC 61850 SV"
                                            Foreground="{StaticResource VrMutedTextBrush}"
-                                           FontSize="8.2" />
+                                           FontSize="9.6" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -121,7 +123,7 @@
                                 <TextBlock Grid.ColumnSpan="2"
                                            Text="STATUS"
                                            Foreground="{StaticResource VrMutedTextBrush}"
-                                           FontSize="9"
+                                           FontSize="10.2"
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
 
@@ -146,7 +148,7 @@
                                 <TextBlock Grid.Row="7" Text="EARTH" Style="{StaticResource VrStatusLabelStyle}" />
                                 <vr:RelayLampControl Grid.Row="7" Grid.Column="1" x:Name="EarthLamp" x:FieldModifier="public" />
 
-                                <TextBlock Grid.Row="8" Text="SMV BLOCK" Style="{StaticResource VrStatusLabelStyle}" FontSize="8.9" />
+                                <TextBlock Grid.Row="8" Text="SMV BLOCK" Style="{StaticResource VrStatusLabelStyle}" />
                                 <vr:RelayLampControl Grid.Row="8" Grid.Column="1" x:Name="BlockLamp" x:FieldModifier="public" />
 
                                 <Border Grid.ColumnSpan="2"
@@ -185,14 +187,14 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="BAY 12 · FEEDER"
                                                        Foreground="#F3F7F8"
-                                                       FontSize="8.5"
+                                                       FontSize="9.4"
                                                        FontWeight="SemiBold"
                                                        VerticalAlignment="Center" />
                                             <TextBlock Grid.Column="1"
                                                        Text="SV READY"
                                                        Foreground="#DCE8ED"
                                                        FontFamily="Cascadia Mono, Consolas"
-                                                       FontSize="7.6"
+                                                       FontSize="9"
                                                        VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
@@ -205,33 +207,33 @@
                                                    Text="MEASUREMENTS · SECONDARY"
                                                    Foreground="{StaticResource VrLcdTextBrush}"
                                                    FontFamily="Cascadia Mono, Consolas"
-                                                   FontSize="10.5"
+                                                   FontSize="11.2"
                                                    FontWeight="SemiBold"
                                                    Margin="0,0,0,8" />
                                         <TextBlock Text="IA          1.00 A&#x0a;IB          1.02 A&#x0a;IC          0.98 A&#x0a;3I0         0.02 A"
                                                    Foreground="{StaticResource VrLcdTextBrush}"
                                                    FontFamily="Cascadia Mono, Consolas"
-                                                   FontSize="9.8"
+                                                   FontSize="10.4"
                                                    LineHeight="17" />
                                         <Border Height="1" Background="#8EA09A" Margin="0,8,0,6" />
                                         <TextBlock Text="READY · ENTER MENU"
                                                    Foreground="{StaticResource VrLcdMutedBrush}"
                                                    FontFamily="Cascadia Mono, Consolas"
-                                                   FontSize="8" />
+                                                   FontSize="9.4" />
                                     </StackPanel>
 
                                     <UniformGrid Grid.Row="2" Rows="1" Columns="4">
                                         <Border Background="#426F8C" BorderBrush="#294E65" BorderThickness="0,1,1,0">
-                                            <TextBlock Text="MEASURE" Foreground="White" FontSize="7.4" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <TextBlock Text="MEASURE" Foreground="White" FontSize="8.6" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <Border Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
-                                            <TextBlock Text="EVENTS" Foreground="{StaticResource VrLcdTextBrush}" FontSize="7.4" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <TextBlock Text="EVENTS" Foreground="{StaticResource VrLcdTextBrush}" FontSize="8.6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <Border Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,1,0">
-                                            <TextBlock Text="RECORDS" Foreground="{StaticResource VrLcdTextBrush}" FontSize="7.4" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <TextBlock Text="RECORDS" Foreground="{StaticResource VrLcdTextBrush}" FontSize="8.6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <Border Background="#CAD4D1" BorderBrush="#899995" BorderThickness="0,1,0,0">
-                                            <TextBlock Text="SETUP" Foreground="{StaticResource VrLcdTextBrush}" FontSize="7.4" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <TextBlock Text="SETUP" Foreground="{StaticResource VrLcdTextBrush}" FontSize="8.6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                     </UniformGrid>
                                 </Grid>
@@ -341,7 +343,7 @@
                                         BorderThickness="1">
                                     <Grid>
                                         <Border Height="3" Margin="7,4,7,0" VerticalAlignment="Top" Background="{StaticResource VrAccentBrush}" CornerRadius="2" />
-                                        <TextBlock Text="USB" Foreground="#74858F" FontSize="7" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,0" />
+                                        <TextBlock Text="USB" Foreground="#8797A0" FontSize="8.8" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,0" />
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -360,7 +362,7 @@
                                        Text="GROUP A · REV 1 · SMV TRUST ACTIVE"
                                        Foreground="{StaticResource VrMutedTextBrush}"
                                        FontFamily="Cascadia Mono, Consolas"
-                                       FontSize="8.1"
+                                       FontSize="9.6"
                                        Margin="0,3,0,0"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
@@ -370,7 +372,7 @@
                                 VerticalAlignment="Center"
                                 CornerRadius="2"
                                 Background="{StaticResource VrAccentBrush}"
-                                Opacity="0.68" />
+                                Opacity="0.62" />
                     </Grid>
 
                     <StackPanel Visibility="Collapsed" IsHitTestVisible="False">
