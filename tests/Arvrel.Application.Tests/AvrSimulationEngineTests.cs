@@ -71,7 +71,7 @@ public sealed class AvrSimulationEngineTests
         });
 
         var first = engine.Advance(TimeSpan.Zero, 95.0);
-        var second = engine.Advance(TimeSpan.Zero, 95.0);
+        var second = engine.Advance(TimeSpan.FromSeconds(2), 95.0);
 
         Assert.AreEqual(95.0, first.MeasuredVoltageV, 0.0001);
         Assert.AreEqual(95.0, second.MeasuredVoltageV, 0.0001);
