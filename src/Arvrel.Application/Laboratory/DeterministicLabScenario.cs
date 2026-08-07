@@ -25,7 +25,7 @@ public sealed class DeterministicLabScenario
     public bool FaultActive
     {
         get => string.Equals(ActiveProfile.Name, "A-G fault", StringComparison.Ordinal);
-        set => ApplyProfile(VirtualInjectionPresets.Create(value ? "A-G fault" : "Normal balanced", ActiveProfile.FrequencyHz));
+        set => ApplySourcePresetPreservingCt(value ? "A-G fault" : "Normal balanced");
     }
 
     public bool SmvDegraded { get; set; }
@@ -52,7 +52,9 @@ public sealed class DeterministicLabScenario
         => _runtime.Apply(profile);
 
     public bool ApplyPreset(string name)
-        => ApplyProfile(VirtualInjectionPresets.Create(name, ActiveProfile.FrequencyHz));
+        => VirtualInjectionCtStudyScenarios.Contains(name)
+            ? ApplyProfile(VirtualInjectionCtStudyScenarios.Create(name, ActiveProfile.FrequencyHz))
+            : ApplySourcePresetPreservingCt(name);
 
     public bool StartInjection() => _runtime.Start();
 
@@ -96,6 +98,15 @@ public sealed class DeterministicLabScenario
     }
 
     public void Reset() => Restart(keepProfile: false);
+
+    private bool ApplySourcePresetPreservingCt(string name)
+    {
+        var source = VirtualInjectionPresets.Create(name, ActiveProfile.FrequencyHz);
+        return ApplyProfile((source with
+        {
+            CurrentTransformer = ActiveProfile.CurrentTransformer
+        }).Normalize());
+    }
 }
 
 public sealed record ScenarioWaveform(
