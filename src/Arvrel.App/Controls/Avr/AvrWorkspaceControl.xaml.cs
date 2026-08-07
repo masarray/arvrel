@@ -10,11 +10,7 @@ namespace Arvrel.App.Controls.Avr;
 
 public partial class AvrWorkspaceControl : UserControl
 {
-    private sealed record InjectionStep(
-        string Label,
-        double TargetVoltagePercent,
-        double TargetCurrentPercent,
-        double HoldSeconds);
+    private sealed record InjectionStep(string Label, double TargetVoltagePercent, double TargetCurrentPercent, double HoldSeconds);
 
     private static readonly Brush LedOffBrush = Freeze(new SolidColorBrush(Color.FromRgb(81, 96, 106)));
     private static readonly Brush HealthyBrush = Freeze(new SolidColorBrush(Color.FromRgb(102, 200, 120)));
@@ -30,18 +26,20 @@ public partial class AvrWorkspaceControl : UserControl
     private readonly List<InjectionStep> _scenarioSteps = [];
 
     private bool _running;
+    private bool _sourceEnergized;
+    private bool _sequenceComplete;
     private bool _configExpanded = true;
     private bool _updatingInjectionUi;
     private int _lastTapPosition;
     private int? _lastPendingTapPosition;
     private int _scenarioIndex = -1;
-    private AvrControlState _lastState = AvrControlState.InBand;
+    private AvrControlState _lastState = AvrControlState.SourceOff;
     private TimeSpan _lastSimulationTime;
     private double _scenarioElapsedSeconds;
     private double _preDelayRemainingSeconds;
-    private double _injectedVoltageV = 100.0;
+    private double _injectedVoltageV;
     private double _injectionTargetVoltageV = 100.0;
-    private double _injectedCurrentA = 1.0;
+    private double _injectedCurrentA;
     private double _injectionTargetCurrentA = 1.0;
     private double _currentAngleDegrees;
     private double _frequencyHz = 50.0;
@@ -52,61 +50,53 @@ public partial class AvrWorkspaceControl : UserControl
     public AvrWorkspaceControl()
     {
         InitializeComponent();
-
-        _timer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(100)
-        };
+        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         _timer.Tick += Timer_Tick;
         _timer.Start();
-
         Loaded += AvrWorkspaceControl_Loaded;
         Unloaded += AvrWorkspaceControl_Unloaded;
         PopulateSettingsUi();
         PopulateManualSequence();
-        AddEvent("READY", "AVR U/I bench simulator initialized");
+        AddEvent("READY", "AVR controller ready · test source OFF");
     }
 
     public event EventHandler? RunStateChanged;
-
     public bool IsRunning => _running;
     public AvrSettings Settings => _settings;
     public AvrSnapshot Snapshot => _snapshot;
 
     public void ToggleRun()
     {
-        if (_running)
-            PauseInjection();
-        else
-            StartInjection();
+        if (_running) PauseInjection();
+        else StartInjection();
     }
 
     public void ResetSimulator()
     {
         _running = false;
-        _simulationClock.Reset();
-        _lastSimulationTime = TimeSpan.Zero;
+        _sourceEnergized = false;
+        _sequenceComplete = false;
         _engine.Reset();
         _scenarioSteps.Clear();
         _scenarioIndex = -1;
         _scenarioElapsedSeconds = 0;
         _preDelayRemainingSeconds = 0;
-        _injectedVoltageV = _settings.NominalVoltageV;
+        _injectedVoltageV = 0;
+        _injectedCurrentA = 0;
         _injectionTargetVoltageV = _settings.NominalVoltageV;
-        _injectedCurrentA = _settings.NominalCurrentA;
         _injectionTargetCurrentA = _settings.NominalCurrentA;
         _currentAngleDegrees = 0;
         SetInjectionSlider(_injectionTargetVoltageV);
         InjectionVoltageBox.Text = _injectionTargetVoltageV.ToString("0.00", CultureInfo.InvariantCulture);
-        InjectionCurrentBox.Text = _injectionTargetCurrentA.ToString("0.00", CultureInfo.InvariantCulture);
+        InjectionCurrentBox.Text = _injectionTargetCurrentA.ToString("0.000", CultureInfo.InvariantCulture);
         CurrentAngleBox.Text = "0.0";
         TestProfileCombo.SelectedIndex = 0;
         PopulateManualSequence();
-        _snapshot = _engine.Advance(TimeSpan.Zero, _injectedVoltageV, _injectedCurrentA, _currentAngleDegrees);
+        _snapshot = _engine.Advance(TimeSpan.Zero, 0, 0, 0, sourceEnergized: false);
         _lastTapPosition = _snapshot.TapPosition;
-        _lastPendingTapPosition = _snapshot.PendingTapPosition;
+        _lastPendingTapPosition = null;
         _lastState = _snapshot.State;
-        AddEvent("RESET", "AVR, source, authority, timer and tap feedback reset");
+        AddEvent("RESET", "AVR reset · source de-energized · tap feedback neutral");
         RunStateChanged?.Invoke(this, EventArgs.Empty);
         RenderSnapshot(_snapshot);
     }
@@ -121,14 +111,10 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void AvrWorkspaceControl_Loaded(object sender, RoutedEventArgs e)
     {
-        if (!_timer.IsEnabled)
-            _timer.Start();
-
-        _snapshot = _engine.Advance(TimeSpan.Zero, _injectedVoltageV, _injectedCurrentA, _currentAngleDegrees);
-        _lastTapPosition = _snapshot.TapPosition;
-        _lastPendingTapPosition = _snapshot.PendingTapPosition;
-        _lastState = _snapshot.State;
-        RenderSnapshot(_snapshot);
+        if (!_timer.IsEnabled) _timer.Start();
+        _simulationClock.Restart();
+        _lastSimulationTime = TimeSpan.Zero;
+        RenderCurrent();
     }
 
     private void AvrWorkspaceControl_Unloaded(object sender, RoutedEventArgs e)
@@ -139,22 +125,27 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void Timer_Tick(object? sender, EventArgs e)
     {
-        if (!IsVisible)
-            return;
-
-        var elapsed = TimeSpan.Zero;
-        if (_running)
+        if (!_simulationClock.IsRunning)
         {
-            var now = _simulationClock.Elapsed;
-            elapsed = now - _lastSimulationTime;
-            _lastSimulationTime = now;
-            if (elapsed < TimeSpan.Zero)
-                elapsed = TimeSpan.Zero;
-
-            AdvanceInjection(elapsed.TotalSeconds);
+            _simulationClock.Start();
+            _lastSimulationTime = _simulationClock.Elapsed;
         }
 
-        _snapshot = _engine.Advance(elapsed, _injectedVoltageV, _injectedCurrentA, _currentAngleDegrees);
+        var now = _simulationClock.Elapsed;
+        var elapsed = now - _lastSimulationTime;
+        _lastSimulationTime = now;
+        if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+        if (!IsVisible) return;
+
+        if (_running)
+            AdvanceInjection(elapsed.TotalSeconds);
+
+        _snapshot = _engine.Advance(
+            elapsed,
+            _injectedVoltageV,
+            _injectedCurrentA,
+            _currentAngleDegrees,
+            _sourceEnergized);
         ObserveTransition(_snapshot);
         RenderSnapshot(_snapshot);
     }
@@ -164,95 +155,101 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void StopInjection_Click(object sender, RoutedEventArgs e)
     {
-        if (!_running && _scenarioIndex < 0)
+        if (!_running && !_sourceEnergized && _preDelayRemainingSeconds <= 0)
             return;
 
         _running = false;
-        _simulationClock.Stop();
+        _sourceEnergized = false;
+        _sequenceComplete = false;
         _scenarioIndex = -1;
         _scenarioElapsedSeconds = 0;
         _preDelayRemainingSeconds = 0;
-        AddEvent("STOP", "Injection stopped; last U/I phasor retained");
+        _injectedVoltageV = 0;
+        _injectedCurrentA = 0;
+        AddEvent("SOURCE", "Test source de-energized · U 0.00 V · I 0.000 A");
         RunStateChanged?.Invoke(this, EventArgs.Empty);
         RenderCurrent();
     }
 
     private void StartInjection()
     {
-        if (!TryApplyInjectionForm(showError: true))
+        if (!TryApplyInjectionForm(showError: true)) return;
+
+        if ((_sourceEnergized || _preDelayRemainingSeconds > 0) && !_sequenceComplete)
+        {
+            _running = true;
+            AddEvent("RESUME", _sourceEnergized ? "Injection resumed with output held" : "Injection pre-delay resumed");
+            RunStateChanged?.Invoke(this, EventArgs.Empty);
+            RenderCurrent();
             return;
+        }
 
         if (_scenarioSteps.Count == 0 && TestProfileCombo.SelectedIndex > 0)
             LoadScenarioForProfile(TestProfileCombo.SelectedIndex);
 
+        _sequenceComplete = false;
         if (_scenarioSteps.Count > 0)
         {
             _scenarioIndex = 0;
             _scenarioElapsedSeconds = 0;
-            _preDelayRemainingSeconds = _preDelaySeconds;
             ApplyScenarioTarget(_scenarioSteps[0]);
         }
         else
         {
             _scenarioIndex = -1;
-            _preDelayRemainingSeconds = _preDelaySeconds;
         }
 
+        _injectedVoltageV = 0;
+        _injectedCurrentA = 0;
+        _sourceEnergized = _preDelaySeconds <= 1e-9;
+        _preDelayRemainingSeconds = _preDelaySeconds;
         _running = true;
-        _simulationClock.Restart();
-        _lastSimulationTime = TimeSpan.Zero;
         AddEvent(
             "INJECT",
-            $"Started · U {_injectionTargetVoltageV:0.00} V · I {_injectionTargetCurrentA:0.000} A ∠{_currentAngleDegrees:0.0}° · {_frequencyHz:0.00} Hz");
+            $"Armed · target U {_injectionTargetVoltageV:0.00} V · I {_injectionTargetCurrentA:0.000} A ∠{_currentAngleDegrees:0.0}° · {_frequencyHz:0.00} Hz");
+        if (_sourceEnergized) AddEvent("SOURCE", "Test source energized");
         RunStateChanged?.Invoke(this, EventArgs.Empty);
         RenderCurrent();
     }
 
     private void PauseInjection()
     {
-        if (!_running)
-            return;
-
+        if (!_running) return;
         _running = false;
-        _simulationClock.Stop();
-        AddEvent("PAUSE", $"Injection paused · U {_injectedVoltageV:0.00} V · I {_injectedCurrentA:0.000} A");
+        AddEvent("PAUSE", _sourceEnergized
+            ? $"Ramp/sequence paused · source remains ON at U {_injectedVoltageV:0.00} V · I {_injectedCurrentA:0.000} A"
+            : "Pre-delay paused · source remains OFF");
         RunStateChanged?.Invoke(this, EventArgs.Empty);
         RenderCurrent();
     }
 
     private void AdvanceInjection(double elapsedSeconds)
     {
-        if (elapsedSeconds <= 0)
-            return;
+        if (elapsedSeconds <= 0) return;
 
         if (_preDelayRemainingSeconds > 0)
         {
             _preDelayRemainingSeconds = Math.Max(0, _preDelayRemainingSeconds - elapsedSeconds);
-            return;
+            if (_preDelayRemainingSeconds > 0) return;
+            if (!_sourceEnergized)
+            {
+                _sourceEnergized = true;
+                AddEvent("SOURCE", "Test source energized · U/I ramp started");
+            }
         }
 
-        _injectedVoltageV = MoveToward(
-            _injectedVoltageV,
-            _injectionTargetVoltageV,
-            Math.Max(0.01, _rampVPerSecond) * elapsedSeconds);
+        if (!_sourceEnergized) return;
 
+        _injectedVoltageV = MoveToward(_injectedVoltageV, _injectionTargetVoltageV, Math.Max(0.01, _rampVPerSecond) * elapsedSeconds);
         var currentRampAperSecond = Math.Max(0.5, _settings.NominalCurrentA * 5.0);
-        _injectedCurrentA = MoveToward(
-            _injectedCurrentA,
-            _injectionTargetCurrentA,
-            currentRampAperSecond * elapsedSeconds);
+        _injectedCurrentA = MoveToward(_injectedCurrentA, _injectionTargetCurrentA, currentRampAperSecond * elapsedSeconds);
 
-        if (_scenarioIndex < 0 || _scenarioIndex >= _scenarioSteps.Count)
-            return;
-
+        if (_scenarioIndex < 0 || _scenarioIndex >= _scenarioSteps.Count) return;
         var step = _scenarioSteps[_scenarioIndex];
-        if (Math.Abs(_injectedVoltageV - _injectionTargetVoltageV) > 0.005 ||
-            Math.Abs(_injectedCurrentA - _injectionTargetCurrentA) > 0.002)
-            return;
+        if (Math.Abs(_injectedVoltageV - _injectionTargetVoltageV) > 0.005 || Math.Abs(_injectedCurrentA - _injectionTargetCurrentA) > 0.002) return;
 
         _scenarioElapsedSeconds += elapsedSeconds;
-        if (_scenarioElapsedSeconds + 1e-9 < step.HoldSeconds)
-            return;
+        if (_scenarioElapsedSeconds + 1e-9 < step.HoldSeconds) return;
 
         _scenarioIndex++;
         _scenarioElapsedSeconds = 0;
@@ -260,8 +257,8 @@ public partial class AvrWorkspaceControl : UserControl
         {
             _scenarioIndex = _scenarioSteps.Count - 1;
             _running = false;
-            _simulationClock.Stop();
-            AddEvent("COMPLETE", "Injection sequence completed");
+            _sequenceComplete = true;
+            AddEvent("COMPLETE", "Injection sequence complete · source remains energized at final value");
             RunStateChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -270,8 +267,7 @@ public partial class AvrWorkspaceControl : UserControl
         AddEvent("STEP", $"{_scenarioSteps[_scenarioIndex].Label} · U {_injectionTargetVoltageV:0.00} V · I {_injectionTargetCurrentA:0.000} A");
     }
 
-    private void InjectionForm_LostFocus(object sender, RoutedEventArgs e)
-        => TryApplyInjectionForm(showError: false);
+    private void InjectionForm_LostFocus(object sender, RoutedEventArgs e) => TryApplyInjectionForm(showError: false);
 
     private bool TryApplyInjectionForm(bool showError)
     {
@@ -285,20 +281,13 @@ public partial class AvrWorkspaceControl : UserControl
             var preDelay = ParseDouble(DelayBox, "Pre-delay");
             var dwell = ParseDouble(DwellBox, "Dwell");
 
-            if (voltage < 1 || voltage > 200)
-                throw new ArgumentOutOfRangeException(nameof(voltage), "Injected voltage must be between 1 V and 200 V.");
-            if (current < 0 || current > 20)
-                throw new ArgumentOutOfRangeException(nameof(current), "Injected secondary current must be between 0 A and 20 A.");
-            if (angle < -360 || angle > 360)
-                throw new ArgumentOutOfRangeException(nameof(angle), "Current angle must be between -360° and +360°.");
-            if (frequency < 40 || frequency > 70)
-                throw new ArgumentOutOfRangeException(nameof(frequency), "Frequency must be between 40 Hz and 70 Hz.");
-            if (ramp <= 0 || ramp > 500)
-                throw new ArgumentOutOfRangeException(nameof(ramp), "Voltage ramp rate must be greater than 0 and no more than 500 V/s.");
-            if (preDelay < 0 || preDelay > 120)
-                throw new ArgumentOutOfRangeException(nameof(preDelay), "Pre-delay must be between 0 and 120 seconds.");
-            if (dwell <= 0 || dwell > 600)
-                throw new ArgumentOutOfRangeException(nameof(dwell), "Dwell must be greater than 0 and no more than 600 seconds.");
+            if (voltage < 1 || voltage > 200) throw new ArgumentOutOfRangeException(nameof(voltage), "Injected voltage must be between 1 V and 200 V.");
+            if (current < 0 || current > 20) throw new ArgumentOutOfRangeException(nameof(current), "Injected secondary current must be between 0 A and 20 A.");
+            if (angle < -360 || angle > 360) throw new ArgumentOutOfRangeException(nameof(angle), "Current angle must be between -360° and +360°.");
+            if (frequency < 40 || frequency > 70) throw new ArgumentOutOfRangeException(nameof(frequency), "Frequency must be between 40 Hz and 70 Hz.");
+            if (ramp <= 0 || ramp > 500) throw new ArgumentOutOfRangeException(nameof(ramp), "Voltage ramp rate must be greater than 0 and no more than 500 V/s.");
+            if (preDelay < 0 || preDelay > 120) throw new ArgumentOutOfRangeException(nameof(preDelay), "Pre-delay must be between 0 and 120 seconds.");
+            if (dwell <= 0 || dwell > 600) throw new ArgumentOutOfRangeException(nameof(dwell), "Dwell must be greater than 0 and no more than 600 seconds.");
 
             _injectionTargetVoltageV = voltage;
             _injectionTargetCurrentA = current;
@@ -308,56 +297,33 @@ public partial class AvrWorkspaceControl : UserControl
             _preDelaySeconds = preDelay;
             _dwellSeconds = dwell;
             SetInjectionSlider(Math.Clamp(voltage, SourceVoltageSlider.Minimum, SourceVoltageSlider.Maximum));
-
-            if (!_running && _scenarioSteps.Count == 0)
-            {
-                _injectedVoltageV = voltage;
-                _injectedCurrentA = current;
-            }
-
             RenderCurrent();
             return true;
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
         {
-            if (showError)
-                ShowWarning(ex.Message, "AVR injection form");
+            if (showError) ShowWarning(ex.Message, "AVR injection form");
             return false;
         }
     }
 
     private void SourceVoltageSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_updatingInjectionUi)
-            return;
-
+        if (_updatingInjectionUi) return;
         _injectionTargetVoltageV = e.NewValue;
-        if (InjectionVoltageBox is not null)
-            InjectionVoltageBox.Text = e.NewValue.ToString("0.00", CultureInfo.InvariantCulture);
-        if (!_running && _scenarioSteps.Count == 0)
-            _injectedVoltageV = e.NewValue;
-        if (InjectionTargetText is not null)
-            InjectionTargetText.Text = $"{_injectionTargetVoltageV:0.00} V";
-        if (IsLoaded)
-            RenderCurrent();
+        if (InjectionVoltageBox is not null) InjectionVoltageBox.Text = e.NewValue.ToString("0.00", CultureInfo.InvariantCulture);
+        if (InjectionTargetText is not null) InjectionTargetText.Text = $"{_injectionTargetVoltageV:0.00} V";
+        if (IsLoaded) RenderCurrent();
     }
 
     private void InputModel_Changed(object sender, RoutedEventArgs e)
     {
-        if (!IsLoaded || BenchModeRadio is null || ClosedLoopModeRadio is null)
-            return;
-
-        var inputMode = ClosedLoopModeRadio.IsChecked == true
-            ? AvrVoltageInputMode.ClosedLoopPlant
-            : AvrVoltageInputMode.BenchInjection;
-        if (_settings.VoltageInputMode == inputMode)
-            return;
-
+        if (!IsLoaded || BenchModeRadio is null || ClosedLoopModeRadio is null) return;
+        var inputMode = ClosedLoopModeRadio.IsChecked == true ? AvrVoltageInputMode.ClosedLoopPlant : AvrVoltageInputMode.BenchInjection;
+        if (_settings.VoltageInputMode == inputMode) return;
         _settings = _settings with { VoltageInputMode = inputMode };
         _engine.ApplySettings(_settings, keepTapPosition: true);
-        AddEvent("PLANT", inputMode == AvrVoltageInputMode.BenchInjection
-            ? "External test-set bench model selected"
-            : "Closed-loop transformer + OLTC model selected");
+        AddEvent("PLANT", inputMode == AvrVoltageInputMode.BenchInjection ? "External test-set bench model selected" : "Closed-loop transformer + OLTC model selected");
         RenderCurrent();
     }
 
@@ -378,7 +344,6 @@ public partial class AvrWorkspaceControl : UserControl
     {
         _scenarioSteps.Clear();
         EnsureCurrentBlockingForProfile(profileIndex);
-
         switch (profileIndex)
         {
             case 1:
@@ -419,7 +384,7 @@ public partial class AvrWorkspaceControl : UserControl
                 PopulateManualSequence();
                 return;
         }
-
+        _sequenceComplete = false;
         _scenarioIndex = -1;
         _scenarioElapsedSeconds = 0;
         RenderScenarioList();
@@ -430,14 +395,8 @@ public partial class AvrWorkspaceControl : UserControl
     {
         var underEnabled = profileIndex == 5 || _settings.UndercurrentBlockingEnabled;
         var overEnabled = profileIndex == 6 || _settings.OvercurrentBlockingEnabled;
-        if (underEnabled == _settings.UndercurrentBlockingEnabled && overEnabled == _settings.OvercurrentBlockingEnabled)
-            return;
-
-        _settings = _settings with
-        {
-            UndercurrentBlockingEnabled = underEnabled,
-            OvercurrentBlockingEnabled = overEnabled
-        };
+        if (underEnabled == _settings.UndercurrentBlockingEnabled && overEnabled == _settings.OvercurrentBlockingEnabled) return;
+        _settings = _settings with { UndercurrentBlockingEnabled = underEnabled, OvercurrentBlockingEnabled = overEnabled };
         _engine.ApplySettings(_settings, keepTapPosition: true);
         PopulateSettingsUi();
     }
@@ -446,11 +405,10 @@ public partial class AvrWorkspaceControl : UserControl
     {
         _scenarioSteps.Clear();
         _scenarioIndex = -1;
-        if (InjectionSequenceList is null)
-            return;
-
+        _sequenceComplete = false;
+        if (InjectionSequenceList is null) return;
         InjectionSequenceList.Items.Clear();
-        InjectionSequenceList.Items.Add("MANUAL   Set U / I / φ / f and press Start injection");
+        InjectionSequenceList.Items.Add("MANUAL   Configure target U / I / φ / f, then Start injection");
         SequenceStepText.Text = "MANUAL";
     }
 
@@ -460,8 +418,7 @@ public partial class AvrWorkspaceControl : UserControl
         for (var i = 0; i < _scenarioSteps.Count; i++)
         {
             var step = _scenarioSteps[i];
-            InjectionSequenceList.Items.Add(
-                $"{i + 1,2}  {step.Label,-20} U {step.TargetVoltagePercent,6:0.0}%  I {step.TargetCurrentPercent,6:0.0}%  {step.HoldSeconds,4:0.0}s");
+            InjectionSequenceList.Items.Add($"{i + 1,2}  {step.Label,-20} U {step.TargetVoltagePercent,6:0.0}%  I {step.TargetCurrentPercent,6:0.0}%  {step.HoldSeconds,4:0.0}s");
         }
         SequenceStepText.Text = _scenarioSteps.Count == 0 ? "MANUAL" : $"{_scenarioSteps.Count} STEPS";
     }
@@ -500,17 +457,12 @@ public partial class AvrWorkspaceControl : UserControl
                 OvercurrentBlockPercent = ParseDouble(OverCurrentBox, "Overcurrent blocking"),
                 LineDropCompensationEnabled = LdcCheck.IsChecked == true,
                 LineDropCompensationPercent = ParseDouble(LdcBox, "Line-drop compensation"),
-                VoltageInputMode = ClosedLoopModeRadio.IsChecked == true
-                    ? AvrVoltageInputMode.ClosedLoopPlant
-                    : AvrVoltageInputMode.BenchInjection
+                VoltageInputMode = ClosedLoopModeRadio.IsChecked == true ? AvrVoltageInputMode.ClosedLoopPlant : AvrVoltageInputMode.BenchInjection
             };
-
             settings.Validate();
             _settings = settings;
             _engine.ApplySettings(settings, keepTapPosition: true);
-            AddEvent(
-                "SETTINGS",
-                $"Uset {settings.SetpointVoltageV:0.##} V · ±{settings.TolerancePercent:0.##}% · T1 {settings.T1Seconds:0.##} s · In {settings.NominalCurrentA:0.###} A");
+            AddEvent("SETTINGS", $"Uset {settings.SetpointVoltageV:0.##} V · ±{settings.TolerancePercent:0.##}% · T1 {settings.T1Seconds:0.##} s · In {settings.NominalCurrentA:0.###} A");
             RenderCurrent();
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
@@ -534,9 +486,7 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void PopulateSettingsUi()
     {
-        if (SetpointBox is null)
-            return;
-
+        if (SetpointBox is null) return;
         SetpointBox.Text = _settings.SetpointVoltageV.ToString("0.##", CultureInfo.InvariantCulture);
         ToleranceBox.Text = _settings.TolerancePercent.ToString("0.##", CultureInfo.InvariantCulture);
         T1Box.Text = _settings.T1Seconds.ToString("0.##", CultureInfo.InvariantCulture);
@@ -571,15 +521,12 @@ public partial class AvrWorkspaceControl : UserControl
     private void RemoteAuthority_Click(object sender, RoutedEventArgs e)
     {
         _engine.SetAuthority(AvrControlAuthority.Remote);
-        AddEvent("AUTH", "REMOTE control authority selected · local command keys inhibited as applicable");
+        AddEvent("AUTH", "REMOTE control authority selected · front-panel mode/tap keys inhibited");
         RenderCurrent();
     }
 
-    private void AutoMode_Click(object sender, RoutedEventArgs e)
-        => SetModeFromFrontPanel(AvrOperatingMode.Automatic);
-
-    private void ManualMode_Click(object sender, RoutedEventArgs e)
-        => SetModeFromFrontPanel(AvrOperatingMode.Manual);
+    private void AutoMode_Click(object sender, RoutedEventArgs e) => SetModeFromFrontPanel(AvrOperatingMode.Automatic);
+    private void ManualMode_Click(object sender, RoutedEventArgs e) => SetModeFromFrontPanel(AvrOperatingMode.Manual);
 
     private void SetModeFromFrontPanel(AvrOperatingMode mode)
     {
@@ -589,7 +536,6 @@ public partial class AvrWorkspaceControl : UserControl
             RenderCurrent();
             return;
         }
-
         _engine.SetMode(mode);
         AddEvent("MODE", mode == AvrOperatingMode.Automatic ? "AUTO selected" : "MANUAL selected");
         RenderCurrent();
@@ -602,18 +548,13 @@ public partial class AvrWorkspaceControl : UserControl
     {
         var moved = direction > 0 ? _engine.RaiseTap() : _engine.LowerTap();
         if (moved)
-        {
             AddEvent("MAN CMD", direction > 0 ? "Local RAISE command issued" : "Local LOWER command issued");
-        }
         else
         {
-            var reason = _engine.Authority == AvrControlAuthority.Remote
-                ? "REMOTE authority · local tap key inhibited"
-                : _engine.Mode != AvrOperatingMode.Manual
-                    ? "Select MANUAL before local RAISE / LOWER"
-                    : _engine.TapMoving
-                        ? "Tap changer already moving"
-                        : direction > 0 ? "Maximum tap reached" : "Minimum tap reached";
+            var reason = _engine.Authority == AvrControlAuthority.Remote ? "REMOTE authority · local tap key inhibited"
+                : _engine.Mode != AvrOperatingMode.Manual ? "Select MANUAL before local RAISE / LOWER"
+                : _engine.TapMoving ? "Tap changer already moving"
+                : direction > 0 ? "Maximum tap reached" : "Minimum tap reached";
             AddEvent("INHIBIT", reason);
         }
         RenderCurrent();
@@ -621,21 +562,15 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void DeviceFunction_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button button)
-            return;
-
+        if (sender is not Button button) return;
         var key = button.Tag?.ToString() ?? button.Content?.ToString() ?? "KEY";
         AddEvent("KEY", $"Front-panel {key} pressed");
-        if (string.Equals(key, "F1", StringComparison.Ordinal))
-            ConfigurationTabs.SelectedIndex = 0;
-        else if (string.Equals(key, "F2", StringComparison.Ordinal))
-            ConfigurationTabs.SelectedIndex = 1;
-        else if (string.Equals(key, "F3", StringComparison.Ordinal))
-            ConfigurationTabs.SelectedIndex = 3;
+        if (key == "F1") ConfigurationTabs.SelectedIndex = 0;
+        else if (key == "F2") ConfigurationTabs.SelectedIndex = 1;
+        else if (key == "F3") ConfigurationTabs.SelectedIndex = 3;
     }
 
-    private void ConfigurePanelToggle_Click(object sender, RoutedEventArgs e)
-        => SetConfigurationExpanded(!_configExpanded);
+    private void ConfigurePanelToggle_Click(object sender, RoutedEventArgs e) => SetConfigurationExpanded(!_configExpanded);
 
     private void SetConfigurationExpanded(bool expanded)
     {
@@ -647,7 +582,7 @@ public partial class AvrWorkspaceControl : UserControl
 
     private void RenderCurrent()
     {
-        _snapshot = _engine.Advance(TimeSpan.Zero, _injectedVoltageV, _injectedCurrentA, _currentAngleDegrees);
+        _snapshot = _engine.Advance(TimeSpan.Zero, _injectedVoltageV, _injectedCurrentA, _currentAngleDegrees, _sourceEnergized);
         ObserveTransition(_snapshot);
         RenderSnapshot(_snapshot);
     }
@@ -655,11 +590,7 @@ public partial class AvrWorkspaceControl : UserControl
     private void ObserveTransition(AvrSnapshot snapshot)
     {
         if (snapshot.PendingTapPosition != _lastPendingTapPosition && snapshot.PendingTapPosition is int pending)
-        {
-            AddEvent(
-                snapshot.RaiseOutput ? "RAISE" : snapshot.LowerOutput ? "LOWER" : "TAP CMD",
-                $"Command issued · feedback {_lastTapPosition:+0;-0;0} · target {pending:+0;-0;0}");
-        }
+            AddEvent(snapshot.RaiseOutput ? "RAISE" : snapshot.LowerOutput ? "LOWER" : "TAP CMD", $"Command issued · feedback {_lastTapPosition:+0;-0;0} · target {pending:+0;-0;0}");
         _lastPendingTapPosition = snapshot.PendingTapPosition;
 
         if (snapshot.TapPosition != _lastTapPosition)
@@ -679,36 +610,27 @@ public partial class AvrWorkspaceControl : UserControl
     private void RenderSnapshot(AvrSnapshot snapshot)
     {
         InjectionTargetText.Text = $"{_injectionTargetVoltageV:0.00} V";
-        InjectedSourceText.Text = $"U {_injectedVoltageV:0.00} V · I {_injectedCurrentA:0.000} A";
+        InjectedSourceText.Text = snapshot.SourceEnergized
+            ? $"U {snapshot.SourceVoltageV:0.00} V · I {snapshot.SourceCurrentA:0.000} A"
+            : "U 0.00 V · I 0.000 A · OFF";
         InjectionStatusText.Text = InjectionStatusLabel();
-        InjectionStatusText.Foreground = _running ? HealthyBrush : LedOffBrush;
-        InjectionLed.Fill = _running ? HealthyBrush : LedOffBrush;
+        InjectionStatusText.Foreground = snapshot.SourceEnergized ? (_running ? HealthyBrush : WarningBrush) : LedOffBrush;
+        InjectionLed.Fill = snapshot.SourceEnergized ? (_running ? HealthyBrush : WarningBrush) : LedOffBrush;
         InjectionStartButton.IsEnabled = !_running;
         InjectionPauseButton.IsEnabled = _running;
+        InjectionStartButton.Content = !_sourceEnergized && _preDelayRemainingSeconds <= 0 ? "▶  Start injection" : _running ? "▶  Running" : "▶  Resume";
 
         if (_scenarioSteps.Count > 0 && _scenarioIndex >= 0 && _scenarioIndex < _scenarioSteps.Count)
         {
-            SequenceStepText.Text = $"STEP {_scenarioIndex + 1}/{_scenarioSteps.Count}";
+            SequenceStepText.Text = _sequenceComplete ? "COMPLETE" : $"STEP {_scenarioIndex + 1}/{_scenarioSteps.Count}";
             InjectionSequenceList.SelectedIndex = _scenarioIndex;
-            if (InjectionSequenceList.SelectedItem is not null)
-                InjectionSequenceList.ScrollIntoView(InjectionSequenceList.SelectedItem);
+            if (InjectionSequenceList.SelectedItem is not null) InjectionSequenceList.ScrollIntoView(InjectionSequenceList.SelectedItem);
         }
-        else if (_scenarioSteps.Count == 0)
-        {
-            SequenceStepText.Text = "MANUAL";
-        }
+        else if (_scenarioSteps.Count == 0) SequenceStepText.Text = "MANUAL";
 
-        DelayProgress.Value = snapshot.DelayTargetSeconds > 0
-            ? Math.Clamp(snapshot.DelayElapsedSeconds / snapshot.DelayTargetSeconds * 100.0, 0, 100)
-            : snapshot.TapMoving && _settings.MotorDriveTravelSeconds > 0
-                ? Math.Clamp((1 - snapshot.MotorTravelRemainingSeconds / _settings.MotorDriveTravelSeconds) * 100.0, 0, 100)
-                : 0;
-
-        DelayText.Text = snapshot.TapMoving
-            ? $"MOTOR {snapshot.MotorTravelRemainingSeconds:0.0}s"
-            : snapshot.DelayTargetSeconds > 0
-                ? $"{snapshot.DelayElapsedSeconds:0.0} / {snapshot.DelayTargetSeconds:0.0}s"
-                : "—";
+        DelayProgress.Value = snapshot.DelayTargetSeconds > 0 ? Math.Clamp(snapshot.DelayElapsedSeconds / snapshot.DelayTargetSeconds * 100.0, 0, 100) : 0;
+        MotorProgress.Value = snapshot.TapMoving && _settings.MotorDriveTravelSeconds > 0 ? Math.Clamp((1 - snapshot.MotorTravelRemainingSeconds / _settings.MotorDriveTravelSeconds) * 100.0, 0, 100) : 0;
+        DelayText.Text = snapshot.TapMoving ? $"MOTOR {snapshot.MotorTravelRemainingSeconds:0.0}s" : snapshot.DelayTargetSeconds > 0 ? $"TIMER {snapshot.DelayElapsedSeconds:0.0}/{snapshot.DelayTargetSeconds:0.0}s" : "TIMER —";
 
         AuthorityBadgeText.Text = snapshot.Authority == AvrControlAuthority.Local ? "LOCAL" : "REMOTE";
         ModeBadgeText.Text = snapshot.Mode == AvrOperatingMode.Automatic ? "AUTO" : "MANUAL";
@@ -718,33 +640,37 @@ public partial class AvrWorkspaceControl : UserControl
 
         LcdMeasuredText.Text = snapshot.MeasuredVoltageV.ToString("0.00", CultureInfo.InvariantCulture);
         LcdSetpointText.Text = $"{snapshot.EffectiveSetpointVoltageV:0.00} V";
-        LcdDeviationText.Text = $"{snapshot.DeviationPercent:+0.00;-0.00;0.00} %";
+        LcdDeviationText.Text = snapshot.SourceEnergized ? $"{snapshot.DeviationPercent:+0.00;-0.00;0.00} %" : "—";
         LcdTapText.Text = snapshot.TapPosition.ToString("+00;-00;00", CultureInfo.InvariantCulture);
-        LcdPendingTapText.Text = snapshot.PendingTapPosition is int target
-            ? $"TARGET {target:+00;-00;00} · {snapshot.MotorTravelRemainingSeconds:0.0}s"
-            : "FEEDBACK VALID";
+        LcdPendingTapText.Text = snapshot.PendingTapPosition is int target ? $"TARGET {target:+00;-00;00} · {snapshot.MotorTravelRemainingSeconds:0.0}s" : "FEEDBACK VALID";
         LcdBandText.Text = $"{snapshot.LowerBandVoltageV:0.00} — {snapshot.UpperBandVoltageV:0.00} V";
-        LcdCurrentText.Text = $"{snapshot.SourceCurrentA:0.000} A";
-        LcdPowerText.Text = $"φ {snapshot.CurrentAngleDegrees:+0.0;-0.0;0.0}° · PF {snapshot.PowerFactor:0.000}";
-        LcdCommandText.Text = snapshot.RaiseOutput
-            ? $"RAISE CONTACT ON · {snapshot.CommandPulseRemainingSeconds:0.00}s"
-            : snapshot.LowerOutput
-                ? $"LOWER CONTACT ON · {snapshot.CommandPulseRemainingSeconds:0.00}s"
-                : snapshot.TapMoving
-                    ? "CONTACT OFF · MOTOR IN TRANSIT"
-                    : snapshot.Blocked ? "OUTPUT BLOCKED" : "OUTPUT IDLE";
+        LcdTapRangeText.Text = $"{_settings.MinimumTap:+00;-00;00} … {_settings.MaximumTap:+00;-00;00}";
+        TapPositionBar.Minimum = _settings.MinimumTap;
+        TapPositionBar.Maximum = _settings.MaximumTap;
+        TapPositionBar.Value = snapshot.TapPosition;
+
+        LcdSourceStateText.Text = snapshot.SourceEnergized ? (_running ? "ENERGIZED" : "HOLD / ON") : "SOURCE OFF";
+        LcdCurrentText.Text = snapshot.SourceEnergized ? $"I {snapshot.SourceCurrentA:0.000} A" : "I 0.000 A";
+        LcdPowerText.Text = snapshot.SourceEnergized && snapshot.SourceCurrentA > 1e-9 ? $"φ {snapshot.CurrentAngleDegrees:+0.0;-0.0;0.0}° · PF {snapshot.PowerFactor:0.000}" : "φ — · PF —";
+        LcdFrequencyText.Text = snapshot.SourceEnergized ? $"f {_frequencyHz:0.00} Hz" : "f — Hz";
+        LcdOpsText.Text = $"CMDS {snapshot.OperationCount}";
+        LcdLimitsText.Text = $"U {_settings.UndervoltageBlockPercent:0.#}…{_settings.OvervoltageBlockPercent:0.#} %";
+        LcdCurrentLimitsText.Text = $"I< {(_settings.UndercurrentBlockingEnabled ? _settings.UndercurrentBlockPercent.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "OFF")} · I> {(_settings.OvercurrentBlockingEnabled ? _settings.OvercurrentBlockPercent.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "OFF")}";
+
+        LcdCommandText.Text = snapshot.RaiseOutput ? $"RAISE CONTACT ON · {snapshot.CommandPulseRemainingSeconds:0.00}s"
+            : snapshot.LowerOutput ? $"LOWER CONTACT ON · {snapshot.CommandPulseRemainingSeconds:0.00}s"
+            : snapshot.TapMoving ? "CONTACT OFF · MOTOR IN TRANSIT"
+            : snapshot.Blocked ? "OUTPUT BLOCKED" : "OUTPUT IDLE";
         LcdReasonText.Text = snapshot.Reason;
         DeviceClockText.Text = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
-        DeviceOutputText.Text = snapshot.RaiseOutput
-            ? "OUTPUT: RAISE"
-            : snapshot.LowerOutput
-                ? "OUTPUT: LOWER"
-                : snapshot.TapMoving
-                    ? "OUTPUT: MOTOR MOVING"
-                    : snapshot.Blocked ? "OUTPUT: BLOCKED" : "OUTPUT: IDLE";
+        DeviceOutputText.Text = !snapshot.SourceEnergized && !snapshot.TapMoving ? "SOURCE OFF"
+            : snapshot.RaiseOutput ? "OUTPUT: RAISE"
+            : snapshot.LowerOutput ? "OUTPUT: LOWER"
+            : snapshot.TapMoving ? "MOTOR MOVING"
+            : snapshot.Blocked ? "OUTPUT: BLOCKED" : "OUTPUT: IDLE";
 
         PowerLed.Fill = HealthyBrush;
-        RunLed.Fill = _running ? HealthyBrush : LedOffBrush;
+        RunLed.Fill = snapshot.SourceEnergized ? HealthyBrush : LedOffBrush;
         LocalLed.Fill = snapshot.Authority == AvrControlAuthority.Local ? HealthyBrush : WarningBrush;
         AutoLed.Fill = snapshot.Mode == AvrOperatingMode.Automatic ? HealthyBrush : WarningBrush;
         RaiseLed.Fill = snapshot.RaiseOutput || snapshot.State == AvrControlState.TimingRaise ? WarningBrush : LedOffBrush;
@@ -752,37 +678,40 @@ public partial class AvrWorkspaceControl : UserControl
         BlockLed.Fill = snapshot.Blocked ? AlarmBrush : LedOffBrush;
         LimitLed.Fill = snapshot.State == AvrControlState.TapLimit ? WarningBrush : LedOffBrush;
 
-        LocalAuthorityButton.FontWeight = snapshot.Authority == AvrControlAuthority.Local ? FontWeights.Bold : FontWeights.Normal;
-        RemoteAuthorityButton.FontWeight = snapshot.Authority == AvrControlAuthority.Remote ? FontWeights.Bold : FontWeights.Normal;
-        AutoModeButton.FontWeight = snapshot.Mode == AvrOperatingMode.Automatic ? FontWeights.Bold : FontWeights.Normal;
-        ManualModeButton.FontWeight = snapshot.Mode == AvrOperatingMode.Manual ? FontWeights.Bold : FontWeights.Normal;
+        LocalAuthorityButton.Tag = snapshot.Authority == AvrControlAuthority.Local ? "ACTIVE" : null;
+        RemoteAuthorityButton.Tag = snapshot.Authority == AvrControlAuthority.Remote ? "ACTIVE" : null;
+        AutoModeButton.Tag = snapshot.Mode == AvrOperatingMode.Automatic ? "ACTIVE" : null;
+        ManualModeButton.Tag = snapshot.Mode == AvrOperatingMode.Manual ? "ACTIVE" : null;
+        AutoModeButton.IsEnabled = snapshot.Authority == AvrControlAuthority.Local;
+        ManualModeButton.IsEnabled = snapshot.Authority == AvrControlAuthority.Local;
+        var localManualReady = snapshot.Authority == AvrControlAuthority.Local && snapshot.Mode == AvrOperatingMode.Manual && !snapshot.TapMoving;
+        var deviceButtons = FindVisualChildren<Button>(this).Where(b => Equals(b.Content, "▲ RAISE") || Equals(b.Content, "▼ LOWER"));
+        foreach (var button in deviceButtons) button.IsEnabled = localManualReady;
+
         OperationCountText.Text = $"CMDS {snapshot.OperationCount}";
         ProfileText.Text = _settings.ProfileName;
     }
 
     private string InjectionStatusLabel()
     {
-        if (!_running)
-            return _scenarioSteps.Count > 0 && _scenarioIndex == _scenarioSteps.Count - 1 ? "COMPLETE / PAUSED" : "READY / PAUSED";
-        if (_preDelayRemainingSeconds > 0)
-            return $"PRE-DELAY {_preDelayRemainingSeconds:0.0}s";
-        if (_scenarioSteps.Count > 0 && _scenarioIndex >= 0 && _scenarioIndex < _scenarioSteps.Count)
-            return $"RUN · {_scenarioSteps[_scenarioIndex].Label}";
+        if (_running && _preDelayRemainingSeconds > 0) return $"PRE-DELAY {_preDelayRemainingSeconds:0.0}s · SOURCE OFF";
+        if (!_sourceEnergized) return "SOURCE OFF";
+        if (_sequenceComplete) return "COMPLETE · SOURCE ON";
+        if (!_running) return "PAUSED · SOURCE HOLD";
+        if (_scenarioSteps.Count > 0 && _scenarioIndex >= 0 && _scenarioIndex < _scenarioSteps.Count) return $"RUN · {_scenarioSteps[_scenarioIndex].Label}";
         return "RUN · MANUAL U/I SOURCE";
     }
 
     private void AddEvent(string code, string message)
     {
         _events.Enqueue($"{DateTime.Now:HH:mm:ss}  {code,-9} {message}");
-        while (_events.Count > 16)
-            _events.Dequeue();
-
-        if (EventTraceText is not null)
-            EventTraceText.Text = string.Join(Environment.NewLine, _events);
+        while (_events.Count > 16) _events.Dequeue();
+        if (EventTraceText is not null) EventTraceText.Text = string.Join(Environment.NewLine, _events);
     }
 
     private static string StateLabel(AvrControlState state) => state switch
     {
+        AvrControlState.SourceOff => "Source off",
         AvrControlState.InBand => "In band",
         AvrControlState.TimingRaise => "Timing raise",
         AvrControlState.TimingLower => "Timing lower",
@@ -796,48 +725,43 @@ public partial class AvrWorkspaceControl : UserControl
     private void SetInjectionSlider(double value)
     {
         _updatingInjectionUi = true;
-        try
-        {
-            SourceVoltageSlider.Value = value;
-        }
-        finally
-        {
-            _updatingInjectionUi = false;
-        }
+        try { SourceVoltageSlider.Value = value; }
+        finally { _updatingInjectionUi = false; }
     }
 
     private static double MoveToward(double current, double target, double maxDelta)
     {
-        if (Math.Abs(target - current) <= maxDelta)
-            return target;
+        if (Math.Abs(target - current) <= maxDelta) return target;
         return current + Math.Sign(target - current) * maxDelta;
     }
 
     private void ShowWarning(string message, string title)
     {
         var owner = Window.GetWindow(this);
-        if (owner is null)
-            MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
-        else
-            MessageBox.Show(owner, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (owner is null) MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        else MessageBox.Show(owner, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private static double ParseDouble(TextBox box, string label)
     {
-        if (double.TryParse(box.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) ||
-            double.TryParse(box.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-            return value;
-
+        if (double.TryParse(box.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) || double.TryParse(box.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)) return value;
         throw new FormatException($"{label} is not a valid number.");
     }
 
     private static int ParseInt(TextBox box, string label)
     {
-        if (int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value) ||
-            int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
-            return value;
-
+        if (int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value) || int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value)) return value;
         throw new FormatException($"{label} is not a valid integer.");
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T typed) yield return typed;
+            foreach (var descendant in FindVisualChildren<T>(child)) yield return descendant;
+        }
     }
 
     private static Brush Freeze(SolidColorBrush brush)
