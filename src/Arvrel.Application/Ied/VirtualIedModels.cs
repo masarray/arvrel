@@ -11,7 +11,10 @@ public sealed record VirtualIedDescriptor(
     string Id,
     string DisplayName,
     string Function,
-    string Description);
+    string Description)
+{
+    public override string ToString() => DisplayName;
+}
 
 public static class VirtualIedCatalog
 {
@@ -26,8 +29,8 @@ public static class VirtualIedCatalog
         new(
             VirtualIedKind.AutomaticVoltageRegulator,
             "ARV-AVR",
-            "Automatic Voltage Regulator · AVR",
-            "OLTC voltage regulation",
+            "AVR · OLTC Controller",
+            "Automatic voltage regulation",
             "Vendor-neutral transformer voltage-regulator simulator with automatic and manual tap control.")
     ];
 }
@@ -36,6 +39,12 @@ public enum AvrOperatingMode
 {
     Automatic,
     Manual
+}
+
+public enum AvrVoltageInputMode
+{
+    BenchInjection,
+    ClosedLoopPlant
 }
 
 public enum AvrControlState
@@ -50,7 +59,7 @@ public enum AvrControlState
 
 public sealed record AvrSettings
 {
-    public string ProfileName { get; init; } = "ARV-AVR Classic";
+    public string ProfileName { get; init; } = "ARV-AVR Bench";
     public double NominalVoltageV { get; init; } = 100.0;
     public double SetpointVoltageV { get; init; } = 100.0;
     public double TolerancePercent { get; init; } = 1.0;
@@ -65,6 +74,7 @@ public sealed record AvrSettings
     public double OvervoltageBlockPercent { get; init; } = 120.0;
     public bool LineDropCompensationEnabled { get; init; }
     public double LineDropCompensationPercent { get; init; }
+    public AvrVoltageInputMode VoltageInputMode { get; init; } = AvrVoltageInputMode.BenchInjection;
 
     public void Validate()
     {
@@ -205,7 +215,14 @@ public sealed class AvrSimulationEngine
         var lowerBand = effectiveSetpoint * (1 - (_settings.TolerancePercent / 100.0));
         var upperBand = effectiveSetpoint * (1 + (_settings.TolerancePercent / 100.0));
         var tapFactor = 1 + ((_tapPosition - _settings.NeutralTap) * _settings.TapStepPercent / 100.0);
-        var measuredVoltage = sourceVoltageV * tapFactor;
+
+        // Bench-injection mode intentionally keeps measured voltage equal to the injected VT source.
+        // A relay test set (OMICRON-style workflow) does not magically change its output when the AVR
+        // issues a tap command. ClosedLoopPlant is available when users explicitly want transformer
+        // feedback to be simulated by the virtual lab.
+        var measuredVoltage = _settings.VoltageInputMode == AvrVoltageInputMode.ClosedLoopPlant
+            ? sourceVoltageV * tapFactor
+            : sourceVoltageV;
         var deviationPercent = ((measuredVoltage - effectiveSetpoint) / effectiveSetpoint) * 100.0;
 
         var underBlock = measuredVoltage < _settings.NominalVoltageV * (_settings.UndervoltageBlockPercent / 100.0);
