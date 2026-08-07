@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -11,11 +10,13 @@ namespace Arvrel.App;
 public partial class CtObservabilityWindow : Window
 {
     private readonly ObservableCollection<CtObservationRow> _rows = new();
+    private readonly Action _restartEvent;
     private readonly Action _resetState;
     private readonly Action _demagnetize;
 
-    public CtObservabilityWindow(Action resetState, Action demagnetize)
+    public CtObservabilityWindow(Action restartEvent, Action resetState, Action demagnetize)
     {
+        _restartEvent = restartEvent ?? throw new ArgumentNullException(nameof(restartEvent));
         _resetState = resetState ?? throw new ArgumentNullException(nameof(resetState));
         _demagnetize = demagnetize ?? throw new ArgumentNullException(nameof(demagnetize));
 
@@ -34,7 +35,10 @@ public partial class CtObservabilityWindow : Window
         StatusText.Text = snapshot.StatusText;
         SettingsText.Text = snapshot.SettingsSummary;
         RuntimeText.Text = snapshot.RuntimeSummary;
-        BoundaryText.Text = snapshot.EngineeringBoundary;
+        EventText.Text = snapshot.EventSummary;
+        BoundaryText.Text = snapshot.EngineeringBoundary +
+            "  Source preset and CT model are selected independently in the INJECT workspace.";
+        RestartEventButton.IsEnabled = snapshot.CanRestartEvent;
         ResetButton.IsEnabled = snapshot.CanResetState;
         DemagnetizeButton.IsEnabled = snapshot.CanDemagnetize;
 
@@ -44,9 +48,7 @@ public partial class CtObservabilityWindow : Window
             _rows.Add(CtObservationRow.From(channel));
 
         if (_rows.Count > 0)
-        {
             Table.SelectedItem = _rows.FirstOrDefault(row => row.Channel == previousChannel) ?? _rows[0];
-        }
 
         Scope.Frame = frame;
         if (Table.SelectedItem is CtObservationRow selected)
@@ -63,16 +65,18 @@ public partial class CtObservabilityWindow : Window
         {
             MetricChannelText.Text = "—";
             MetricFluxText.Text = "—";
-            MetricRmsText.Text = "—";
-            MetricRatioText.Text = "—";
+            MetricFundamentalRmsText.Text = "—";
+            MetricFundamentalErrorText.Text = "—";
+            MetricPhaseText.Text = "—";
             MetricWaveText.Text = "—";
             return;
         }
 
         MetricChannelText.Text = $"{focus.Channel} · {focus.State}";
         MetricFluxText.Text = FormatPu(focus.MaximumAbsoluteFluxPerUnit);
-        MetricRmsText.Text = FormattableString.Invariant($"{focus.SecondaryRmsA:0.###} A");
-        MetricRatioText.Text = FormattableString.Invariant($"{focus.RmsMagnitudeErrorPercent:+0.##;-0.##;0}%");
+        MetricFundamentalRmsText.Text = FormatRmsPair(focus.FundamentalIdealRmsA, focus.FundamentalSecondaryRmsA);
+        MetricFundamentalErrorText.Text = FormatPercent(focus.FundamentalMagnitudeErrorPercent);
+        MetricPhaseText.Text = FormatDegrees(focus.PhaseDisplacementDegrees);
 
         var wave = FormattableString.Invariant($"{focus.WaveformErrorPercent:0.##}%");
         MetricWaveText.Text = focus.Saturated && focus.FirstSaturationAbsoluteSample >= 0
@@ -85,6 +89,9 @@ public partial class CtObservabilityWindow : Window
         if (Table.SelectedItem is CtObservationRow selected)
             Scope.SelectedChannel = selected.Channel;
     }
+
+    private void RestartEventButton_Click(object sender, RoutedEventArgs e)
+        => _restartEvent();
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
         => _resetState();
@@ -111,13 +118,13 @@ public partial class CtObservabilityWindow : Window
     private sealed record CtObservationRow(
         string Channel,
         string State,
-        string InitialFlux,
-        string FinalFlux,
+        string FluxRange,
         string MaximumFlux,
-        string Rms,
-        string RatioError,
+        string TotalRms,
+        string FundamentalRms,
+        string FundamentalMagnitudeError,
+        string PhaseDisplacement,
         string WaveformError,
-        string Excitation,
         string SecondaryVoltage,
         string Onset)
     {
@@ -130,7 +137,7 @@ public partial class CtObservabilityWindow : Window
                     source.State,
                     "—",
                     "—",
-                    "—",
+                    "phase sum",
                     "phase sum",
                     "—",
                     "—",
@@ -140,18 +147,18 @@ public partial class CtObservabilityWindow : Window
             }
 
             var onset = source.Saturated && source.FirstSaturationAbsoluteSample >= 0
-                ? FormattableString.Invariant($"{source.FirstSaturationMilliseconds:0.###} ms / #{source.FirstSaturationAbsoluteSample:N0}")
+                ? FormattableString.Invariant($"{source.FirstSaturationMilliseconds:0.###} ms · #{source.FirstSaturationAbsoluteSample:N0}")
                 : "—";
             return new CtObservationRow(
                 source.Channel,
                 source.State,
-                FormatPu(source.InitialFluxPerUnit),
-                FormatPu(source.FinalFluxPerUnit),
+                FormattableString.Invariant($"{source.InitialFluxPerUnit:+0.##;-0.##;0} → {source.FinalFluxPerUnit:+0.##;-0.##;0} pu"),
                 FormatPu(source.MaximumAbsoluteFluxPerUnit),
                 FormattableString.Invariant($"{source.IdealRmsA:0.###} → {source.SecondaryRmsA:0.###} A"),
-                FormattableString.Invariant($"{source.RmsMagnitudeErrorPercent:+0.##;-0.##;0}%"),
+                FormatRmsPair(source.FundamentalIdealRmsA, source.FundamentalSecondaryRmsA),
+                FormatPercent(source.FundamentalMagnitudeErrorPercent),
+                FormatDegrees(source.PhaseDisplacementDegrees),
                 FormattableString.Invariant($"{source.WaveformErrorPercent:0.##}%"),
-                FormattableString.Invariant($"{source.MaximumExcitationCurrentA:0.###} A"),
                 FormattableString.Invariant($"{source.MaximumSecondaryVoltageV:0.###} V"),
                 onset);
         }
@@ -159,4 +166,19 @@ public partial class CtObservabilityWindow : Window
 
     private static string FormatPu(double value)
         => FormattableString.Invariant($"{value:+0.###;-0.###;0} pu");
+
+    private static string FormatRmsPair(double ideal, double secondary)
+        => double.IsFinite(ideal) && double.IsFinite(secondary)
+            ? FormattableString.Invariant($"{ideal:0.###} → {secondary:0.###} A")
+            : "—";
+
+    private static string FormatPercent(double value)
+        => double.IsFinite(value)
+            ? FormattableString.Invariant($"{value:+0.##;-0.##;0}%")
+            : "—";
+
+    private static string FormatDegrees(double value)
+        => double.IsFinite(value)
+            ? FormattableString.Invariant($"{value:+0.###;-0.###;0}°")
+            : "—";
 }

@@ -138,6 +138,25 @@ public sealed class VirtualInjectionRuntime
     }
 
     /// <summary>
+    /// Restarts the configured virtual source event at t=0 while keeping the running
+    /// process-bus sample counter and wall-clock timestamp continuous. CT state is
+    /// reinitialized from configured signed remanence and one coherent nominal cycle
+    /// is rebuilt before normal protection authority resumes.
+    /// </summary>
+    public bool RestartEvent()
+    {
+        if (!_isRunning)
+            return false;
+
+        _sourceSampleIndex = 0;
+        _ctRuntimeState = CreateInitialCtRuntimeState(_configuredProfile);
+        AppliedAt = _timestamp;
+        OutputStateChangedAt = _timestamp;
+        _coherenceRemaining = TimeSpan.FromSeconds(1 / _nominalFrequencyHz);
+        return true;
+    }
+
+    /// <summary>
     /// Rebuilds the active CT numerical state without changing the source profile.
     /// Demagnetize uses zero flux; reset reapplies configured signed remanence.
     /// Source phase/DC time remains continuous and pickup/trip authority is restrained

@@ -34,6 +34,41 @@ public sealed class CtObservabilityRuntimeTests
     }
 
     [TestMethod]
+    public void RestartEventResetsSourceAndCtHistoryButKeepsProcessCounterContinuous()
+    {
+        var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
+        var runtime = new VirtualInjectionRuntime(profile, initialTimestamp: DateTimeOffset.UnixEpoch);
+        runtime.Start();
+        runtime.Advance(TimeSpan.FromMilliseconds(5), trustDegraded: false);
+        var processCounterBefore = runtime.SampleCounter;
+        var fingerprintBefore = runtime.InjectionFingerprint;
+
+        Assert.IsTrue(runtime.RestartEvent());
+
+        Assert.AreEqual(0L, runtime.SourceSampleIndex);
+        Assert.AreEqual(processCounterBefore, runtime.SampleCounter);
+        Assert.AreEqual(fingerprintBefore, runtime.InjectionFingerprint);
+        Assert.AreEqual(0L, runtime.CurrentTransformerState.PhaseA.ProcessedSampleCount);
+        var kneeFlux = Math.Sqrt(2) * profile.CurrentTransformer.KneePointVoltageRms /
+            (2 * Math.PI * profile.FrequencyHz);
+        Assert.AreEqual(
+            profile.CurrentTransformer.RemanencePercent / 100d * kneeFlux,
+            runtime.CurrentTransformerState.PhaseA.FluxLinkageVoltSeconds,
+            1e-12);
+        Assert.AreEqual("rebuilding", runtime.WindowStatus);
+    }
+
+    [TestMethod]
+    public void RestartEventRequiresRunningSource()
+    {
+        var runtime = new VirtualInjectionRuntime(
+            VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical"),
+            initialTimestamp: DateTimeOffset.UnixEpoch);
+
+        Assert.IsFalse(runtime.RestartEvent());
+    }
+
+    [TestMethod]
     public void ResetCtStateReappliesRemanenceWithoutRestartingSourceTime()
     {
         var profile = VirtualInjectionPresets.Create("CT saturation - A-G asymmetrical");
