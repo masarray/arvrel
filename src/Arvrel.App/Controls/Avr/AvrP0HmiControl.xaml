@@ -1,0 +1,150 @@
+<UserControl x:Class="Arvrel.App.Controls.Avr.AvrP0HmiControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="520" MinHeight="420" Background="#F1F3F4">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="Ink" Color="#24343C" />
+        <SolidColorBrush x:Key="Muted" Color="#6E7D84" />
+        <SolidColorBrush x:Key="Blue" Color="#2476AE" />
+        <SolidColorBrush x:Key="Green" Color="#2C8B50" />
+        <SolidColorBrush x:Key="Line" Color="#D5DBDE" />
+        <Style x:Key="TopTab" TargetType="Button">
+            <Setter Property="Background" Value="#E5E9EB" />
+            <Setter Property="Foreground" Value="#314149" />
+            <Setter Property="BorderBrush" Value="#CFD6D9" />
+            <Setter Property="BorderThickness" Value="0,0,1,0" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Tag" Value="ACTIVE"><Setter TargetName="B" Property="Background" Value="#245D9A" /><Setter Property="Foreground" Value="White" /><Setter Property="FontWeight" Value="SemiBold" /></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#D7E7F2" /><Setter Property="Foreground" Value="#173B51" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Badge" TargetType="Border">
+            <Setter Property="Background" Value="#EAF6EE" />
+            <Setter Property="BorderBrush" Value="#7BC28C" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="6,2" />
+        </Style>
+        <Style x:Key="Caption" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Muted}" /><Setter Property="FontSize" Value="8.5" /></Style>
+        <Style x:Key="Value" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Blue}" /><Setter Property="FontFamily" Value="Cascadia Mono, Consolas" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+        <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="White" /><Setter Property="BorderBrush" Value="{StaticResource Line}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="2" /><Setter Property="Padding" Value="10" /></Style>
+        <Style x:Key="NetButton" TargetType="Button"><Setter Property="MinHeight" Value="29" /><Setter Property="Padding" Value="10,4" /><Setter Property="Foreground" Value="White" /><Setter Property="Background" Value="#286F9D" /><Setter Property="BorderBrush" Value="#286F9D" /><Setter Property="Cursor" Value="Hand" /></Style>
+    </UserControl.Resources>
+
+    <Border Background="#F3F5F6" BorderBrush="#44545B" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="*" /><RowDefinition Height="27" /></Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Background="#E5E9EB">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="78" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Button x:Name="HomeTab" Tag="ACTIVE" Style="{StaticResource TopTab}" Content="HOME" Click="TopTab_Click" />
+                <Button Grid.Column="1" x:Name="MeasuredTab" Style="{StaticResource TopTab}" Content="Measured" Click="TopTab_Click" />
+                <Button Grid.Column="2" x:Name="ControlTab" Style="{StaticResource TopTab}" Content="Control" Click="TopTab_Click" />
+                <Button Grid.Column="3" x:Name="EventsTab" Style="{StaticResource TopTab}" Content="Events" Click="TopTab_Click" />
+                <Button Grid.Column="4" x:Name="NetworkTab" Style="{StaticResource TopTab}" Content="Network" Click="TopTab_Click" />
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <!-- HOME -->
+                <Grid x:Name="HomePage" Margin="10,8,10,7">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="9" /><RowDefinition Height="*" /><RowDefinition Height="9" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource Badge}"><TextBlock x:Name="HomeAuthority" Text="LOCAL" Foreground="#2C7544" FontSize="8.5" FontWeight="SemiBold" /></Border>
+                            <Border Style="{StaticResource Badge}" Margin="5,0,0,0"><TextBlock x:Name="HomeMode" Text="AUTO" Foreground="#2C7544" FontSize="8.5" FontWeight="SemiBold" /></Border>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock x:Name="HomeState" Text="SOURCE OFF" Foreground="#365B70" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Right" /><TextBlock x:Name="HomeClock" Text="--:--:--" Foreground="#79868C" FontFamily="Cascadia Mono, Consolas" FontSize="8" HorizontalAlignment="Right" /></StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="1.18*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="0.82*" /></Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Canvas Width="68" Height="270" VerticalAlignment="Center">
+                                    <Line X1="34" Y1="8" X2="34" Y2="258" Stroke="#556168" StrokeThickness="1.5" />
+                                    <Line X1="14" Y1="8" X2="54" Y2="8" Stroke="#556168" StrokeThickness="1.5" />
+                                    <Ellipse Width="28" Height="28" Canvas.Left="20" Canvas.Top="58" Stroke="#556168" Fill="#FAFBFB" StrokeThickness="1.5" />
+                                    <Ellipse Width="28" Height="28" Canvas.Left="20" Canvas.Top="80" Stroke="#556168" Fill="#FAFBFB" StrokeThickness="1.5" />
+                                    <Line X1="48" Y1="79" X2="65" Y2="67" Stroke="#2476AE" StrokeThickness="2" />
+                                    <Ellipse Width="8" Height="8" Canvas.Left="30" Canvas.Top="162" Stroke="#556168" Fill="White" StrokeThickness="1.2" />
+                                    <Line X1="38" Y1="166" X2="64" Y2="166" Stroke="#2476AE" StrokeThickness="2" />
+                                    <Line X1="14" Y1="258" X2="54" Y2="258" Stroke="#556168" StrokeThickness="1.5" />
+                                </Canvas>
+                                <Grid Grid.Column="1">
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="TAP POSITION" Foreground="#596A73" FontSize="9" FontWeight="SemiBold" />
+                                        <Grid Margin="0,2,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="TapHero" Text="00" Style="{StaticResource Value}" FontSize="42" MinWidth="86" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="1" Margin="10,5,0,0"><TextBlock x:Name="TapFeedback" Text="FEEDBACK VALID" Foreground="#677780" FontSize="8" /><TextBlock x:Name="TapRange" Text="-08 … +08" Foreground="#677780" FontFamily="Cascadia Mono, Consolas" FontSize="8" Margin="0,3,0,0" /></StackPanel>
+                                        </Grid>
+                                        <Canvas x:Name="TapTrackCanvas" Height="22" Margin="0,3,0,0" SizeChanged="TapTrackCanvas_SizeChanged"><Line x:Name="TapTrackLine" Stroke="#8D989E" StrokeThickness="2" Y1="11" Y2="11" /><Ellipse x:Name="TapTrackDot" Width="10" Height="10" Fill="#2476AE" /></Canvas>
+                                    </StackPanel>
+                                    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="1.2*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="ACTUAL VOLTAGE" Style="{StaticResource Caption}" /><StackPanel Orientation="Horizontal"><TextBlock x:Name="VoltageHero" Text="0.00" Style="{StaticResource Value}" FontSize="31" /><TextBlock Text=" V" Foreground="#2476AE" FontSize="12" VerticalAlignment="Bottom" Margin="2,0,0,5" /></StackPanel></StackPanel>
+                                        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel><TextBlock Text="SETPOINT" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeSetpoint" Text="100.00 V" Style="{StaticResource Value}" FontSize="11" /></StackPanel><StackPanel Grid.Row="1" Margin="0,7,0,0"><TextBlock Text="DEVIATION" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeDeviation" Text="—" Style="{StaticResource Value}" FontSize="11" /></StackPanel></Grid>
+                                    </Grid>
+                                    <Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="CURRENT" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeCurrent" Text="0.000 A" Style="{StaticResource Value}" FontSize="10.5" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Text="POWER FACTOR" Style="{StaticResource Caption}" /><TextBlock x:Name="HomePf" Text="—" Style="{StaticResource Value}" FontSize="10.5" /></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Text="FREQUENCY" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeFreq" Text="— Hz" Style="{StaticResource Value}" FontSize="10.5" /></StackPanel>
+                                    </Grid>
+                                    <Border Grid.Row="6" Background="#F5F7F8" BorderBrush="#D8DDE0" BorderThickness="1" Padding="7,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="REGULATION" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeBand" Text="99.00 — 101.00 V" Foreground="#435963" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" /></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="OUTPUT / MOTOR" Style="{StaticResource Caption}" /><TextBlock x:Name="HomeOutput" Text="IDLE" Foreground="#435963" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" /></StackPanel></Grid></Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Column="2" Style="{StaticResource Card}">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="148" /><RowDefinition Height="6" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="REGULATION TREND" Foreground="#36454D" FontSize="10" FontWeight="SemiBold" /><TextBlock Text="Actual U vs control band" Foreground="#7A878D" FontSize="8" /></StackPanel><TextBlock Grid.Column="1" x:Name="CommandCount" Text="CMDS 0" Foreground="#65747B" FontFamily="Cascadia Mono, Consolas" FontSize="8" /></Grid>
+                                <Border Grid.Row="2" Background="#FBFCFC" BorderBrush="#D9DEE1" BorderThickness="1"><Grid Margin="6"><Canvas x:Name="CompactTrendCanvas" ClipToBounds="True" Background="#FBFCFC" SizeChanged="CompactTrendCanvas_SizeChanged"><Line x:Name="TrendUpper" Stroke="#869299" StrokeDashArray="4,3" /><Line x:Name="TrendSet" Stroke="#4A8A5A" StrokeThickness="1.2" /><Line x:Name="TrendLower" Stroke="#869299" StrokeDashArray="4,3" /><Polyline x:Name="TrendPath" Stroke="#2476AE" StrokeThickness="2" /><Ellipse x:Name="TrendDot" Width="7" Height="7" Fill="#2476AE" /></Canvas></Grid></Border>
+                                <Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="TrendScale" Text="99.0   100.0   101.0 V" Foreground="#738087" FontFamily="Cascadia Mono, Consolas" FontSize="7.5" /><TextBlock Grid.Column="1" x:Name="TrendState" Text="SOURCE OFF" Foreground="#365B70" FontSize="8" FontWeight="SemiBold" /></Grid>
+                                <Grid Grid.Row="6"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="5" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="9" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="T1 / T2 TIMER" Style="{StaticResource Caption}" /><TextBlock x:Name="TimerText" Text="—" Foreground="#4D6069" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="OLTC MOTOR" Style="{StaticResource Caption}" /><TextBlock x:Name="MotorText" Text="READY" Foreground="#4D6069" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" /></StackPanel><ProgressBar Grid.Row="2" x:Name="TimerBar" Height="6" Minimum="0" Maximum="100" Margin="0,0,0,0" /><ProgressBar Grid.Row="2" Grid.Column="2" x:Name="MotorBar" Height="6" Minimum="0" Maximum="100" /></Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="4" Background="#E8ECEE" BorderBrush="#D4DADC" BorderThickness="1" Padding="8,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal"><TextBlock x:Name="FooterAuthority" Text="LOCAL" Foreground="#3C505A" FontSize="8" FontWeight="SemiBold" /><TextBlock Text="  ·  " Foreground="#9AA3A8" /><TextBlock x:Name="FooterMode" Text="AUTO" Foreground="#3C505A" FontSize="8" FontWeight="SemiBold" /><TextBlock Text="  ·  " Foreground="#9AA3A8" /><TextBlock x:Name="FooterReason" Text="Ready" Foreground="#5E6D74" FontSize="8" /></StackPanel><TextBlock Grid.Column="1" Text="VIRTUAL AVR / OLTC" Foreground="#748187" FontSize="7.7" /></Grid></Border>
+                </Grid>
+
+                <!-- MEASURED -->
+                <Grid x:Name="MeasuredPage" Visibility="Collapsed" Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Measured values" Foreground="{StaticResource Ink}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Live AVR terminal quantities and OLTC feedback" Foreground="{StaticResource Muted}" FontSize="9" /></StackPanel><UniformGrid Grid.Row="2" Columns="2" Rows="3"><Border Style="{StaticResource Card}" Margin="0,0,6,6"><StackPanel><TextBlock Text="CONTROL VOLTAGE" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredU" Text="0.00 V" Style="{StaticResource Value}" FontSize="24" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,0,0,6"><StackPanel><TextBlock Text="LOAD CURRENT" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredI" Text="0.000 A" Style="{StaticResource Value}" FontSize="24" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="0,6,6,6"><StackPanel><TextBlock Text="TAP POSITION" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredTap" Text="00" Style="{StaticResource Value}" FontSize="28" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,6,0,6"><StackPanel><TextBlock Text="VOLTAGE DEVIATION" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredDev" Text="—" Style="{StaticResource Value}" FontSize="24" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="0,6,6,0"><StackPanel><TextBlock Text="POWER FACTOR / ANGLE" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredPf" Text="—" Style="{StaticResource Value}" FontSize="18" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,6,0,0"><StackPanel><TextBlock Text="FREQUENCY" Style="{StaticResource Caption}" /><TextBlock x:Name="MeasuredF" Text="— Hz" Style="{StaticResource Value}" FontSize="24" /></StackPanel></Border></UniformGrid></Grid>
+
+                <!-- CONTROL -->
+                <Grid x:Name="ControlPage" Visibility="Collapsed" Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Control parameters" Foreground="{StaticResource Ink}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Front-panel overview · remote control follows IEC 61850 authority/interlock rules" Foreground="{StaticResource Muted}" FontSize="9" /></StackPanel><UniformGrid Grid.Row="2" Columns="2" Rows="3"><Border Style="{StaticResource Card}" Margin="0,0,6,6"><StackPanel><TextBlock Text="SETPOINT / BAND" Style="{StaticResource Caption}" /><TextBlock x:Name="ControlSetBand" Text="100.00 V · ±1.00 %" Style="{StaticResource Value}" FontSize="15" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,0,0,6"><StackPanel><TextBlock Text="T1 / T2" Style="{StaticResource Caption}" /><TextBlock x:Name="ControlTimers" Text="10.0 s · 2.0 s" Style="{StaticResource Value}" FontSize="15" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="0,6,6,6"><StackPanel><TextBlock Text="AUTHORITY / MODE" Style="{StaticResource Caption}" /><TextBlock x:Name="ControlAuthority" Text="LOCAL · AUTO" Style="{StaticResource Value}" FontSize="15" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,6,0,6"><StackPanel><TextBlock Text="TAP RANGE / STEP" Style="{StaticResource Caption}" /><TextBlock x:Name="ControlTapRange" Text="-08 … +08 · 1.25 %" Style="{StaticResource Value}" FontSize="15" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="0,6,6,0"><StackPanel><TextBlock Text="BLOCKING" Style="{StaticResource Caption}" /><TextBlock x:Name="ControlBlocking" Text="U / I limits" Foreground="#4E626C" FontFamily="Cascadia Mono, Consolas" FontSize="10" TextWrapping="Wrap" /></StackPanel></Border><Border Style="{StaticResource Card}" Margin="6,6,0,0"><StackPanel><TextBlock Text="IEC 61850 CONTROL" Style="{StaticResource Caption}" /><TextBlock Text="SBO enhanced · REMOTE required\nAUTO/MANUAL · LTC block · RAISE/LOWER/STOP\nSetpoint · Bandwidth · T1 writes" Foreground="#385C70" FontSize="9.5" TextWrapping="Wrap" /></StackPanel></Border></UniformGrid></Grid>
+
+                <!-- EVENTS -->
+                <Grid x:Name="EventsPage" Visibility="Collapsed" Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Events" Foreground="{StaticResource Ink}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="AVR operations, blocking, source and IEC 61850 activity" Foreground="{StaticResource Muted}" FontSize="9" /></StackPanel><Border Grid.Row="2" Style="{StaticResource Card}"><ScrollViewer VerticalScrollBarVisibility="Auto"><TextBlock x:Name="EventsText" Text="No events" Foreground="#33434B" FontFamily="Cascadia Mono, Consolas" FontSize="9.5" TextWrapping="Wrap" LineHeight="17" /></ScrollViewer></Border></Grid>
+
+                <!-- NETWORK -->
+                <Grid x:Name="NetworkPage" Visibility="Collapsed" Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Communication / IEC 61850" Foreground="{StaticResource Ink}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="Choose the Windows network interface used by IEDScout / SAS" Foreground="{StaticResource Muted}" FontSize="9" /></StackPanel><ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"><StackPanel>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,8"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="SERVER STATUS" Style="{StaticResource Caption}" /><TextBlock x:Name="NetServerStatus" Text="STOPPED" Foreground="#365B70" FontSize="18" FontWeight="SemiBold" /><TextBlock x:Name="NetServerEndpoint" Text="—:102" Foreground="#607079" FontFamily="Cascadia Mono, Consolas" FontSize="9" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="LIVE ACTIVITY" Style="{StaticResource Caption}" /><TextBlock x:Name="NetCounters" Text="Clients 0 · Requests 0 · Reports 0" Foreground="#455A64" FontFamily="Cascadia Mono, Consolas" FontSize="9" TextWrapping="Wrap" /><TextBlock x:Name="NetLastActivity" Text="Server stopped" Foreground="#78858B" FontSize="8.5" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel></Grid></Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,8"><StackPanel><CheckBox x:Name="AllInterfacesCheck" Content="Listen on all interfaces (0.0.0.0)" Foreground="#34464F" FontSize="9.5" Margin="0,0,0,8" Checked="NetworkSelection_Changed" Unchecked="NetworkSelection_Changed" /><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.35*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="NETWORK ADAPTER" Style="{StaticResource Caption}" /><ComboBox x:Name="AdapterCombo" Height="29" Margin="0,3,0,0" SelectionChanged="AdapterCombo_SelectionChanged" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="IPv4 ADDRESS" Style="{StaticResource Caption}" /><ComboBox x:Name="Ipv4Combo" Height="29" Margin="0,3,0,0" SelectionChanged="Ipv4Combo_SelectionChanged" /></StackPanel></Grid><Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="110" /></Grid.ColumnDefinitions><TextBlock x:Name="NetAdapterDetails" Text="No active adapter" Foreground="#5C6C74" FontFamily="Cascadia Mono, Consolas" FontSize="8.5" TextWrapping="Wrap" /><StackPanel Grid.Column="1"><TextBlock Text="TCP PORT" Style="{StaticResource Caption}" /><TextBox x:Name="PortBox" Text="102" Height="27" Margin="0,3,0,0" Padding="6,2" /></StackPanel></Grid></StackPanel></Border>
+                    <Border Style="{StaticResource Card}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="145" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="SAS / IEDSCOUT ENDPOINT" Style="{StaticResource Caption}" /><TextBlock x:Name="NetClientEndpoint" Text="Select adapter" Foreground="{StaticResource Blue}" FontFamily="Cascadia Mono, Consolas" FontSize="16" FontWeight="SemiBold" /><TextBlock x:Name="NetDiagnostics" Text="Adapter not selected" Foreground="#5F7078" FontSize="8.5" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel><StackPanel Grid.Column="2"><Button x:Name="StartServerButton" Style="{StaticResource NetButton}" Content="START SERVER" Click="StartServerButton_Click" Margin="0,0,0,6" /><Button x:Name="StopServerButton" Height="29" Content="STOP SERVER" Click="StopServerButton_Click" IsEnabled="False" /></StackPanel></Grid></Border>
+                </StackPanel></ScrollViewer></Grid>
+
+                <!-- MENU OVERLAY -->
+                <Border x:Name="MenuOverlay" Visibility="Collapsed" Background="#F2F4F5" BorderBrush="#BCC6CA" BorderThickness="1" Margin="34,28" Panel.ZIndex="20" Padding="14">
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="9" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel><TextBlock Text="MAIN MENU" Foreground="{StaticResource Ink}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="◀ / ▶ select · ENTER open · BACK home" Foreground="{StaticResource Muted}" FontSize="9" /></StackPanel><StackPanel Grid.Row="2"><Border x:Name="MenuMeasured" Style="{StaticResource Card}" Margin="0,0,0,6"><TextBlock Text="Measured values" Foreground="#33434B" FontSize="12" /></Border><Border x:Name="MenuControl" Style="{StaticResource Card}" Margin="0,0,0,6"><TextBlock Text="Control parameters" Foreground="#33434B" FontSize="12" /></Border><Border x:Name="MenuEvents" Style="{StaticResource Card}" Margin="0,0,0,6"><TextBlock Text="Events" Foreground="#33434B" FontSize="12" /></Border><Border x:Name="MenuNetwork" Style="{StaticResource Card}"><TextBlock Text="Communication / IEC 61850" Foreground="#33434B" FontSize="12" /></Border></StackPanel><TextBlock Grid.Row="3" Text="ARVREL AVR-230 LAB" Foreground="#78868C" FontSize="8" HorizontalAlignment="Right" /></Grid>
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="2" Background="#E7EBED"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal" Margin="8,0" VerticalAlignment="Center"><Ellipse x:Name="FooterLed" Width="7" Height="7" Fill="#6BC77F" Margin="0,0,5,0" /><TextBlock x:Name="BottomStatus" Text="READY" Foreground="#4D5D65" FontSize="7.8" /></StackPanel><TextBlock Grid.Column="1" Text="SIMULATION · IEC 61850 LAB" Foreground="#7C888E" FontSize="7.5" Margin="0,0,8,0" VerticalAlignment="Center" /></Grid>
+        </Grid>
+    </Border>
+</UserControl>
