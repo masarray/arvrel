@@ -30,7 +30,7 @@ public partial class MainWindow
             return;
         }
 
-        if (!InstallCtToolbarButton())
+        if (!InstallCtFooterBadge())
         {
             Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(InitializeCtObservability));
             return;
@@ -53,33 +53,39 @@ public partial class MainWindow
         RefreshCtObservability();
     }
 
-    private bool InstallCtToolbarButton()
+    private bool InstallCtFooterBadge()
     {
         if (_ctObservabilityButton is not null)
             return true;
 
-        var analysisButton = _analysisModeButtons.Values.FirstOrDefault();
-        if (analysisButton?.Parent is not StackPanel viewPanel ||
-            viewPanel.Parent is not Border viewGroup ||
-            viewGroup.Parent is not StackPanel controlsLine)
-        {
+        if (_virtualInjectionProvenanceText?.Parent is not Grid footer)
             return false;
-        }
+
+        // CT state is contextual information about the source model, not a primary
+        // analysis-header command. It replaces the old 3I0/3V0 explanatory text
+        // in the quiet footer and remains clickable for deeper observability.
+        _virtualInjectionProvenanceText.Text = string.Empty;
+        _virtualInjectionProvenanceText.Visibility = Visibility.Collapsed;
 
         _ctObservabilityButton = new Button
         {
             Style = FindResource("CompactButton") as Style,
-            Content = "CT MODEL · IDEAL",
-            MinWidth = 116,
-            Height = 28,
-            Margin = new Thickness(8, 0, 0, 0),
-            Padding = new Thickness(9, 0, 9, 0),
-            FontSize = 9.2,
+            Content = "CT · IDEAL",
+            MinWidth = 82,
+            Height = 26,
+            MinHeight = 26,
+            MaxHeight = 26,
+            Margin = new Thickness(2, 0, 10, 0),
+            Padding = new Thickness(8, 0, 8, 0),
+            FontSize = 9.1,
             FontWeight = FontWeights.SemiBold,
-            ToolTip = "Open CT Saturation & Observability. Source preset and CT model are independent in the INJECT workspace."
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Open CT Saturation & Observability."
         };
         _ctObservabilityButton.Click += (_, _) => OpenCtObservabilityWindow();
-        controlsLine.Children.Add(_ctObservabilityButton);
+        Grid.SetColumn(_ctObservabilityButton, 0);
+        footer.Children.Add(_ctObservabilityButton);
         return true;
     }
 
@@ -276,9 +282,9 @@ public partial class MainWindow
 
         _ctObservabilityButton.Content = snapshot.Status switch
         {
-            CtObservabilityStatus.Saturated => "CT MODEL · SAT",
-            CtObservabilityStatus.Nonlinear => "CT MODEL · ACTIVE",
-            _ => "CT MODEL · IDEAL"
+            CtObservabilityStatus.Saturated => "CT · SAT",
+            CtObservabilityStatus.Nonlinear => "CT · ACTIVE",
+            _ => "CT · IDEAL"
         };
         _ctObservabilityButton.Foreground = snapshot.Status switch
         {
@@ -287,7 +293,7 @@ public partial class MainWindow
             _ => HealthyBrush
         };
         _ctObservabilityButton.ToolTip =
-            $"Click to open CT Saturation & Observability.\n{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}\n{snapshot.EventSummary}";
+            $"Open CT Saturation & Observability.\n{snapshot.StatusText}\n{snapshot.SettingsSummary}\n{snapshot.RuntimeSummary}\n{snapshot.EventSummary}";
     }
 
     private void RestartCtStudyEvent()
