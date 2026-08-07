@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using Arvrel.Application.Ied;
 
@@ -11,6 +12,7 @@ namespace Arvrel.App.Controls.Avr;
 public partial class AvrWorkspaceControl
 {
     private const double PhysicalFaceplateWidth = 680.0;
+    private const double PhysicalFaceplateHeight = 548.0;
     private const int DefaultMinimumTap = 1;
     private const int DefaultMaximumTap = 17;
     private const int DefaultNeutralTap = 9;
@@ -27,13 +29,7 @@ public partial class AvrWorkspaceControl
         base.OnInitialized(e);
         Loaded += P0NativeHmi_Loaded;
         Unloaded += P0NativeHmi_Unloaded;
-
-        // Front-panel keys must behave like physical keys, independent of the
-        // legacy Click handler or which LCD child is currently hosted. Pointer
-        // input is intercepted on the tunnelling route before child handlers.
         AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(P0FrontPanelPreviewMouseDown), handledEventsToo: true);
-        // Retain Click routing for keyboard activation / accessibility. A short
-        // duplicate guard prevents one physical mouse press dispatching twice.
         AddHandler(Button.ClickEvent, new RoutedEventHandler(P0FrontPanelNavigation_Click), handledEventsToo: true);
     }
 
@@ -83,17 +79,22 @@ public partial class AvrWorkspaceControl
 
         LockPhysicalFaceplateGeometry(displayBorder);
         SetConfigurationExpanded(false);
+        StyleCompactFrontPanelKeys();
+        InstallNativeConfigurationNetworkTab();
 
         _p0Hmi = new AvrP0HmiControl
         {
             MinWidth = 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            MinHeight = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
         };
         _p0Hmi.StartServerRequested += P0StartServerRequested;
         _p0Hmi.StopServerRequested += P0StopServerRequested;
         displayBorder.Child = _p0Hmi;
         displayBorder.Background = new SolidColorBrush(Color.FromRgb(243, 245, 246));
         displayBorder.Padding = new Thickness(0);
+        _p0Hmi.ApplyCompactVisualPolish();
 
         _p0HmiInstalled = true;
         if (!_p0RefreshAttached)
@@ -103,11 +104,20 @@ public partial class AvrWorkspaceControl
         }
 
         RefreshP0NativeHmi();
-        AddEvent("HMI", $"Operational AVR HMI loaded · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} neutral · simulated transformer default");
+        AddEvent("HMI", $"Operational AVR HMI ready · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} · simulated transformer");
     }
 
     private static void LockPhysicalFaceplateGeometry(Border displayBorder)
     {
+        if (VisualTreeHelper.GetParent(displayBorder) is Grid deviceGrid && deviceGrid.ColumnDefinitions.Count >= 5)
+        {
+            // Compact icon keypad gives the LCD ~28 px more horizontal room while
+            // keeping the physical chassis width unchanged.
+            deviceGrid.ColumnDefinitions[1].Width = new GridLength(7);
+            deviceGrid.ColumnDefinitions[3].Width = new GridLength(7);
+            deviceGrid.ColumnDefinitions[4].Width = new GridLength(48);
+        }
+
         DependencyObject? current = displayBorder;
         while (current is not null)
         {
@@ -116,8 +126,11 @@ public partial class AvrWorkspaceControl
                 border.Width = PhysicalFaceplateWidth;
                 border.MinWidth = PhysicalFaceplateWidth;
                 border.MaxWidth = PhysicalFaceplateWidth;
+                border.Height = PhysicalFaceplateHeight;
+                border.MinHeight = PhysicalFaceplateHeight;
+                border.MaxHeight = PhysicalFaceplateHeight;
                 border.HorizontalAlignment = HorizontalAlignment.Center;
-                border.VerticalAlignment = VerticalAlignment.Stretch;
+                border.VerticalAlignment = VerticalAlignment.Center;
                 return;
             }
 
@@ -137,6 +150,56 @@ public partial class AvrWorkspaceControl
         return null;
     }
 
+    private void StyleCompactFrontPanelKeys()
+    {
+        foreach (var button in FindVisualChildren<Button>(this))
+        {
+            var raw = button.Tag?.ToString()?.ToUpperInvariant();
+            if (raw is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU" or "HOME"))
+                continue;
+
+            var key = raw == "BACK" ? "HOME" : raw;
+            button.Tag = key;
+            button.MinHeight = 36;
+            button.Padding = new Thickness(4);
+            button.ToolTip = key switch
+            {
+                "ENTER" => "Enter / confirm",
+                "LEFT" => "Previous",
+                "RIGHT" => "Next",
+                "HOME" => "Home",
+                "MENU" => "Menu",
+                _ => key
+            };
+            button.Content = CreateLucideStyleGlyph(key);
+        }
+    }
+
+    private static Viewbox CreateLucideStyleGlyph(string key)
+    {
+        var geometry = key switch
+        {
+            "ENTER" => "M20,4 L20,9 C20,12 18,14 15,14 L5,14 M9,10 L5,14 9,18",
+            "LEFT" => "M15,18 L9,12 15,6",
+            "RIGHT" => "M9,18 L15,12 9,6",
+            "HOME" => "M3,10 L12,3 21,10 M5,9 L5,20 19,20 19,9 M9,20 L9,14 15,14 15,20",
+            "MENU" => "M4,7 L20,7 M4,12 L20,12 M4,17 L20,17",
+            _ => "M5,12 L19,12"
+        };
+        var path = new Path
+        {
+            Data = Geometry.Parse(geometry),
+            Stroke = Brushes.White,
+            StrokeThickness = 1.8,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent,
+            Stretch = Stretch.Uniform
+        };
+        return new Viewbox { Width = 18, Height = 18, Child = path };
+    }
+
     private void P0FrontPanelPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left)
@@ -150,8 +213,6 @@ public partial class AvrWorkspaceControl
         DispatchHardwareKey(key);
         _lastPointerHardwareKey = key;
         _lastPointerHardwareDispatchMs = Environment.TickCount64;
-        // Do not mark the mouse event handled: the physical button should retain
-        // its normal pressed visual. The following Click is duplicate-guarded.
     }
 
     private void P0FrontPanelNavigation_Click(object sender, RoutedEventArgs e)
@@ -159,10 +220,6 @@ public partial class AvrWorkspaceControl
         if (e.Source is not Button button)
             return;
 
-        // The legacy Restore Defaults handler constructs AvrSettings directly.
-        // Re-apply the transformer operating convention after that target handler
-        // has executed so Restore Defaults always returns to tap 09/17 and the
-        // closed-loop plant instead of the historical bench / -8..+8 profile.
         if (string.Equals(button.Content?.ToString(), "Restore defaults", StringComparison.OrdinalIgnoreCase))
         {
             ApplyTransformerOperatingDefaults();
@@ -196,14 +253,18 @@ public partial class AvrWorkspaceControl
             return;
         }
 
-        AddEvent("KEY", $"Front-panel {key} pressed");
-        _p0Hmi.HandleHardwareKey(key);
+        // Navigation is operator interaction, not an AVR event. Do not pollute
+        // the engineering event trace with MENU/arrow/home key spam.
+        if (key == "HOME")
+            _p0Hmi.GoHome();
+        else
+            _p0Hmi.HandleHardwareKey(key);
     }
 
     private static string? HardwareKey(Button? button)
     {
         var key = button?.Tag?.ToString()?.ToUpperInvariant();
-        return key is "ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU" ? key : null;
+        return key is "ENTER" or "LEFT" or "RIGHT" or "HOME" or "MENU" ? key : null;
     }
 
     private static Button? FindAncestorButton(DependencyObject? source)
@@ -221,7 +282,11 @@ public partial class AvrWorkspaceControl
         return null;
     }
 
-    private void P0NativeHmi_Tick(object? sender, EventArgs e) => RefreshP0NativeHmi();
+    private void P0NativeHmi_Tick(object? sender, EventArgs e)
+    {
+        RefreshP0NativeHmi();
+        RefreshConfigurationNetworkStatus();
+    }
 
     private void RefreshP0NativeHmi()
     {
@@ -252,6 +317,7 @@ public partial class AvrWorkspaceControl
         finally
         {
             RefreshP0NativeHmi();
+            RefreshConfigurationNetworkStatus();
         }
     }
 
@@ -269,6 +335,7 @@ public partial class AvrWorkspaceControl
         finally
         {
             RefreshP0NativeHmi();
+            RefreshConfigurationNetworkStatus();
         }
     }
 }
