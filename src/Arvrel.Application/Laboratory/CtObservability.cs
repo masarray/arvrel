@@ -95,7 +95,7 @@ public static class CtObservabilityProjector
         var settingsSummary = FormattableString.Invariant(
             $"{settings.RatedSecondaryCurrentA:0.###} A secondary · Vk {settings.KneePointVoltageRms:0.###} V · Rct {settings.SecondaryWindingResistanceOhm:0.###} Ω · burden {settings.BurdenResistanceOhm:0.###} Ω + {settings.BurdenInductanceMilliHenries:0.###} mH · rem {settings.RemanencePercent:+0.##;-0.##;0}%");
         var runtimeSummary = isRunning
-            ? FormatttableString.Invariant(
+            ? FormattableString.Invariant(
                 $"RUNNING · source sample {sourceSampleIndex:N0} · committed CT history {runtimeState.MaximumProcessedSampleCount:N0} samples")
             : "STOPPED · transient CT history cleared; configured remanence remains armed";
 
