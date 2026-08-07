@@ -12,4 +12,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Arvrel.Protection\Arvrel.Protection.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\validation\vectors\**\*.json"
+          Link="validation\vectors\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,33 @@
+name: CT reference validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/Arvrel.Protection/CtSaturation.cs"
+      - "tests/Arvrel.Protection.Tests/CtIndependentValidationTests.cs"
+      - "validation/**"
+      - ".github/workflows/ct-reference-validation.yml"
+  pull_request:
+    paths:
+      - "src/Arvrel.Protection/CtSaturation.cs"
+      - "tests/Arvrel.Protection.Tests/CtIndependentValidationTests.cs"
+      - "validation/**"
+      - ".github/workflows/ct-reference-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate committed CT vectors with independent CPython solver
+        run: python3 validation/ct_reference_validate.py
