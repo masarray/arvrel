@@ -39,6 +39,14 @@
     <Compile Remove="MainWindow.RelayPremiumButtonTuning.cs" />
     <Compile Remove="Controls\RelayIndicatorLampBehavior.cs" />
     <Compile Remove="Controls\RelayTactileButtonBehavior.cs" />
+
+    <!-- P0 Global UX Foundation supersedes the accumulated late-stage visual
+         patch layers. They remain in source history for auditability, while one
+         deterministic coordinator now owns final shell/layout/readability policy. -->
+    <Compile Remove="MainWindow.LayoutPolish.cs" />
+    <Compile Remove="MainWindow.ReadabilityPolish.cs" />
+    <Compile Remove="MainWindow.UiPolish.P4.cs" />
+    <Compile Remove="MainWindow.ToolbarReleaseFix.cs" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(HasARIEC61850Sibling)' == 'true'">
