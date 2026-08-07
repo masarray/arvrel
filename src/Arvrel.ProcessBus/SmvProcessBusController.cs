@@ -49,6 +49,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
     public static readonly bool IsAvailable = ProcessBusCaptureBackendFactory.DecoderAvailable;
 
     public event EventHandler<ProcessBusEventArgs>? EventRaised;
+    public event EventHandler<SmvStreamUpdatedEventArgs>? StreamUpdated;
 
     public bool IsRunning => _captureTask is { IsCompleted: false };
     public bool IsReplayMode => _replayMode;
@@ -292,6 +293,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         if (ingress.Decision == SmvIngressDecision.DropDuplicate)
         {
             runtime.ObserveIngressRejection(timestamp, ingress.Decision, ingress.SampleCount, asdus.Count, replay);
+            RaiseStreamUpdated(key, timestamp, replay, payloadAccepted: false);
             if (_continuityNotices.ShouldRaise(key, "DUPLICATE", timestamp))
                 Raise("SMV DROP", $"{first.SvId} duplicate smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
@@ -300,6 +302,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         if (ingress.Decision == SmvIngressDecision.DropOutOfOrder)
         {
             runtime.ObserveIngressRejection(timestamp, ingress.Decision, ingress.SampleCount, asdus.Count, replay);
+            RaiseStreamUpdated(key, timestamp, replay, payloadAccepted: false);
             if (_continuityNotices.ShouldRaise(key, "OUT_OF_ORDER", timestamp))
                 Raise("SMV DROP", $"{first.SvId} out-of-order smpCnt {ingress.SampleCount} discarded before measurement.");
             return;
@@ -317,6 +320,7 @@ public sealed class SmvProcessBusController : IAsyncDisposable
         // replaces the one/two-cycle windows with contiguous post-gap samples while
         // the UI holds the last coherent evidence.
         runtime.Observe(timestamp, frame, profile, replay);
+        RaiseStreamUpdated(key, timestamp, replay, payloadAccepted: true);
     }
 
     private SampledValuesPublisherProfile? FindProfile(SampledValuesFrame frame, SampledValueAsdu asdu)
@@ -364,6 +368,9 @@ public sealed class SmvProcessBusController : IAsyncDisposable
 
     private void Raise(string code, string message)
         => EventRaised?.Invoke(this, new ProcessBusEventArgs(code, message, DateTimeOffset.Now));
+
+    private void RaiseStreamUpdated(string streamKey, DateTimeOffset timestamp, bool replay, bool payloadAccepted)
+        => StreamUpdated?.Invoke(this, new SmvStreamUpdatedEventArgs(streamKey, timestamp, replay, payloadAccepted));
 }
 
 public sealed class ProcessBusEventArgs : EventArgs
@@ -378,4 +385,25 @@ public sealed class ProcessBusEventArgs : EventArgs
     public string Code { get; }
     public string Message { get; }
     public DateTimeOffset Timestamp { get; }
+}
+
+public sealed class SmvStreamUpdatedEventArgs : EventArgs
+{
+    public SmvStreamUpdatedEventArgs(
+        string streamKey,
+        DateTimeOffset timestamp,
+        bool replay,
+        bool payloadAccepted)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamKey);
+        StreamKey = streamKey;
+        Timestamp = timestamp;
+        Replay = replay;
+        PayloadAccepted = payloadAccepted;
+    }
+
+    public string StreamKey { get; }
+    public DateTimeOffset Timestamp { get; }
+    public bool Replay { get; }
+    public bool PayloadAccepted { get; }
 }
