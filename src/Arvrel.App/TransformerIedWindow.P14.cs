@@ -7,9 +7,9 @@ using Arvrel.Protection;
 namespace Arvrel.App;
 
 /// <summary>
-/// P14 presentation/configuration layer for the P13 CT-saturation and external-fault
-/// security model. This partial deliberately consumes P13 settings and snapshots;
-/// it does not re-implement saturation classification or external-fault decisions.
+/// P14 presentation/configuration layer for P13 CT-saturation and external-fault
+/// security. It consumes P13 settings and snapshots and deliberately contains no
+/// replacement saturation classifier, external-fault detector, or protection engine.
 /// </summary>
 public partial class TransformerIedWindow
 {
@@ -37,13 +37,12 @@ public partial class TransformerIedWindow
     private TextBlock? _p14HoldText;
     private TextBlock? _p14AppliedPolicyText;
 
-    protected override void OnContentRendered(EventArgs e)
-    {
-        base.OnContentRendered(e);
-        InitializeP14PractitionerUi();
-    }
-
-    private void InitializeP14PractitionerUi()
+    /// <summary>
+    /// Called by the transformer-Ied entry point after this window's constructor has
+    /// completed and before ShowDialog. This avoids adding another WPF lifecycle override
+    /// to the P12 window while guaranteeing all named P12 controls and _refreshTimer exist.
+    /// </summary>
+    internal void InitializeP14PractitionerUi()
     {
         if (_p14Initialized)
             return;
@@ -63,14 +62,13 @@ public partial class TransformerIedWindow
             throw new InvalidOperationException("Transformer harmonic evidence anchor is unavailable.");
         evidencePanel.Children.Insert(harmonicIndex + 1, BuildP14EvidenceSection());
 
-        // Replace the P12 handler rather than adding a second post-apply update. This is
-        // safety-significant: P13 settings must be present before the first evaluation
-        // after the operator presses Apply.
+        // Do not add a second post-apply handler. P13 settings must be part of the
+        // complete configuration before the first evaluation after Apply.
         ApplyRuntimeButton.Click -= ApplyRuntime_Click;
         ApplyRuntimeButton.Click += ApplyRuntimeWithP14_Click;
 
-        // P12 owns the evaluation cadence. P14 only renders the already-produced snapshot
-        // after P12's timer callback has updated _lastSnapshot.
+        // P12 remains the sole evaluator. This handler only renders _lastSnapshot after
+        // P12's earlier-registered timer callback has evaluated the current pair.
         _refreshTimer.Tick += P14RefreshTimer_Tick;
 
         _p14Initialized = true;
@@ -165,7 +163,6 @@ public partial class TransformerIedWindow
         supervision.Children.Add(_p14SuperviseHighSetCheck);
         supervision.Children.Add(_p14SuperviseRefCheck);
         root.Children.Add(supervision);
-
         return root;
     }
 
@@ -185,6 +182,7 @@ public partial class TransformerIedWindow
             Foreground = NeutralBrush
         };
         stateGrid.Children.Add(_p14SecurityStateText);
+
         _p14HoldText = P14TinyText("HOLD —");
         _p14HoldText.TextAlignment = TextAlignment.Right;
         Grid.SetColumn(_p14HoldText, 1);
@@ -285,7 +283,6 @@ public partial class TransformerIedWindow
     {
         if (!_p14Initialized || _p14SecurityStateText is null)
             return;
-
         if (snapshot is null)
         {
             RenderP14Waiting();
@@ -322,10 +319,15 @@ public partial class TransformerIedWindow
         }
 
         var security = snapshot.Protection.ExternalFaultSecurity;
-        var suspectedHv = security.Phases.Where(phase => phase.HighVoltageSaturationSuspected).Select(phase => phase.Phase.ToString()).ToArray();
-        var suspectedLv = security.Phases.Where(phase => phase.LowVoltageSaturationSuspected).Select(phase => phase.Phase.ToString()).ToArray();
-        _p14CtSummaryText!.Text =
-            $"CT SAT HV {P14PhaseList(suspectedHv)} · LV {P14PhaseList(suspectedLv)}";
+        var suspectedHv = security.Phases
+            .Where(phase => phase.HighVoltageSaturationSuspected)
+            .Select(phase => phase.Phase.ToString())
+            .ToArray();
+        var suspectedLv = security.Phases
+            .Where(phase => phase.LowVoltageSaturationSuspected)
+            .Select(phase => phase.Phase.ToString())
+            .ToArray();
+        _p14CtSummaryText!.Text = $"CT SAT HV {P14PhaseList(suspectedHv)} · LV {P14PhaseList(suspectedLv)}";
 
         if (!security.Enabled)
         {
