@@ -56,6 +56,8 @@ public sealed class DeterministicLabScenario
 
     public bool StopInjection() => _inner.StopInjection();
 
+    public bool RestartEvent() => _inner.RestartEvent();
+
     public bool ResetCurrentTransformerState()
         => _inner.ResetCurrentTransformerState();
 
