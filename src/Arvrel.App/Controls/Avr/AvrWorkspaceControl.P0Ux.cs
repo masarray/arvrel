@@ -19,6 +19,11 @@ public partial class AvrWorkspaceControl
         base.OnInitialized(e);
         Loaded += P0NativeHmi_Loaded;
         Unloaded += P0NativeHmi_Unloaded;
+
+        // Hardware navigation is a bubbled Button.Click route. Owning the route
+        // here is deterministic even when the LCD child is replaced at runtime.
+        // Do not depend on visual-tree button discovery / Loaded ordering.
+        AddHandler(Button.ClickEvent, new RoutedEventHandler(P0FrontPanelNavigation_Click), handledEventsToo: true);
     }
 
     private void P0NativeHmi_Loaded(object sender, RoutedEventArgs e)
@@ -66,7 +71,6 @@ public partial class AvrWorkspaceControl
         displayBorder.Background = new SolidColorBrush(Color.FromRgb(243, 245, 246));
         displayBorder.Padding = new Thickness(0);
 
-        RewireP0NativeHardwareKeys();
         _p0HmiInstalled = true;
         if (!_p0RefreshAttached)
         {
@@ -109,27 +113,28 @@ public partial class AvrWorkspaceControl
         return null;
     }
 
-    private void RewireP0NativeHardwareKeys()
+    private void P0FrontPanelNavigation_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var button in FindVisualChildren<Button>(this))
-        {
-            var tag = button.Tag?.ToString()?.ToUpperInvariant();
-            if (tag is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU"))
-                continue;
-
-            button.Click -= DeviceFunction_Click;
-            button.Click -= HmiHardwareNavigation_Click;
-            button.Click -= P0NativeHardwareKey_Click;
-            button.Click += P0NativeHardwareKey_Click;
-        }
-    }
-
-    private void P0NativeHardwareKey_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button button || _p0Hmi is null)
+        // Button.Click bubbles with the Button as Source. This survives all LCD
+        // replacement/retemplating and does not rely on discovering the buttons.
+        if (e.Source is not Button button)
             return;
 
-        var key = button.Tag?.ToString()?.ToUpperInvariant() ?? string.Empty;
+        var key = button.Tag?.ToString()?.ToUpperInvariant();
+        if (key is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU"))
+            return;
+
+        // In the unlikely event of an early click during initial Loaded dispatch,
+        // install the HMI synchronously before forwarding the hardware key.
+        if (_p0Hmi is null)
+            InstallP0NativeHmi();
+        if (_p0Hmi is null)
+        {
+            AddEvent("KEY ERR", $"Front-panel {key} ignored · HMI unavailable");
+            e.Handled = true;
+            return;
+        }
+
         AddEvent("KEY", $"Front-panel {key} pressed");
         _p0Hmi.HandleHardwareKey(key);
         e.Handled = true;
