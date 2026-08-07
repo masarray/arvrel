@@ -154,7 +154,9 @@ public static class CtObservabilityProjector
         VirtualInjectionProfile profile,
         CtSaturationFrameDiagnostics diagnostics,
         CtObservabilityWaveformEvidence? evidence)
-        =>
+    {
+        var sourceWindowStartSample = evidence?.Ideal.StartSampleIndex ?? -1;
+        return
         [
             Build(
                 "IA",
@@ -162,21 +164,24 @@ public static class CtObservabilityProjector
                 diagnostics.PhaseA,
                 evidence?.Ideal.PhaseA,
                 evidence?.PhaseASecondary,
-                evidence?.NominalSamplesPerCycle ?? 0),
+                evidence?.NominalSamplesPerCycle ?? 0,
+                sourceWindowStartSample),
             Build(
                 "IB",
                 true,
                 diagnostics.PhaseB,
                 evidence?.Ideal.PhaseB,
                 evidence?.PhaseBSecondary,
-                evidence?.NominalSamplesPerCycle ?? 0),
+                evidence?.NominalSamplesPerCycle ?? 0,
+                sourceWindowStartSample),
             Build(
                 "IC",
                 true,
                 diagnostics.PhaseC,
                 evidence?.Ideal.PhaseC,
                 evidence?.PhaseCSecondary,
-                evidence?.NominalSamplesPerCycle ?? 0),
+                evidence?.NominalSamplesPerCycle ?? 0,
+                sourceWindowStartSample),
             profile.ExplicitNeutralCurrent
                 ? Build(
                     "IN",
@@ -184,9 +189,11 @@ public static class CtObservabilityProjector
                     diagnostics.Neutral,
                     evidence?.Ideal.NeutralOrResidual,
                     evidence?.NeutralOrResidualSecondary,
-                    evidence?.NominalSamplesPerCycle ?? 0)
-                : Build("3I0", false, CtSaturationChannelDiagnostics.Disabled, null, null, 0)
+                    evidence?.NominalSamplesPerCycle ?? 0,
+                    sourceWindowStartSample)
+                : Build("3I0", false, CtSaturationChannelDiagnostics.Disabled, null, null, 0, -1)
         ];
+    }
 
     private static CtChannelObservation Build(
         string channel,
@@ -194,7 +201,8 @@ public static class CtObservabilityProjector
         CtSaturationChannelDiagnostics diagnostics,
         IReadOnlyList<double>? ideal,
         IReadOnlyList<double>? secondary,
-        int samplesPerCycle)
+        int samplesPerCycle,
+        long sourceWindowStartSample)
     {
         var state = !available
             ? "CALCULATED SUM"
@@ -229,6 +237,13 @@ public static class CtObservabilityProjector
                 : double.NaN;
         }
 
+        var firstSaturationSourceSample = diagnostics.FirstSaturationAbsoluteSample;
+        if (diagnostics.FirstSaturatedSample >= 0 && sourceWindowStartSample >= 0)
+        {
+            firstSaturationSourceSample = checked(
+                sourceWindowStartSample + diagnostics.FirstSaturatedSample);
+        }
+
         return new CtChannelObservation(
             channel,
             state,
@@ -249,7 +264,7 @@ public static class CtObservabilityProjector
             diagnostics.MaximumExcitationCurrentA,
             diagnostics.MaximumSecondaryVoltageV,
             diagnostics.FirstSaturationMilliseconds,
-            diagnostics.FirstSaturationAbsoluteSample,
+            firstSaturationSourceSample,
             diagnostics.InitialProcessedSampleCount,
             diagnostics.FinalProcessedSampleCount);
     }
