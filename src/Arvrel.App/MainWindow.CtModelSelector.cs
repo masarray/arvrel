@@ -18,6 +18,7 @@ public partial class MainWindow
         if (_ctModelSelectorInitialized)
             return;
         if (!_virtualInjectionInitialized ||
+            !_virtualInjectionPersistenceInitialized ||
             _virtualInjectionView is null ||
             _virtualInjectionPresetCombo is null ||
             _virtualInjectionFrequencyText is null)
@@ -83,6 +84,7 @@ public partial class MainWindow
         _ctModelPresetCombo.SelectionChanged += CtModelPresetCombo_SelectionChanged;
         selector.Children.Add(_ctModelPresetCombo);
 
+        ReplaceClearSourceButton();
         SyncCtModelSelectorFromProfile(_scenario.ActiveProfile);
     }
 
@@ -202,6 +204,43 @@ public partial class MainWindow
         {
             _virtualInjectionEditorSync = false;
         }
+    }
+
+    private void ReplaceClearSourceButton()
+    {
+        if (_virtualInjectionView is null)
+            return;
+
+        var original = FindButtonByContent(_virtualInjectionView, "Clear injection");
+        if (original?.Parent is not StackPanel actions)
+            return;
+
+        var index = actions.Children.IndexOf(original);
+        if (index < 0)
+            return;
+
+        var replacement = new Button
+        {
+            Style = original.Style,
+            Content = "Clear source",
+            Margin = original.Margin,
+            Padding = original.Padding,
+            MinWidth = original.MinWidth,
+            Height = original.Height,
+            ToolTip = "Return voltage/current source to Normal balanced while preserving the selected CT MODEL."
+        };
+        replacement.Click += (_, _) =>
+        {
+            var source = VirtualInjectionPresets.Create("Normal balanced", ResolveCtAwarePresetFrequency());
+            var profile = (source with
+            {
+                CurrentTransformer = _scenario.ActiveProfile.CurrentTransformer
+            }).Normalize();
+            ApplyCtAwareSourceProfile(profile, "Normal balanced");
+        };
+
+        actions.Children.RemoveAt(index);
+        actions.Children.Insert(index, replacement);
     }
 
     private static string CtModelSummary(string name, CtSaturationSettings settings)
