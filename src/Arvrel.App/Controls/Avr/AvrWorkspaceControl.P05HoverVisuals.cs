@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Arvrel.App.Controls;
 
 namespace Arvrel.App.Controls.Avr;
 
@@ -9,18 +10,11 @@ public partial class AvrWorkspaceControl
 {
     private bool _p05HoverInstalled;
 
-    private static readonly Brush P05HoverBrush = P05Freeze(Color.FromRgb(60, 76, 85));
-    private static readonly Brush P05HoverBorderBrush = P05Freeze(Color.FromRgb(104, 176, 208));
-    private static readonly Brush P05HoverTextBrush = P05Freeze(Color.FromRgb(244, 250, 252));
-
-    private static readonly Brush P05RemoteHoverBrush = P05Freeze(Color.FromRgb(15, 116, 170));
-    private static readonly Brush P05RemoteHoverBorderBrush = P05Freeze(Color.FromRgb(139, 218, 255));
-
-    private static readonly Brush P05AutoHoverBrush = P05Freeze(Color.FromRgb(20, 127, 77));
-    private static readonly Brush P05AutoHoverBorderBrush = P05Freeze(Color.FromRgb(135, 238, 180));
-
-    private static readonly Brush P05AttentionHoverBrush = P05Freeze(Color.FromRgb(153, 101, 22));
-    private static readonly Brush P05AttentionHoverBorderBrush = P05Freeze(Color.FromRgb(255, 208, 100));
+    // Physical push-button hover: a short bright face with dark legend, matching the
+    // existing RAISE/LOWER interaction. The semantic lamp colour returns on mouse leave.
+    private static readonly Brush P05FlashSurfaceBrush = P05Freeze(Color.FromRgb(239, 245, 247));
+    private static readonly Brush P05FlashBorderBrush = P05Freeze(Color.FromRgb(255, 255, 255));
+    private static readonly Brush P05FlashTextBrush = P05Freeze(Color.FromRgb(28, 48, 57));
 
     private void InstallP05ButtonHoverVisuals()
     {
@@ -37,24 +31,49 @@ public partial class AvrWorkspaceControl
             button.MouseLeave -= P05Button_MouseLeave;
             button.MouseEnter += P05Button_MouseEnter;
             button.MouseLeave += P05Button_MouseLeave;
-
-            // Put local values directly on the template chrome. A local value has
-            // higher WPF precedence than the legacy DeviceButton IsMouseOver trigger,
-            // so that trigger can no longer flash the button white even for one frame.
-            P05SyncChromeToButton(button);
         }
     }
 
     private void P05Button_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (sender is Button button)
-            ApplyP05Hover(button);
+        if (sender is not Button button)
+            return;
+
+        button.ApplyTemplate();
+        if (button.Template.FindName("Chrome", button) is Border chrome)
+        {
+            // Intentionally bright like a physical illuminated/pressed key, but never
+            // white-on-white: caption and Lucide glyph are changed to a dark legend.
+            chrome.Background = P05FlashSurfaceBrush;
+            chrome.BorderBrush = P05FlashBorderBrush;
+        }
+
+        button.Foreground = P05FlashTextBrush;
+        if (button.Content is LucideIcon icon)
+            icon.Foreground = P05FlashTextBrush;
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (sender is Button button)
-            RestoreP05Chrome(button);
+        if (sender is not Button button)
+            return;
+
+        button.ApplyTemplate();
+        if (button.Template.FindName("Chrome", button) is Border chrome)
+        {
+            // IsMouseOver is already false here. Clearing the local hover values lets
+            // DeviceButton return to its real normal/disabled/semantic material state.
+            chrome.ClearValue(Border.BackgroundProperty);
+            chrome.ClearValue(Border.BorderBrushProperty);
+        }
+
+        // Remove only the temporary dark legend. Text buttons fall back to DeviceButton
+        // styling; LOCAL/REMOTE/AUTO/MANUAL are immediately repainted by P04 below.
+        button.ClearValue(Control.ForegroundProperty);
+        if (button.Content is LucideIcon icon)
+            icon.Foreground = Brushes.White;
+
+        RefreshP04ModeVisuals();
     }
 
     private static bool IsP05HardwareButton(Button? button)
@@ -67,50 +86,14 @@ public partial class AvrWorkspaceControl
             "REMOTE_ACTIVE" or "AUTO_ACTIVE" or "LOCAL_ACTIVE" or "MANUAL_ACTIVE")
             return true;
 
-        return button.Name is "LocalAuthorityButton" or "RemoteAuthorityButton" or
-            "AutoModeButton" or "ManualModeButton";
-    }
+        if (button.Name is "LocalAuthorityButton" or "RemoteAuthorityButton" or
+            "AutoModeButton" or "ManualModeButton")
+            return true;
 
-    private static void ApplyP05Hover(Button button)
-    {
-        button.ApplyTemplate();
-        if (button.Template.FindName("Chrome", button) is not Border chrome)
-            return;
-
-        var tag = button.Tag?.ToString()?.ToUpperInvariant();
-        (Brush background, Brush border) = tag switch
-        {
-            "REMOTE_ACTIVE" => (P05RemoteHoverBrush, P05RemoteHoverBorderBrush),
-            "AUTO_ACTIVE" => (P05AutoHoverBrush, P05AutoHoverBorderBrush),
-            "LOCAL_ACTIVE" or "MANUAL_ACTIVE" => (P05AttentionHoverBrush, P05AttentionHoverBorderBrush),
-            _ => (P05HoverBrush, P05HoverBorderBrush)
-        };
-
-        chrome.Background = background;
-        chrome.BorderBrush = border;
-        button.Foreground = P05HoverTextBrush;
-    }
-
-    private void RestoreP05Chrome(Button button)
-    {
-        // Never ClearValue here. Clearing would expose the old near-white XAML hover
-        // trigger again while WPF is unwinding IsMouseOver. Instead restore a stable
-        // local chrome value from the semantic button state.
-        RefreshP04ModeVisuals();
-        P05SyncChromeToButton(button);
-    }
-
-    private static void P05SyncChromeToButton(Button button)
-    {
-        if (button.IsMouseOver)
-            return;
-
-        button.ApplyTemplate();
-        if (button.Template.FindName("Chrome", button) is not Border chrome)
-            return;
-
-        chrome.Background = button.Background;
-        chrome.BorderBrush = button.BorderBrush;
+        // RAISE/LOWER intentionally have no x:Name in the legacy faceplate XAML.
+        var caption = button.Content?.ToString()?.ToUpperInvariant();
+        return caption?.Contains("RAISE", StringComparison.Ordinal) == true ||
+               caption?.Contains("LOWER", StringComparison.Ordinal) == true;
     }
 
     private static Brush P05Freeze(Color color)
