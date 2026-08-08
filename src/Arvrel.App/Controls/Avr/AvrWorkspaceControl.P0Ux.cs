@@ -21,6 +21,8 @@ public partial class AvrWorkspaceControl
     private AvrP0HmiControl? _p0Hmi;
     private bool _p0HmiInstalled;
     private bool _p0RefreshAttached;
+    private bool _configurationOverlayPrepared;
+    private Viewbox? _faceplateFitHost;
     private string? _lastPointerHardwareKey;
     private long _lastPointerHardwareDispatchMs;
 
@@ -78,10 +80,12 @@ public partial class AvrWorkspaceControl
             return;
         }
 
-        LockPhysicalFaceplateGeometry(displayBorder);
+        InstallUniformFitFaceplate(displayBorder);
         SetConfigurationExpanded(false);
+        PrepareConfigurationOverlay();
         StyleCompactFrontPanelKeys();
         InstallNativeConfigurationNetworkTab();
+        ApplyP02LeanInjectionUx();
 
         _p0Hmi = new AvrP0HmiControl
         {
@@ -104,37 +108,101 @@ public partial class AvrWorkspaceControl
             _p0RefreshAttached = true;
         }
 
+        // The visual tree for the physical keypad can materialize after Loaded.
+        // Re-run once at ContextIdle so the icon-only controls are deterministic.
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(StyleCompactFrontPanelKeys));
+
         RefreshP0NativeHmi();
         AddEvent("HMI", $"Operational AVR HMI ready · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} · simulated transformer");
     }
 
-    private static void LockPhysicalFaceplateGeometry(Border displayBorder)
+    private void InstallUniformFitFaceplate(Border displayBorder)
     {
         if (VisualTreeHelper.GetParent(displayBorder) is Grid deviceGrid && deviceGrid.ColumnDefinitions.Count >= 5)
         {
-            deviceGrid.ColumnDefinitions[1].Width = new GridLength(7);
-            deviceGrid.ColumnDefinitions[3].Width = new GridLength(7);
+            deviceGrid.ColumnDefinitions[1].Width = new GridLength(6);
+            deviceGrid.ColumnDefinitions[3].Width = new GridLength(6);
             deviceGrid.ColumnDefinitions[4].Width = new GridLength(48);
         }
 
+        Border? faceplate = null;
         DependencyObject? current = displayBorder;
         while (current is not null)
         {
             if (current is Border border && Grid.GetRow(border) == 1 && Grid.GetColumn(border) == 2)
             {
-                border.Width = PhysicalFaceplateWidth;
-                border.MinWidth = PhysicalFaceplateWidth;
-                border.MaxWidth = PhysicalFaceplateWidth;
-                border.Height = PhysicalFaceplateHeight;
-                border.MinHeight = PhysicalFaceplateHeight;
-                border.MaxHeight = PhysicalFaceplateHeight;
-                border.HorizontalAlignment = HorizontalAlignment.Center;
-                border.VerticalAlignment = VerticalAlignment.Center;
-                return;
+                faceplate = border;
+                break;
             }
-
             current = VisualTreeHelper.GetParent(current);
         }
+
+        if (faceplate is null)
+            return;
+
+        faceplate.Width = PhysicalFaceplateWidth;
+        faceplate.Height = PhysicalFaceplateHeight;
+        faceplate.MinWidth = PhysicalFaceplateWidth;
+        faceplate.MaxWidth = PhysicalFaceplateWidth;
+        faceplate.MinHeight = PhysicalFaceplateHeight;
+        faceplate.MaxHeight = PhysicalFaceplateHeight;
+        faceplate.HorizontalAlignment = HorizontalAlignment.Stretch;
+        faceplate.VerticalAlignment = VerticalAlignment.Stretch;
+
+        if (VisualTreeHelper.GetParent(faceplate) is not Grid rootGrid || _faceplateFitHost is not null)
+            return;
+
+        var index = rootGrid.Children.IndexOf(faceplate);
+        if (index < 0)
+            return;
+
+        rootGrid.Children.RemoveAt(index);
+        Grid.SetRow(faceplate, 0);
+        Grid.SetColumn(faceplate, 0);
+
+        _faceplateFitHost = new Viewbox
+        {
+            Child = faceplate,
+            Stretch = Stretch.Uniform,
+            StretchDirection = StretchDirection.Both,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Margin = new Thickness(4)
+        };
+        Grid.SetRow(_faceplateFitHost, 1);
+        Grid.SetColumn(_faceplateFitHost, 2);
+        Panel.SetZIndex(_faceplateFitHost, 0);
+        rootGrid.Children.Insert(index, _faceplateFitHost);
+    }
+
+    private void PrepareConfigurationOverlay()
+    {
+        if (_configurationOverlayPrepared)
+            return;
+        if (VisualTreeHelper.GetParent(ConfigurationPanel) is not Grid root)
+            return;
+
+        _configurationOverlayPrepared = true;
+        Grid.SetColumn(ConfigurationPanel, 2);
+        Grid.SetColumnSpan(ConfigurationPanel, 3);
+        ConfigurationPanel.HorizontalAlignment = HorizontalAlignment.Right;
+        ConfigurationPanel.VerticalAlignment = VerticalAlignment.Stretch;
+        Panel.SetZIndex(ConfigurationPanel, 50);
+        ConfigurationColumn.Width = new GridLength(38);
+        UpdateConfigurationOverlayWidth();
+
+        ConfigurationExpanded.IsVisibleChanged += (_, _) => UpdateConfigurationOverlayWidth();
+        ConfigurationColumn.SizeChanged += (_, _) =>
+        {
+            if (Math.Abs(ConfigurationColumn.ActualWidth - 38) > 0.5 || ConfigurationColumn.Width.Value != 38)
+                ConfigurationColumn.Width = new GridLength(38);
+        };
+    }
+
+    private void UpdateConfigurationOverlayWidth()
+    {
+        ConfigurationColumn.Width = new GridLength(38);
+        ConfigurationPanel.Width = ConfigurationExpanded.Visibility == Visibility.Visible ? 380 : 38;
     }
 
     private Border? FindLegacyHmiDisplayBorder()
@@ -157,14 +225,12 @@ public partial class AvrWorkspaceControl
             if (raw is not ("ENTER" or "LEFT" or "RIGHT" or "BACK" or "MENU" or "HOME"))
                 continue;
 
-            // The old direct XAML handler logged every navigation click as an AVR
-            // event. Remove it; the root routed handler below owns the keypad.
             button.Click -= DeviceFunction_Click;
 
             var key = raw == "BACK" ? "HOME" : raw;
             button.Tag = key;
-            button.MinHeight = 36;
-            button.Padding = new Thickness(4);
+            button.MinHeight = 34;
+            button.Padding = new Thickness(3);
             button.ToolTip = key switch
             {
                 "ENTER" => "Enter / confirm",
@@ -174,7 +240,9 @@ public partial class AvrWorkspaceControl
                 "MENU" => "Menu",
                 _ => key
             };
-            button.Content = CreateLucideStyleGlyph(key);
+
+            if (button.Content is not Viewbox)
+                button.Content = CreateLucideStyleGlyph(key);
         }
     }
 
@@ -285,6 +353,8 @@ public partial class AvrWorkspaceControl
 
     private void P0NativeHmi_Tick(object? sender, EventArgs e)
     {
+        StyleCompactFrontPanelKeys();
+        RefreshLeanInjectionUx();
         RefreshP0NativeHmi();
         RefreshConfigurationNetworkStatus();
     }
@@ -301,6 +371,7 @@ public partial class AvrWorkspaceControl
             _events.ToArray(),
             _iec61850Server.GetStatus());
         _p0Hmi.ApplyTransformerConvention(_snapshot, _settings);
+        _p0Hmi.ApplyLowFpsTrendSmoothing(_snapshot);
     }
 
     private void P0StartServerRequested(string host, int port)
