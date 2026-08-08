@@ -27,6 +27,8 @@ public partial class App : System.Windows.Application
             window.InitializeGlobalUxFoundation();
             window.InitializeRelayReadabilityHotfix();
             window.InitializeProductReadyInjectionUx();
+            window.InitializeMultiIedWorkspace();
+            window.ApplyAvrP02ShellPolish();
         }
     }
 
