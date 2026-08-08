@@ -16,6 +16,7 @@
 
 [Product site](https://masarray.github.io/arvrel/) ·
 [Documentation](https://masarray.github.io/arvrel/documentation.html) ·
+[Engineering FAQ](https://masarray.github.io/arvrel/faq.html) ·
 [Quick start](https://masarray.github.io/arvrel/quick-start.html) ·
 [Download](https://github.com/masarray/arvrel/releases)
 
@@ -104,7 +105,7 @@ A tester does not need a merging unit, Npcap, or a field PCAP to perform the fir
 
 The suite covers through-current stability, internal 87T, 87T-HS, H2/H5 security, external-fault CT-saturation security, distorted internal-fault dependability, HV/LV REF, and secure REF blocking without an independent neutral input.
 
-See the [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md).
+See the [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md). Public-site maintenance and release-documentation contracts are described in [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md).
 
 ## Trust before trip
 
