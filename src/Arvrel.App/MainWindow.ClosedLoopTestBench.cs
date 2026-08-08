@@ -88,10 +88,12 @@ public partial class MainWindow
                      !_snapshot.TripLatched &&
                      _closedLoopBench.TestSetSnapshot.InjectionStartedAt is not null)
             {
-                // The existing reset/settings workflow owns the relay/source reset.
-                // Recreate only the external test-set observer so stale BI/timing
-                // evidence cannot leak into the next test.
-                RecreateClosedLoopObserver();
+                // The existing reset/settings workflow owns relay/source state.
+                // Clear only external contacts and timing so the wiring topology
+                // remains exactly as the user configured it.
+                _closedLoopBench.ResetObserverState();
+                _lastReportedTestSetPickup = null;
+                _lastReportedTestSetTrip = null;
             }
             return;
         }
@@ -103,13 +105,6 @@ public partial class MainWindow
             RefreshStreamList(force: false);
         }
         RenderSelectedProcessBusStream();
-    }
-
-    private void RecreateClosedLoopObserver()
-    {
-        _closedLoopBench = new ClosedLoopBench(_scenario.CoreScenario, _internalEngine);
-        _lastReportedTestSetPickup = null;
-        _lastReportedTestSetTrip = null;
     }
 
     private void ReportClosedLoopTestSetTransitions(
@@ -198,7 +193,7 @@ public partial class MainWindow
                 topology = _closedLoopBench.Topology,
                 topologyFingerprint = _closedLoopBench.Topology.Fingerprint()
             },
-            relayContactProfile = VirtualRelayContactProfile.NumericalRelayDefault,
+            relayContactProfile = _closedLoopBench.ContactProfile,
             testSet = _closedLoopBench.TestSetSnapshot,
             relayMeasurement = current.RelayMeasurement,
             protection = _snapshot,
