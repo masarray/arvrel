@@ -75,7 +75,10 @@ public partial class MainWindow
                     ? _closedLoopBench.Advance(TimeSpan.Zero)
                     : result;
                 _snapshot = displayResult.Protection;
-                var displayStep = _scenario.Project(displayResult.Source, _pickupPosition, _tripPosition);
+                var displayStep = _scenario.Project(displayResult.Source, _pickupPosition, _tripPosition) with
+                {
+                    Measurement = displayResult.RelayMeasurement
+                };
                 RenderInternal(displayStep, _snapshot);
 
                 if (!_internalRunning)
