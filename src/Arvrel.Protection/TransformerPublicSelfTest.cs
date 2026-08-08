@@ -256,9 +256,10 @@ public static class TransformerPublicSelfTest
 
     private static (bool, string, string) DistortedInternalFaultDependability()
     {
-        var settings = SecuritySettings() with
+        var baseSettings = SecuritySettings();
+        var settings = baseSettings with
         {
-            Differential87T = SecuritySettings().Differential87T with
+            Differential87T = baseSettings.Differential87T with
             {
                 OperateDelay = TimeSpan.FromMilliseconds(10)
             }
@@ -276,7 +277,9 @@ public static class TransformerPublicSelfTest
                 highVoltageEvidence: SaturatedEvidence()));
         }
 
-        snapshot ??= throw new InvalidOperationException("Internal-fault self-test produced no snapshot.");
+        if (snapshot is null)
+            throw new InvalidOperationException("Internal-fault self-test produced no snapshot.");
+
         var phase = snapshot.Differential.Phases[0];
         var passed = phase.HighVoltageCtSaturationSuspected &&
                      !phase.ExternalFaultArmed &&
