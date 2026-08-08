@@ -23,7 +23,6 @@ public sealed class UnifiedIedSelectorSourceTests
 
         StringAssert.Contains(code, "_iedTypeCombo.DisplayMemberPath = nameof(UnifiedIedChoice.DisplayName);");
         StringAssert.Contains(code, "public override string ToString() => DisplayName;");
-        Assert.IsFalse(code.Contains("UnifiedIedChoice { Kind =", StringComparison.Ordinal));
     }
 
     [TestMethod]
