@@ -14,7 +14,7 @@ internal sealed class SmvStreamRuntime
     private static readonly TimeSpan LiveStaleWindow = TimeSpan.FromMilliseconds(250);
 
     private readonly object _gate = new();
-    private readonly ProtectionEngine _protection;
+    private readonly ResearchProtectionEngine _protection;
     private readonly SampleRing _phaseA = new(RingCapacity);
     private readonly SampleRing _phaseB = new(RingCapacity);
     private readonly SampleRing _phaseC = new(RingCapacity);
@@ -63,7 +63,7 @@ internal sealed class SmvStreamRuntime
         SvId = firstFrame.Pdu.Asdus.FirstOrDefault()?.SvId ?? "unnamed";
         _context = context;
         _context.Validate();
-        _protection = new ProtectionEngine(settings);
+        _protection = new ResearchProtectionEngine(settings);
         var timestamp = DateTimeOffset.UtcNow;
         _measurement = new MeasurementFrame(timestamp, 0, 0, 0, 0,
             new SmvTrustState(false, false, false, "INITIALIZING", "Waiting for a complete measurement window."));
