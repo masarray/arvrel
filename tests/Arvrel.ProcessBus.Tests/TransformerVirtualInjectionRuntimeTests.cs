@@ -77,6 +77,50 @@ public sealed class TransformerVirtualInjectionRuntimeTests
     }
 
     [TestMethod]
+    public void HvNgrInjection_OperatesOnlyHvRefPath()
+    {
+        var runtime = new TransformerVirtualInjectionRuntime();
+        var profile = runtime.ActiveProfile with
+        {
+            Name = "REF HV / NGR",
+            HighVoltageNeutral = new TransformerVirtualInjectionChannel(1.0, 0, true),
+            LowVoltageNeutral = new TransformerVirtualInjectionChannel(0, 0, false)
+        };
+        runtime.ApplyProfile(profile);
+
+        _ = runtime.Start();
+        var snapshot = runtime.Advance(TimeSpan.FromMilliseconds(25));
+
+        Assert.IsNotNull(snapshot.Protection);
+        Assert.IsTrue(snapshot.Protection!.RefHighVoltage.Element.Operated);
+        Assert.IsTrue(snapshot.Protection.RefHighVoltage.NeutralCurrentAvailable);
+        Assert.IsFalse(snapshot.Protection.RefLowVoltage.NeutralCurrentAvailable);
+        Assert.IsFalse(snapshot.Protection.RefLowVoltage.Element.Operated);
+    }
+
+    [TestMethod]
+    public void LvNgrInjection_OperatesOnlyLvRefPath()
+    {
+        var runtime = new TransformerVirtualInjectionRuntime();
+        var profile = runtime.ActiveProfile with
+        {
+            Name = "REF LV / NGR",
+            HighVoltageNeutral = new TransformerVirtualInjectionChannel(0, 0, false),
+            LowVoltageNeutral = new TransformerVirtualInjectionChannel(1.0, 0, true)
+        };
+        runtime.ApplyProfile(profile);
+
+        _ = runtime.Start();
+        var snapshot = runtime.Advance(TimeSpan.FromMilliseconds(25));
+
+        Assert.IsNotNull(snapshot.Protection);
+        Assert.IsFalse(snapshot.Protection!.RefHighVoltage.NeutralCurrentAvailable);
+        Assert.IsFalse(snapshot.Protection.RefHighVoltage.Element.Operated);
+        Assert.IsTrue(snapshot.Protection.RefLowVoltage.NeutralCurrentAvailable);
+        Assert.IsTrue(snapshot.Protection.RefLowVoltage.Element.Operated);
+    }
+
+    [TestMethod]
     public void StoppedSource_ProjectsZeroWaveform_WithoutEvaluatingProtection()
     {
         var runtime = new TransformerVirtualInjectionRuntime();
