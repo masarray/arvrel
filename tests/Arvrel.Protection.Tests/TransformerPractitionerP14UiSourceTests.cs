@@ -25,7 +25,7 @@ public sealed class TransformerPractitionerP14UiSourceTests
     }
 
     [TestMethod]
-    public void P14_InitializesBeforeDialogWithoutAddingAnotherWindowLifecycleOverride()
+    public void P14_InitializesBeforePractitionerInteractionWithoutAddingAnotherWindowLifecycleOverride()
     {
         var code = Read("src", "Arvrel.App", "TransformerIedWindow.P14.cs");
         var entryPoint = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
@@ -33,13 +33,13 @@ public sealed class TransformerPractitionerP14UiSourceTests
         StringAssert.Contains(code, "internal void InitializeP14PractitionerUi()");
         StringAssert.Contains(entryPoint, "var window = new TransformerIedWindow(_processBus) { Owner = this };");
         StringAssert.Contains(entryPoint, "window.InitializeP14PractitionerUi();");
-        StringAssert.Contains(entryPoint, "window.ShowDialog();");
+        StringAssert.Contains(entryPoint, "window.Show();");
         Assert.IsFalse(code.Contains("OnContentRendered(", StringComparison.Ordinal),
             "P14 must not add a second TransformerIedWindow.OnContentRendered override.");
 
         var constructIndex = entryPoint.IndexOf("new TransformerIedWindow", StringComparison.Ordinal);
         var initializeIndex = entryPoint.IndexOf("window.InitializeP14PractitionerUi();", StringComparison.Ordinal);
-        var showIndex = entryPoint.IndexOf("window.ShowDialog();", StringComparison.Ordinal);
+        var showIndex = entryPoint.IndexOf("window.Show();", StringComparison.Ordinal);
         Assert.IsTrue(constructIndex >= 0 && initializeIndex > constructIndex && showIndex > initializeIndex,
             "P14 must initialize after the window constructor and before practitioner interaction begins.");
     }
