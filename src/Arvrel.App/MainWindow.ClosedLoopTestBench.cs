@@ -70,18 +70,17 @@ public partial class MainWindow
                 var result = _closedLoopBench.Advance(TimeSpan.FromMilliseconds(40));
                 _snapshot = result.Protection;
                 ObserveTransitions(_snapshot);
-                ReportClosedLoopTestSetTransitions(result.TestSet, _snapshot);
+                ReportClosedLoopTestSetTransitions(result.TestSet);
 
                 // Auto-stop is driven exclusively by TESTSET.BI1 after the delayed
                 // relay BO1 contact crosses its virtual wire. Never by TripLatched.
+                // ClosedLoopVirtualTestBench returns immediately at the accepted BI1
+                // edge, so this frame is the exact pre-stop fault frame and must not
+                // be replaced by a zero-output Advance(0) frame.
                 _internalRunning = _scenario.IsRunning;
-                var displayResult = !_internalRunning && result.TestSet.TripDetectedAt is not null
-                    ? _closedLoopBench.Advance(TimeSpan.Zero)
-                    : result;
-                _snapshot = displayResult.Protection;
-                var displayStep = _scenario.Project(displayResult.Source, _pickupPosition, _tripPosition) with
+                var displayStep = _scenario.Project(result.Source, _pickupPosition, _tripPosition) with
                 {
-                    Measurement = displayResult.RelayMeasurement
+                    Measurement = result.RelayMeasurement
                 };
                 RenderInternal(displayStep, _snapshot);
 
@@ -90,17 +89,6 @@ public partial class MainWindow
                     UpdateRunButton();
                     RefreshVirtualInjectionRunStopPresentation();
                 }
-            }
-            else if (!_scenario.IsRunning &&
-                     !_snapshot.TripLatched &&
-                     _closedLoopBench.TestSetSnapshot.InjectionStartedAt is not null)
-            {
-                // The existing reset/settings workflow owns relay/source state.
-                // Clear only external contacts and timing so the wiring topology
-                // remains exactly as the user configured it.
-                _closedLoopBench.ResetObserverState();
-                _lastReportedTestSetPickup = null;
-                _lastReportedTestSetTrip = null;
             }
             return;
         }
@@ -114,30 +102,37 @@ public partial class MainWindow
         RenderSelectedProcessBusStream();
     }
 
-    private void ReportClosedLoopTestSetTransitions(
-        VirtualTestSetTimingSnapshot testSet,
-        Arvrel.Protection.ProtectionSnapshot protection)
+    private void ReportClosedLoopTestSetTransitions(VirtualTestSetTimingSnapshot testSet)
     {
         if (testSet.PickupDetectedAt is { } pickup && pickup != _lastReportedTestSetPickup)
         {
             _lastReportedTestSetPickup = pickup;
-            AddEvent("TEST PICKUP", $"BI2 · {testSet.PickupTime?.TotalMilliseconds:0.000} ms");
+            AddEvent(
+                "TEST PICKUP",
+                $"BI2 ↑ · START→BI2 {testSet.PickupTime?.TotalMilliseconds:0.000} ms");
         }
 
         if (testSet.TripDetectedAt is not { } trip || trip == _lastReportedTestSetTrip)
             return;
 
         _lastReportedTestSetTrip = trip;
-        var pickupMs = testSet.PickupTime?.TotalMilliseconds;
-        var tripMs = testSet.TripTime?.TotalMilliseconds;
-        var relayOperateMs = protection.LatchedOperation is { } operation
-            ? (operation.TripTimestamp - operation.PickupTimestamp).TotalMilliseconds
-            : (double?)null;
+        var pickupText = testSet.PickupTime is { } pickupTime
+            ? $"BI2 {pickupTime.TotalMilliseconds:0.000} ms"
+            : "BI2 —";
+        var tripText = testSet.TripTime is { } tripTime
+            ? $"BI1 {tripTime.TotalMilliseconds:0.000} ms"
+            : "BI1 —";
+        var relayText = testSet.RelayTripTime is { } relayTrip
+            ? testSet.RelayPickupToTrip is { } relayOperate
+                ? $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms · P→T {relayOperate.TotalMilliseconds:0.000} ms"
+                : $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms"
+            : "relay timing not correlated to this test run";
 
-        AddEvent("TEST TRIP", $"BI1 · {tripMs:0.000} ms · output stopped");
+        AddEvent(
+            "TEST TRIP",
+            $"BI1 ↑ · START→BI1 {testSet.TripTime?.TotalMilliseconds:0.000} ms · output stopped");
         StatusText.Text =
-            $"Closed-loop trip measured at TESTSET.BI1 · PICKUP {pickupMs:0.000} ms · " +
-            $"TRIP {tripMs:0.000} ms · relay P→T {relayOperateMs:0.000} ms · output stopped.";
+            $"TESTSET measured trip · {tripText} · {pickupText} · {relayText} · output stopped · capture frozen at BI1 edge.";
     }
 
     private void InstallClosedLoopEvidenceOverride()
@@ -172,7 +167,7 @@ public partial class MainWindow
         var algorithmRuntime = AlgorithmRuntimeRegistry.Snapshot();
         var evidence = new
         {
-            schemaVersion = 6,
+            schemaVersion = 7,
             exportedAt = DateTimeOffset.Now,
             application = "ARVREL",
             operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
@@ -205,6 +200,7 @@ public partial class MainWindow
             relayFrontEnd = _closedLoopBench.FrontEndSnapshot,
             relayContactProfile = _closedLoopBench.ContactProfile,
             testSet = _closedLoopBench.TestSetSnapshot,
+            tripCapture = _closedLoopBench.TripCapture,
             relayMeasurement = current.RelayMeasurement,
             protection = _snapshot,
             protectionSettings = _settings,
