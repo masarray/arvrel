@@ -58,6 +58,11 @@ public partial class AvrWorkspaceControl
 
         InstallP05ButtonHoverVisuals();
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshP04ModeVisuals));
+
+        // P0 installs the fixed faceplate at Loaded priority and P03 applies geometry at
+        // ContextIdle. Apply the final material at ApplicationIdle so it is never replaced
+        // by the older warm/banded surface during startup.
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(ApplyP06MetalSurface));
     }
 
     private void P04ModeVisuals_Unloaded(object sender, RoutedEventArgs e)
