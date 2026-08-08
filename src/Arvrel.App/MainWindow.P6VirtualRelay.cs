@@ -9,15 +9,13 @@ public partial class MainWindow
 {
     private bool _p6VirtualRelayInstalled;
     private bool _p6VirtualRelayLoadHooked;
+    private FrameworkElement? _p6VirtualRelay;
 
     internal void InitializeP6VirtualRelay()
     {
         if (_p6VirtualRelayInstalled)
             return;
 
-        // StartupUri may activate the application before the MainWindow visual
-        // tree is fully loaded. Use the window's own lifecycle as the fallback,
-        // not a module initializer or class-handler side channel.
         if (!IsLoaded)
         {
             if (!_p6VirtualRelayLoadHooked)
@@ -55,8 +53,9 @@ public partial class MainWindow
 
         var relay = new VirtualRelayControl();
         relay.ResetRequested += P6Relay_ResetRequested;
+        relay.HardwareKeyPressed += P6Relay_HardwareKeyPressed;
+        _p6VirtualRelay = relay;
 
-        // Replace only the complete relay card in the right workspace column.
         relayHost.Child = relay;
         relayHost.Padding = new Thickness(0);
         relayHost.Background = Brushes.Transparent;
@@ -65,13 +64,8 @@ public partial class MainWindow
         relayHost.ClipToBounds = false;
         relayHost.Effect = null;
 
-        // P6 already owns enclosure depth and shadow. Remove exactly one host
-        // card around it so the relay reads as a calm hardware object rather
-        // than a panel nested inside another bright enterprise card.
         CalmP6WorkspaceChrome(relayHost);
 
-        // Redirect the existing protection and process-bus presentation logic to
-        // P6 binding anchors. No protection-domain state is copied or recreated.
         LcdHeaderText = relay.LcdHeaderText;
         LcdIaText = relay.LcdIaText;
         LcdIbText = relay.LcdIbText;
@@ -100,6 +94,8 @@ public partial class MainWindow
 
         _p6VirtualRelayInstalled = true;
         RebindRelayStatePresentersToP6();
+        InitializeRelayOperatorExperience(relay);
+        InitializeRelayProtectionEvidence();
 
         if (!EngineModeText.Text.Contains("P6", StringComparison.Ordinal))
             EngineModeText.Text = $"{EngineModeText.Text} · P6";
@@ -148,7 +144,24 @@ public partial class MainWindow
     }
 
     private void P6Relay_ResetRequested(object sender, RoutedEventArgs e)
-        => Reset_Click(sender, e);
+    {
+        Reset_Click(sender, e);
+        NotifyRelayOperatorReset();
+        NotifyRelayEvidenceReset();
+    }
+
+    private void P6Relay_HardwareKeyPressed(object? sender, VirtualRelayHardwareKeyEventArgs e)
+    {
+        if (HandleRelayEvidenceHardwareKey(e.Key))
+            return;
+
+        if (HandleRelayOperatorHardwareKey(e.Key))
+            return;
+
+        HandleRelayHardwareKey(e.Key);
+        RouteRelayEvidenceHostPage();
+        RouteRelayOperatorHostPage();
+    }
 
     private static Border? ResolveP6RelayWorkspaceCard(DependencyObject child)
         => P6VisualAncestors<Border>(child)
