@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Arvrel.App.Controls.Transformer;
+using Arvrel.App.Controls.VirtualRelay;
 using Arvrel.Application.Ied;
 using Arvrel.ProcessBus;
 using Arvrel.Protection;
@@ -14,7 +15,8 @@ public partial class MainWindow
     private bool _unifiedIedSelectorInstalled;
     private bool _unifiedIedSelectorLoadHooked;
     private Border? _transformerLanding;
-    private TransformerVirtualRelayControl? _transformerFaceplate;
+    private VirtualRelayControl? _transformerFaceplate;
+    private TransformerVirtualRelayPresenter? _transformerFaceplatePresenter;
     private TransformerIedWindow? _transformerWorkspaceWindow;
     private TransformerProtectionRuntimeSnapshot? _transformerLastSnapshot;
     private DispatcherTimer? _transformerFaceplateTimer;
@@ -33,7 +35,6 @@ public partial class MainWindow
     {
         // WPF normally honors DisplayMemberPath, but SelectionBox rendering can fall
         // back to ToString when a control template is replaced by a platform/theme.
-        // Keep the public selector readable under both paths.
         public override string ToString() => DisplayName;
     }
 
@@ -53,11 +54,6 @@ public partial class MainWindow
             "87T · 87T-HS · REF HV/LV")
     ];
 
-    /// <summary>
-    /// P16 established the common OCR / AVR / Transformer selector. P17 keeps that
-    /// selector and replaces the transformer placeholder landing page with a real
-    /// operator-facing virtual relay front panel.
-    /// </summary>
     public void InitializeTransformerIedEntryPoint()
     {
         if (_unifiedIedSelectorInstalled)
@@ -154,9 +150,8 @@ public partial class MainWindow
             return;
         }
 
-        // P17 intentionally does not pop the engineering window automatically.
-        // The front panel is now the first-class operator view; F4 / ENGINEERING
-        // opens the practitioner workspace only when the operator asks for it.
+        // Transformer now uses the exact same P6/OCR VirtualRelayControl hardware.
+        // Only its presentation text, lamp mapping and authoritative data source differ.
         ShowTransformerLanding();
     }
 
@@ -165,35 +160,32 @@ public partial class MainWindow
         if (_transformerLanding is not null || Content is not Grid root)
             return;
 
-        _transformerFaceplate = new TransformerVirtualRelayControl
+        _transformerFaceplate = new VirtualRelayControl
         {
-            Margin = new Thickness(12, 14, 14, 14),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(18, 12, 18, 12),
+            HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        _transformerFaceplate.OpenPractitionerRequested += TransformerFaceplate_OpenPractitionerRequested;
-        _transformerFaceplate.RunSelfTestRequested += TransformerFaceplate_RunSelfTestRequested;
-        _transformerFaceplate.ResetRequested += TransformerFaceplate_ResetRequested;
 
-        var shell = new Grid();
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(292) });
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _transformerFaceplatePresenter = new TransformerVirtualRelayPresenter(
+            _transformerFaceplate,
+            LedOffBrush,
+            HealthyBrush,
+            WarningBrush,
+            TripBrush,
+            OpenTransformerIedWorkspace,
+            RunTransformerFaceplateSelfTest,
+            ResetTransformerFaceplateRuntime);
 
-        var operatorRail = BuildTransformerOperatorRail();
-        Grid.SetColumn(operatorRail, 0);
-        shell.Children.Add(operatorRail);
-        Grid.SetColumn(_transformerFaceplate, 1);
-        shell.Children.Add(_transformerFaceplate);
-
+        // No Transformer-specific shell, card, operator rail, button geometry or LED
+        // geometry is created here. The shared OCR P6 hardware is the visual surface.
         _transformerLanding = new Border
         {
-            Background = BrushFrom("#F3F6F8"),
-            BorderBrush = BrushFrom("#CBD4DA"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Margin = new Thickness(11),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Margin = new Thickness(8),
             Visibility = Visibility.Collapsed,
-            Child = shell
+            Child = _transformerFaceplate
         };
 
         Grid.SetRow(_transformerLanding, 2);
@@ -205,129 +197,6 @@ public partial class MainWindow
         };
         _transformerFaceplateTimer.Tick += TransformerFaceplateTimer_Tick;
         RefreshTransformerFaceplateEnvironment();
-    }
-
-    private FrameworkElement BuildTransformerOperatorRail()
-    {
-        var border = new Border
-        {
-            Background = BrushFrom("#F8FAFB"),
-            BorderBrush = BrushFrom("#D6DEE3"),
-            BorderThickness = new Thickness(0, 0, 1, 0),
-            Padding = new Thickness(18, 18, 16, 16)
-        };
-
-        var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = "TRANSFORMER DIFFERENTIAL IED",
-            FontSize = 9.8,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = BrushFrom("#667985")
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = "87T · 87T-HS\nREF HV / LV",
-            FontSize = 21,
-            LineHeight = 26,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = BrushFrom("#17232D"),
-            Margin = new Thickness(0, 6, 0, 0)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = "Operator front panel",
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = BrushFrom("#3B6F91"),
-            Margin = new Thickness(0, 12, 0, 0)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = "Use the relay LCD, navigation keys and F1–F5 exactly as the primary operator surface. Protection decisions shown here come from the existing transformer runtime; the panel contains no second 87T algorithm.",
-            FontSize = 10.5,
-            Foreground = BrushFrom("#526572"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 5, 0, 0)
-        });
-
-        stack.Children.Add(TransformerRailBoundary(
-            "VIRTUAL OUTPUT ONLY",
-            "No physical trip · no GOOSE · no breaker output"));
-        stack.Children.Add(TransformerRailBoundary(
-            "PAIRED SV RUNTIME",
-            "Live / Replay protection requires two distinct HV/LV Sampled Values streams."));
-        stack.Children.Add(TransformerRailBoundary(
-            "PUBLIC SELF-TEST",
-            "10 deterministic core scenarios can run from F3 → ENTER with no SV required."));
-
-        var engineeringButton = new Button
-        {
-            Content = "Open engineering workspace",
-            MinHeight = 32,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 15, 0, 0),
-            Padding = new Thickness(9, 5, 9, 5)
-        };
-        if (TryFindResource("PrimaryButton") is Style primaryButton)
-            engineeringButton.Style = primaryButton;
-        engineeringButton.Click += TransformerLanding_Open_Click;
-        stack.Children.Add(engineeringButton);
-
-        var testButton = new Button
-        {
-            Content = "Run 10-scenario self-test",
-            MinHeight = 30,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 7, 0, 0),
-            Padding = new Thickness(9, 5, 9, 5)
-        };
-        if (TryFindResource("CompactButton") is Style compactButton)
-            testButton.Style = compactButton;
-        testButton.Click += (_, _) => RunTransformerFaceplateSelfTest();
-        stack.Children.Add(testButton);
-
-        stack.Children.Add(new TextBlock
-        {
-            Text = "Shortcuts\nF1 Measurements · F2 Events · F3 Records/Self-test · F4 Engineering · F5 Reset",
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            FontSize = 9.2,
-            Foreground = BrushFrom("#667985"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 15, 0, 0)
-        });
-
-        border.Child = stack;
-        return border;
-    }
-
-    private static Border TransformerRailBoundary(string heading, string detail)
-    {
-        var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = heading,
-            FontSize = 9.1,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = BrushFrom("#526572")
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = detail,
-            FontSize = 9.7,
-            Foreground = BrushFrom("#667985"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 3, 0, 0)
-        });
-        return new Border
-        {
-            BorderBrush = BrushFrom("#D7E0E5"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(9, 7, 9, 7),
-            Margin = new Thickness(0, 11, 0, 0),
-            Child = stack
-        };
     }
 
     private void ShowTransformerLanding()
@@ -352,14 +221,14 @@ public partial class MainWindow
         _transformerFaceplateTimer?.Start();
         RefreshTransformerFaceplateEnvironment();
         if (_transformerLastSnapshot is not null)
-            _transformerFaceplate?.UpdateSnapshot(_transformerLastSnapshot);
+            _transformerFaceplatePresenter?.UpdateSnapshot(_transformerLastSnapshot);
 
         Title = "ARVREL — Transformer Differential IED Lab";
         if (_labSubtitleText is not null)
             _labSubtitleText.Text = "Transformer differential virtual relay · paired Sampled Values laboratory";
         EngineModeText.Text = "IED · TR-87T";
-        StatusText.Text = "Transformer Differential selected. Virtual relay front panel is active; F4 opens paired-SV engineering and evidence.";
-        AddEvent("IED", "Transformer Differential · TR-87T virtual relay selected");
+        StatusText.Text = "Transformer Differential selected. Exact OCR relay hardware is reused; F4 opens paired-SV engineering and evidence.";
+        AddEvent("IED", "Transformer Differential · shared P6/OCR relay hardware selected");
     }
 
     private void HideTransformerLanding()
@@ -368,8 +237,6 @@ public partial class MainWindow
         if (_transformerLanding is not null)
             _transformerLanding.Visibility = Visibility.Collapsed;
 
-        // A practitioner window belongs to the transformer IED session. Closing it on
-        // IED change prevents a hidden transformer runtime from surviving under OCR/AVR.
         if (_transformerWorkspaceWindow is { IsVisible: true })
             _transformerWorkspaceWindow.Close();
     }
@@ -379,7 +246,7 @@ public partial class MainWindow
 
     private void RefreshTransformerFaceplateEnvironment()
     {
-        if (_transformerFaceplate is null)
+        if (_transformerFaceplatePresenter is null)
             return;
 
         var mode = _processBus.IsReplayMode
@@ -388,23 +255,14 @@ public partial class MainWindow
                 ? ProcessBusSourceMode.LiveCapture
                 : ProcessBusSourceMode.InternalDemo;
         var streamCount = _processBus.GetStreams().Count;
-        var practitionerOpen = _transformerWorkspaceWindow is { IsVisible: true };
-        _transformerFaceplate.UpdateEnvironment(mode, streamCount, practitionerOpen);
+        var engineeringOpen = _transformerWorkspaceWindow is { IsVisible: true };
+        _transformerFaceplatePresenter.UpdateEnvironment(mode, streamCount, engineeringOpen);
     }
-
-    private void TransformerLanding_Open_Click(object sender, RoutedEventArgs e)
-        => OpenTransformerIedWorkspace();
-
-    private void TransformerFaceplate_OpenPractitionerRequested(object? sender, EventArgs e)
-        => OpenTransformerIedWorkspace();
-
-    private void TransformerFaceplate_RunSelfTestRequested(object? sender, EventArgs e)
-        => RunTransformerFaceplateSelfTest();
 
     private void RunTransformerFaceplateSelfTest()
     {
         var report = TransformerPublicSelfTest.RunAll();
-        _transformerFaceplate?.UpdateSelfTest(report);
+        _transformerFaceplatePresenter?.UpdateSelfTest(report);
         StatusText.Text = report.AllPassed
             ? $"Transformer deterministic self-test PASS · {report.PassedCount}/{report.Cases.Count}."
             : $"Transformer deterministic self-test FAIL · {report.PassedCount}/{report.Cases.Count}; open engineering workspace for full evidence.";
@@ -412,7 +270,7 @@ public partial class MainWindow
             $"{report.PassedCount}/{report.Cases.Count} · {report.SuiteId}");
     }
 
-    private void TransformerFaceplate_ResetRequested(object? sender, EventArgs e)
+    private void ResetTransformerFaceplateRuntime()
     {
         if (_transformerWorkspaceWindow is not null &&
             _transformerWorkspaceWindow.TryResetRuntimeFromFaceplate(out var message))
@@ -427,10 +285,9 @@ public partial class MainWindow
 
     private void OpenTransformerIedWorkspace()
     {
-        // P15 deliberately allows the practitioner window to open with Internal Demo
-        // or with no discovered SV streams. That path is used for deterministic packaged-
-        // core self-test. Applying the live/replay runtime still requires two distinct
-        // HV/LV streams and remains guarded by TransformerIedWindow.BuildConfiguration.
+        // P15 deliberately allows this window to open with no discovered SV streams
+        // for deterministic packaged-core self-test. Applying the live/replay runtime
+        // still requires two distinct HV/LV streams inside TransformerIedWindow.
         if (_transformerWorkspaceWindow is { IsVisible: true } existing)
         {
             if (existing.WindowState == WindowState.Minimized)
@@ -443,13 +300,14 @@ public partial class MainWindow
         var window = new TransformerIedWindow(_processBus) { Owner = this };
         window.InitializeP14PractitionerUi();
         window.InitializeP15PublicTestUi();
+        window.InitializeP17FaceplateBridge();
         window.FaceplateSnapshotChanged += TransformerWorkspace_FaceplateSnapshotChanged;
         window.Closed += TransformerWorkspace_Closed;
         _transformerWorkspaceWindow = window;
         RefreshTransformerFaceplateEnvironment();
 
-        // P17 uses a non-modal engineering window so the physical-style front panel
-        // stays visible and operable while detailed paired-SV engineering is open.
+        // Non-modal by design: the shared physical relay remains visible while
+        // paired-SV settings and engineering evidence are inspected.
         window.Show();
         window.Activate();
     }
@@ -459,7 +317,7 @@ public partial class MainWindow
         TransformerProtectionRuntimeSnapshotChangedEventArgs e)
     {
         _transformerLastSnapshot = e.Snapshot;
-        _transformerFaceplate?.UpdateSnapshot(e.Snapshot);
+        _transformerFaceplatePresenter?.UpdateSnapshot(e.Snapshot);
     }
 
     private void TransformerWorkspace_Closed(object? sender, EventArgs e)
@@ -471,7 +329,7 @@ public partial class MainWindow
         }
 
         _transformerWorkspaceWindow = null;
-        _transformerFaceplate?.NoteRuntimeClosed();
+        _transformerFaceplatePresenter?.NoteRuntimeClosed();
         RefreshTransformerFaceplateEnvironment();
     }
 }
