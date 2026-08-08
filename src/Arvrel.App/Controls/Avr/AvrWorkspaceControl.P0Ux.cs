@@ -30,6 +30,7 @@ public partial class AvrWorkspaceControl
     {
         ApplyTransformerOperatingDefaults();
         base.OnInitialized(e);
+        InstallP04ModeVisuals();
         Loaded += P0NativeHmi_Loaded;
         Unloaded += P0NativeHmi_Unloaded;
         AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(P0FrontPanelPreviewMouseDown), handledEventsToo: true);
@@ -48,7 +49,9 @@ public partial class AvrWorkspaceControl
         };
 
         _engine.ApplySettings(_settings, keepTapPosition: false);
-        _snapshot = AvrSnapshot.Ready(_settings, _settings.NeutralTap);
+        _engine.SetMode(AvrOperatingMode.Automatic);
+        _engine.SetAuthority(AvrControlAuthority.Remote);
+        _snapshot = _engine.Advance(TimeSpan.Zero, 0, 0, 0, sourceEnergized: false);
         _lastTapPosition = _settings.NeutralTap;
         _lastPendingTapPosition = null;
         _lastState = AvrControlState.SourceOff;
@@ -111,7 +114,8 @@ public partial class AvrWorkspaceControl
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(StyleCompactFrontPanelKeys));
 
         RefreshP0NativeHmi();
-        AddEvent("HMI", $"Operational AVR HMI ready · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} · simulated transformer");
+        RefreshP04ModeVisuals();
+        AddEvent("HMI", $"Operational AVR HMI ready · REMOTE · AUTO · tap {_settings.NeutralTap:00}/{_settings.MaximumTap:00} · simulated transformer");
     }
 
     private void InstallUniformFitFaceplate(Border displayBorder)
@@ -285,7 +289,8 @@ public partial class AvrWorkspaceControl
             ApplyTransformerOperatingDefaults();
             PopulateSettingsUi();
             RenderCurrent();
-            AddEvent("DEFAULT", "Transformer defaults restored · tap 09/17 · simulated plant");
+            RefreshP04ModeVisuals();
+            AddEvent("DEFAULT", "Transformer defaults restored · REMOTE · AUTO · tap 09/17 · simulated plant");
             return;
         }
 
@@ -362,6 +367,7 @@ public partial class AvrWorkspaceControl
             _iec61850Server.GetStatus());
         _p0Hmi.ApplyTransformerConvention(_snapshot, _settings);
         _p0Hmi.ApplyLowFpsTrendSmoothing(_snapshot);
+        _p0Hmi.ApplyP04ModeBadges(_snapshot);
     }
 
     private void P0StartServerRequested(string host, int port)
