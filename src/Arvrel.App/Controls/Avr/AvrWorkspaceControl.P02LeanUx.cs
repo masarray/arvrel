@@ -9,6 +9,8 @@ public partial class AvrWorkspaceControl
 {
     private Slider? _sourceCurrentSlider;
     private TextBlock? _currentTargetText;
+    private TextBlock? _currentNominalScaleText;
+    private TextBlock? _currentMaximumScaleText;
     private bool _leanInjectionInstalled;
     private bool _syncingCurrentSlider;
 
@@ -111,12 +113,12 @@ public partial class AvrWorkspaceControl
         scale.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         scale.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         scale.Children.Add(CurrentScaleText("0 A", HorizontalAlignment.Left));
-        var nominal = CurrentScaleText($"1.0 In · {_settings.NominalCurrentA:0.###} A", HorizontalAlignment.Center);
-        Grid.SetColumn(nominal, 1);
-        scale.Children.Add(nominal);
-        var max = CurrentScaleText($"2.0 In · {_sourceCurrentSlider.Maximum:0.###} A", HorizontalAlignment.Right);
-        Grid.SetColumn(max, 2);
-        scale.Children.Add(max);
+        _currentNominalScaleText = CurrentScaleText($"1.0 In · {_settings.NominalCurrentA:0.###} A", HorizontalAlignment.Center);
+        Grid.SetColumn(_currentNominalScaleText, 1);
+        scale.Children.Add(_currentNominalScaleText);
+        _currentMaximumScaleText = CurrentScaleText($"2.0 In · {_sourceCurrentSlider.Maximum:0.###} A", HorizontalAlignment.Right);
+        Grid.SetColumn(_currentMaximumScaleText, 2);
+        scale.Children.Add(_currentMaximumScaleText);
 
         stack.Children.Insert(insertAt, header);
         stack.Children.Insert(insertAt + 1, _sourceCurrentSlider);
@@ -208,9 +210,18 @@ public partial class AvrWorkspaceControl
                 _sourceCurrentSlider.TickFrequency = tick;
             if (Math.Abs(_sourceCurrentSlider.Value - target) > 1e-6)
                 _sourceCurrentSlider.Value = target;
-            var text = $"{_injectionTargetCurrentA:0.000} A";
-            if (_currentTargetText is not null && !string.Equals(_currentTargetText.Text, text, StringComparison.Ordinal))
-                _currentTargetText.Text = text;
+
+            var targetText = $"{_injectionTargetCurrentA:0.000} A";
+            if (_currentTargetText is not null && !string.Equals(_currentTargetText.Text, targetText, StringComparison.Ordinal))
+                _currentTargetText.Text = targetText;
+
+            var nominalText = $"1.0 In · {_settings.NominalCurrentA:0.###} A";
+            if (_currentNominalScaleText is not null && !string.Equals(_currentNominalScaleText.Text, nominalText, StringComparison.Ordinal))
+                _currentNominalScaleText.Text = nominalText;
+
+            var maximumText = $"2.0 In · {max:0.###} A";
+            if (_currentMaximumScaleText is not null && !string.Equals(_currentMaximumScaleText.Text, maximumText, StringComparison.Ordinal))
+                _currentMaximumScaleText.Text = maximumText;
         }
         finally
         {
