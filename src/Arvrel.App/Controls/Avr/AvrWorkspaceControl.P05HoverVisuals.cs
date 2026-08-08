@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -16,7 +17,6 @@ public partial class AvrWorkspaceControl
     private static readonly Brush P05FlashSurfaceBrush = P05Freeze(Color.FromRgb(239, 245, 247));
     private static readonly Brush P05FlashBorderBrush = P05Freeze(Color.FromRgb(255, 255, 255));
     private static readonly Brush P05FlashTextBrush = P05Freeze(Color.FromRgb(28, 48, 57));
-    private static readonly Brush P05NormalIconBrush = P05Freeze(Color.FromRgb(242, 248, 250));
 
     private void InstallP05ButtonHoverVisuals()
     {
@@ -33,7 +33,29 @@ public partial class AvrWorkspaceControl
             button.MouseLeave -= P05Button_MouseLeave;
             button.MouseEnter += P05Button_MouseEnter;
             button.MouseLeave += P05Button_MouseLeave;
+
+            BindP05LucideForeground(button);
         }
+    }
+
+    private static void BindP05LucideForeground(Button button)
+    {
+        // CreateNativeLucideIcon historically assigns Foreground=White as a local value.
+        // Replace that local value with a one-way binding to the containing button. The
+        // button's Foreground is therefore the single source of truth for normal, active,
+        // disabled and bright-hover states; no event-order race can leave a white glyph
+        // on the near-white hover face.
+        if (button.Content is not LucideIcon icon)
+            return;
+
+        BindingOperations.SetBinding(
+            icon,
+            LucideIcon.ForegroundProperty,
+            new Binding(nameof(Control.Foreground))
+            {
+                Source = button,
+                Mode = BindingMode.OneWay
+            });
     }
 
     private void P05Button_MouseEnter(object sender, MouseEventArgs e)
@@ -43,9 +65,9 @@ public partial class AvrWorkspaceControl
 
         ApplyP05BrightHover(button);
 
-        // The right bezel keys are rendered through ContentPresenter. Re-apply once at
-        // Render priority so a presenter/template refresh cannot restore the old local
-        // white Lucide foreground after MouseEnter.
+        // Re-assert the button state once at Render priority in case the legacy template
+        // re-evaluates IsMouseOver after MouseEnter. Lucide glyphs follow automatically
+        // through the binding above.
         Dispatcher.BeginInvoke(
             DispatcherPriority.Render,
             new Action(() =>
@@ -55,7 +77,7 @@ public partial class AvrWorkspaceControl
             }));
     }
 
-    private void ApplyP05BrightHover(Button button)
+    private static void ApplyP05BrightHover(Button button)
     {
         button.ApplyTemplate();
         if (button.Template.FindName("Chrome", button) is Border chrome)
@@ -65,7 +87,6 @@ public partial class AvrWorkspaceControl
         }
 
         button.Foreground = P05FlashTextBrush;
-        SetP05LucideForeground(button, P05FlashTextBrush);
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
@@ -82,22 +103,11 @@ public partial class AvrWorkspaceControl
             chrome.ClearValue(Border.BorderBrushProperty);
         }
 
-        // Remove only the temporary dark legend. Text buttons fall back to DeviceButton
-        // styling; LOCAL/REMOTE/AUTO/MANUAL are immediately repainted by P04 below.
+        // Text buttons fall back to DeviceButton styling; LOCAL/REMOTE/AUTO/MANUAL are
+        // immediately repainted by P04 below. Bezel Lucide icons require no separate
+        // restore because their foreground is bound directly to this button property.
         button.ClearValue(Control.ForegroundProperty);
-        SetP05LucideForeground(button, P05NormalIconBrush);
-
         RefreshP04ModeVisuals();
-    }
-
-    private static void SetP05LucideForeground(DependencyObject root, Brush foreground)
-    {
-        if (root is LucideIcon icon)
-            icon.Foreground = foreground;
-
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < childCount; i++)
-            SetP05LucideForeground(VisualTreeHelper.GetChild(root, i), foreground);
     }
 
     private static bool IsP05HardwareButton(Button? button)
