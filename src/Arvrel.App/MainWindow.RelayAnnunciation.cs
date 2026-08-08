@@ -101,10 +101,11 @@ public partial class MainWindow
         SetAnnunciationState(
             TripLed,
             indication.TripLatched ? P6AnnunciationLampState.Red : P6AnnunciationLampState.Off);
-        SetAnnunciationState(PhaseALed, ResolveAnnunciationState(indication.PhaseA));
-        SetAnnunciationState(PhaseBLed, ResolveAnnunciationState(indication.PhaseB));
-        SetAnnunciationState(PhaseCLed, ResolveAnnunciationState(indication.PhaseC));
-        SetAnnunciationState(EarthLed, ResolveAnnunciationState(indication.Earth));
+
+        // The four historical phase/earth positions are now programmable label-strip
+        // LEDs. Their default mapping remains PHASE A/B/C/EARTH, so legacy behavior
+        // is unchanged until an Engineer deliberately reassigns a slot in P1.2.
+        RefreshRelayProgrammableAnnunciation(indication, snapshot);
     }
 
     private void ClearRelayAnnunciation()
@@ -123,6 +124,7 @@ public partial class MainWindow
     {
         var brush = state switch
         {
+            P6AnnunciationLampState.Green => HealthyBrush,
             P6AnnunciationLampState.Amber => WarningBrush,
             P6AnnunciationLampState.Red => TripBrush,
             _ => LedOffBrush
@@ -143,6 +145,7 @@ public partial class MainWindow
     private enum P6AnnunciationLampState
     {
         Off,
+        Green,
         Amber,
         Red
     }
