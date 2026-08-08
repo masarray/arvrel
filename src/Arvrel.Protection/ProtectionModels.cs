@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Arvrel.Protection.Algorithms;
 
 namespace Arvrel.Protection;
 
@@ -294,6 +295,8 @@ public sealed record ProtectionSnapshot(
 {
     public FeederProtectionSnapshot Feeder { get; init; } = FeederProtectionSnapshot.Ready(Timestamp);
     public ProtectionOperationEvidence? LatchedOperation { get; init; }
+    public IReadOnlyList<AlgorithmAbComparisonSnapshot> AlgorithmComparisons { get; init; } = Array.Empty<AlgorithmAbComparisonSnapshot>();
+    public AlgorithmRuntimeRegistrySnapshot AlgorithmRuntime { get; init; } = AlgorithmRuntimeRegistry.Snapshot();
 
     public static ProtectionSnapshot Ready(DateTimeOffset timestamp) => new(
         timestamp,
@@ -312,7 +315,8 @@ public sealed record ProtectionSnapshot(
         "Measurements stable · no pickup",
         SmvTrustState.Healthy)
     {
-        Feeder = FeederProtectionSnapshot.Ready(timestamp)
+        Feeder = FeederProtectionSnapshot.Ready(timestamp),
+        AlgorithmRuntime = AlgorithmRuntimeRegistry.Snapshot()
     };
 
     private static ElementSnapshot ReadyElement(ProtectionElementId element) => new(
