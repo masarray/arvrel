@@ -3,10 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
+using Arvrel.App.Controls;
 using Arvrel.Application.Ied;
-using ShapePath = System.Windows.Shapes.Path;
 
 namespace Arvrel.App.Controls.Avr;
 
@@ -22,6 +21,7 @@ public partial class AvrWorkspaceControl
     private bool _p0HmiInstalled;
     private bool _p0RefreshAttached;
     private bool _configurationOverlayPrepared;
+    private bool _frontPanelKeysStyled;
     private Viewbox? _faceplateFitHost;
     private string? _lastPointerHardwareKey;
     private long _lastPointerHardwareDispatchMs;
@@ -108,8 +108,6 @@ public partial class AvrWorkspaceControl
             _p0RefreshAttached = true;
         }
 
-        // The visual tree for the physical keypad can materialize after Loaded.
-        // Re-run once at ContextIdle so the icon-only controls are deterministic.
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(StyleCompactFrontPanelKeys));
 
         RefreshP0NativeHmi();
@@ -191,9 +189,6 @@ public partial class AvrWorkspaceControl
         ConfigurationColumn.Width = new GridLength(38);
         UpdateConfigurationOverlayWidth();
 
-        // SetConfigurationExpanded toggles this element after attempting to resize
-        // the legacy right column. The visibility change is therefore the stable
-        // point at which we restore a 38 px rail and make the panel an overlay.
         ConfigurationExpanded.IsVisibleChanged += (_, _) => UpdateConfigurationOverlayWidth();
     }
 
@@ -217,6 +212,7 @@ public partial class AvrWorkspaceControl
 
     private void StyleCompactFrontPanelKeys()
     {
+        var styledCount = 0;
         foreach (var button in FindVisualChildren<Button>(this))
         {
             var raw = button.Tag?.ToString()?.ToUpperInvariant();
@@ -239,35 +235,30 @@ public partial class AvrWorkspaceControl
                 _ => key
             };
 
-            if (button.Content is not Viewbox)
-                button.Content = CreateLucideStyleGlyph(key);
+            if (button.Content is not LucideIcon)
+                button.Content = CreateNativeLucideIcon(key);
+            styledCount++;
         }
+
+        _frontPanelKeysStyled = styledCount >= 5;
     }
 
-    private static Viewbox CreateLucideStyleGlyph(string key)
-    {
-        var geometry = key switch
+    private static LucideIcon CreateNativeLucideIcon(string key)
+        => new()
         {
-            "ENTER" => "M20,4 L20,9 C20,12 18,14 15,14 L5,14 M9,10 L5,14 9,18",
-            "LEFT" => "M15,18 L9,12 15,6",
-            "RIGHT" => "M9,18 L15,12 9,6",
-            "HOME" => "M3,10 L12,3 21,10 M5,9 L5,20 19,20 19,9 M9,20 L9,14 15,14 15,20",
-            "MENU" => "M4,7 L20,7 M4,12 L20,12 M4,17 L20,17",
-            _ => "M5,12 L19,12"
+            Kind = key switch
+            {
+                "ENTER" => LucideIconKind.CornerDownLeft,
+                "LEFT" => LucideIconKind.ChevronLeft,
+                "RIGHT" => LucideIconKind.ChevronRight,
+                "HOME" => LucideIconKind.House,
+                "MENU" => LucideIconKind.Menu,
+                _ => LucideIconKind.Activity
+            },
+            Width = 18,
+            Height = 18,
+            Foreground = Brushes.White
         };
-        var path = new ShapePath
-        {
-            Data = Geometry.Parse(geometry),
-            Stroke = Brushes.White,
-            StrokeThickness = 1.8,
-            StrokeStartLineCap = PenLineCap.Round,
-            StrokeEndLineCap = PenLineCap.Round,
-            StrokeLineJoin = PenLineJoin.Round,
-            Fill = Brushes.Transparent,
-            Stretch = Stretch.Uniform
-        };
-        return new Viewbox { Width = 18, Height = 18, Child = path };
-    }
 
     private void P0FrontPanelPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -351,7 +342,8 @@ public partial class AvrWorkspaceControl
 
     private void P0NativeHmi_Tick(object? sender, EventArgs e)
     {
-        StyleCompactFrontPanelKeys();
+        if (!_frontPanelKeysStyled)
+            StyleCompactFrontPanelKeys();
         RefreshLeanInjectionUx();
         RefreshP0NativeHmi();
         RefreshConfigurationNetworkStatus();
