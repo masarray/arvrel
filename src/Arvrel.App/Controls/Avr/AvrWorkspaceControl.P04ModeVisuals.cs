@@ -10,6 +10,7 @@ namespace Arvrel.App.Controls.Avr;
 public partial class AvrWorkspaceControl
 {
     private bool _p04ModeVisualsInstalled;
+    private bool _p04TickAttached;
 
     private static readonly Brush P04InactiveButtonBrush = P04Freeze(Color.FromRgb(53, 67, 74));
     private static readonly Brush P04InactiveBorderBrush = P04Freeze(Color.FromRgb(117, 133, 141));
@@ -37,9 +38,34 @@ public partial class AvrWorkspaceControl
             return;
 
         _p04ModeVisualsInstalled = true;
-        _timer.Tick += P04ModeVisualTick;
+
+        // OnInitialized can run while InitializeComponent() is still executing.
+        // AvrWorkspaceControl creates _timer immediately after InitializeComponent,
+        // so touching _timer here can cause a startup NullReferenceException.
+        // Defer timer subscription until Loaded, when construction is complete.
+        Loaded += P04ModeVisuals_Loaded;
+        Unloaded += P04ModeVisuals_Unloaded;
         AddHandler(Button.ClickEvent, new RoutedEventHandler(P04AnyButton_Click), handledEventsToo: true);
-        Loaded += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshP04ModeVisuals));
+    }
+
+    private void P04ModeVisuals_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (!_p04TickAttached)
+        {
+            _timer.Tick += P04ModeVisualTick;
+            _p04TickAttached = true;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshP04ModeVisuals));
+    }
+
+    private void P04ModeVisuals_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (!_p04TickAttached)
+            return;
+
+        _timer.Tick -= P04ModeVisualTick;
+        _p04TickAttached = false;
     }
 
     private void P04ModeVisualTick(object? sender, EventArgs e)
