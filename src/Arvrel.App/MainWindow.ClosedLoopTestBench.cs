@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Arvrel.Application.Laboratory;
+using Arvrel.ProcessBus;
 using Arvrel.Protection.Algorithms;
 using Microsoft.Win32;
 using ClosedLoopBench = Arvrel.Application.Laboratory.ClosedLoopVirtualTestBench;
