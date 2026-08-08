@@ -33,6 +33,18 @@ public partial class VirtualRelayControl : UserControl
 
     public event RoutedEventHandler? ResetRequested;
 
+    /// <summary>
+    /// Applies presentation-only text substitutions to the existing P6 hardware
+    /// tree. This intentionally does not change geometry, brushes, styles, lamp
+    /// optics, tactile behavior, or any protection/runtime state. Other virtual
+    /// IEDs can therefore reuse the exact OCR relay hardware without cloning it.
+    /// </summary>
+    public void ApplyTextOverrides(IReadOnlyDictionary<string, string> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(replacements);
+        ApplyTextOverrides(this, replacements);
+    }
+
     private void ResetButton_Click(object sender, RoutedEventArgs e)
         => ResetRequested?.Invoke(this, e);
 
@@ -87,6 +99,20 @@ public partial class VirtualRelayControl : UserControl
 
             if (child is DependencyObject dependencyObject)
                 MarkNativeHardwareButtons(dependencyObject);
+        }
+    }
+
+    private static void ApplyTextOverrides(
+        DependencyObject parent,
+        IReadOnlyDictionary<string, string> replacements)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is TextBlock textBlock && replacements.TryGetValue(textBlock.Text, out var replacement))
+                textBlock.Text = replacement;
+
+            if (child is DependencyObject dependencyObject)
+                ApplyTextOverrides(dependencyObject, replacements);
         }
     }
 }
