@@ -57,7 +57,9 @@ public sealed record TransformerHarmonicRatios(double PhaseA, double PhaseB, dou
 
     private static void ValidateRatio(double value, string name)
     {
-        if (!double.IsFinite(value) || value < 0 || value > 5)
+        // This is a measured quantity, not a setting. Very low fundamental current can
+        // legitimately produce ratios above 500%, so do not impose an arbitrary ceiling.
+        if (!double.IsFinite(value) || value < 0)
             throw new ArgumentOutOfRangeException(name);
     }
 }
