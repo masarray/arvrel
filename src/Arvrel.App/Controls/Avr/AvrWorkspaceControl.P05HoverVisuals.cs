@@ -34,17 +34,14 @@ public partial class AvrWorkspaceControl
             button.MouseEnter += P05Button_MouseEnter;
             button.MouseLeave += P05Button_MouseLeave;
 
+            // This catches any Lucide content that already exists. P0 can replace the
+            // bezel content later during Loaded, so MouseEnter repeats this binding lazily.
             BindP05LucideForeground(button);
         }
     }
 
     private static void BindP05LucideForeground(Button button)
     {
-        // CreateNativeLucideIcon historically assigns Foreground=White as a local value.
-        // Replace that local value with a one-way binding to the containing button. The
-        // button's Foreground is therefore the single source of truth for normal, active,
-        // disabled and bright-hover states; no event-order race can leave a white glyph
-        // on the near-white hover face.
         if (button.Content is not LucideIcon icon)
             return;
 
@@ -63,17 +60,24 @@ public partial class AvrWorkspaceControl
         if (sender is not Button button)
             return;
 
+        // P0 replaces the original bezel content with LucideIcon after P05 can already
+        // have been installed. Bind at the actual interaction point, when the final icon
+        // is guaranteed to exist, then change the button foreground to the dark legend.
+        BindP05LucideForeground(button);
         ApplyP05BrightHover(button);
 
-        // Re-assert the button state once at Render priority in case the legacy template
-        // re-evaluates IsMouseOver after MouseEnter. Lucide glyphs follow automatically
-        // through the binding above.
+        // Re-check once at Render priority as well. This handles any late ContentPresenter
+        // refresh without racing the white-hover frame: the final Lucide instance is bound
+        // directly to Button.Foreground before the frame is presented.
         Dispatcher.BeginInvoke(
             DispatcherPriority.Render,
             new Action(() =>
             {
-                if (button.IsMouseOver)
-                    ApplyP05BrightHover(button);
+                if (!button.IsMouseOver)
+                    return;
+
+                BindP05LucideForeground(button);
+                ApplyP05BrightHover(button);
             }));
     }
 
@@ -87,6 +91,12 @@ public partial class AvrWorkspaceControl
         }
 
         button.Foreground = P05FlashTextBrush;
+
+        // Force an immediate binding target refresh for the final bezel icon. Normally
+        // the dependency-property notification is synchronous, but this makes the intent
+        // deterministic across ContentPresenter/template rebuilds.
+        if (button.Content is LucideIcon icon)
+            BindingOperations.GetBindingExpression(icon, LucideIcon.ForegroundProperty)?.UpdateTarget();
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
@@ -104,8 +114,8 @@ public partial class AvrWorkspaceControl
         }
 
         // Text buttons fall back to DeviceButton styling; LOCAL/REMOTE/AUTO/MANUAL are
-        // immediately repainted by P04 below. Bezel Lucide icons require no separate
-        // restore because their foreground is bound directly to this button property.
+        // immediately repainted by P04 below. Bezel Lucide icons remain bound directly
+        // to the Button.Foreground and therefore return to the light normal foreground.
         button.ClearValue(Control.ForegroundProperty);
         RefreshP04ModeVisuals();
     }
