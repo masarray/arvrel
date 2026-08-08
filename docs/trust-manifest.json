@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "product": "ARVREL",
   "displayName": "ARVREL Virtual Protection Relay Laboratory",
-  "version": "0.1.0-beta.1",
-  "releaseTag": "v0.1.0-beta.1",
+  "version": "0.1.0-beta.3",
+  "releaseTag": "v0.1.0-beta.3",
   "maturity": "public engineering beta",
   "platforms": [
     "Windows 10 x64",
     "Windows 11 x64"
   ],
   "outputAuthority": "virtual-only",
-  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.1",
+  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.3",
   "requiredReleaseAssets": [
-    "ARVREL-Setup-v0.1.0-beta.1-win-x64.exe",
-    "ARVREL-v0.1.0-beta.1-win-x64-portable.zip",
+    "ARVREL-Setup-v0.1.0-beta.3-win-x64.exe",
+    "ARVREL-v0.1.0-beta.3-win-x64-portable.zip",
     "SHA256SUMS.txt"
   ],
   "integrity": {

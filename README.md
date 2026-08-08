@@ -16,6 +16,7 @@
 
 [Product site](https://masarray.github.io/arvrel/) ·
 [Documentation](https://masarray.github.io/arvrel/documentation.html) ·
+[Engineering FAQ](https://masarray.github.io/arvrel/faq.html) ·
 [Quick start](https://masarray.github.io/arvrel/quick-start.html) ·
 [Download](https://github.com/masarray/arvrel/releases)
 
@@ -25,7 +26,7 @@
 
 ## Repository scope
 
-This repository is the **stable Windows WPF edition** of ARVREL. Its public desktop product is the P6 real-device virtual-relay interface, packaged for Windows 10/11 x64.
+This repository is the **stable Windows WPF edition** of ARVREL. Its public desktop product combines the P6 feeder virtual-relay interface with a dedicated two-winding Transformer Differential IED practitioner workspace, packaged for Windows 10/11 x64.
 
 Cross-platform development is intentionally isolated in **[masarray/arvrel-avalonia](https://github.com/masarray/arvrel-avalonia)**. That repository is an engineering preview and has its own source tree, CI, migration status, and release decisions. Avalonia application source, tests, packaging, and migration workflows do not live in this repository.
 
@@ -39,16 +40,17 @@ ARVREL brings that cause-and-effect chain into one vendor-neutral Windows worksp
 
 | Observe | Evaluate | Prove |
 |---|---|---|
-| Inspect live, replayed, or internally generated signals; stream identity; continuity; quality; mapping; scaling; waveform; phasors; and sequence quantities. | Apply native settings and review pickup, timers, directional decisions, blocking, operation, and the virtual trip latch. | Preserve settings identity, trust state, timestamps, operating quantity, trip cause, event trace, fingerprints, and exportable evidence. |
+| Inspect live, replayed, or internally generated signals; stream identity; continuity; quality; mapping; scaling; waveform; phasors; and sequence quantities. | Apply native settings and review pickup, timers, directional decisions, transformer differential restraint, harmonic/CT security, blocking, operation, and the virtual trip latch. | Preserve settings identity, trust state, timestamps, operating quantity, trip cause, event trace, fingerprints, and exportable evidence. |
 
 ## Public-beta status
 
 | Item | Current position |
 |---|---|
-| Public release | `v0.1.0-beta.2` |
-| Desktop product | Windows WPF P6 real-device UX |
+| Public release line | `v0.1.0-beta.3` |
+| Desktop product | Windows WPF P6 feeder UX + two-winding Transformer Differential IED |
 | Supported platform | Windows 10/11 x64 |
 | Official packages | Per-user installer, portable EXE, and portable ZIP |
+| Transformer first test | Built-in deterministic 10-scenario self-test; no SV/Npcap/PCAP required |
 | Live capture | Npcap required separately |
 | Output authority | Virtual output only |
 | Intended use | Education, source review, controlled laboratory evaluation, FAT/SAT preparation, and research |
@@ -64,23 +66,46 @@ The release page is the package source of truth. Features on `main` become publi
 - live IEC 61850 Sampled Values capture through Npcap;
 - PCAP and PCAPNG replay;
 - SCL-assisted identity, dataset, mapping, scaling, and `confRev` review;
-- APPID, destination MAC, VLAN, `svID`, continuity, freshness, and quality evidence.
+- APPID, destination MAC, VLAN, `svID`, continuity, freshness, and quality evidence;
+- paired HV/LV SV selection for transformer protection with synchronization, `smpCnt`, `smpSynch`, frequency and trust checks.
 
 ### Measurement and visualization
 
 - complete one-cycle fundamental phasor estimation;
 - 4I+4V RMS phasors and positive-, negative-, and zero-sequence quantities;
-- explicit residual channels with calculated phase-sum fallback;
+- explicit residual channels with calculated phase-sum fallback for feeder measurement;
 - coherent waveform evidence and phasor view;
-- P6 native WPF relay faceplate with common physical lamp geometry, recessed LCD, hardware navigation, event pages, and operation records.
+- P6 native WPF relay faceplate with common physical lamp geometry, recessed LCD, hardware navigation, event pages, and operation records;
+- transformer Idiff/Ibias characteristic display and authoritative per-phase runtime evidence.
 
 ### Protection and evidence
 
 - setting groups, revisions, presets, and SHA-256 fingerprints;
-- virtual 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N elements;
+- feeder 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N elements;
+- two-winding transformer 87T, 87T-HS, 87N-HV and 87N-LV elements;
+- generic Is1/K1/Is2/K2 transformer differential slope semantics;
+- H2/H5 transformer security plus context-gated external-fault / CT-saturation security;
+- transformer rating, CT ratio, polarity and supported vector-group engineering;
+- independent neutral-current requirement for REF; calculated phase residual is never silently promoted to neutral CT;
 - pickup, definite/inverse timing, directional torque, trust blocking, operated-element attribution, and latched virtual trip;
 - evidence export with settings identity, measurements, timestamps, causes, trust state, and source provenance;
 - deterministic scenarios tied to automated regression tests.
+
+## Transformer public test — start here
+
+A tester does not need a merging unit, Npcap, or a field PCAP to perform the first Transformer Differential IED check.
+
+1. Start ARVREL and open **Transformer differential IED · 87T / REF**.
+2. The main source may remain **Internal Demo**.
+3. Press **RUN 10-SCENARIO SELF-TEST**.
+4. Expected result: `PASS · 10/10 · transformer-public-beta-v1`.
+5. Use **VIEW RESULT** to inspect each scenario.
+6. Use **COPY EVIDENCE** before filing a transformer defect.
+7. Continue to paired-SV PCAP replay or Live Npcap only after this deterministic baseline passes.
+
+The suite covers through-current stability, internal 87T, 87T-HS, H2/H5 security, external-fault CT-saturation security, distorted internal-fault dependability, HV/LV REF, and secure REF blocking without an independent neutral input.
+
+See the [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md). Public-site maintenance and release-documentation contracts are described in [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md).
 
 ## Trust before trip
 
@@ -94,17 +119,19 @@ AllowsTrip         → an operated element may assert the virtual trip latch
 
 The trust pipeline evaluates complete windows, payload decode, freshness, `smpCnt` continuity, quality words, mapping, scaling provenance, SCL binding, address identity, `svID`, dataset, and `confRev` consistency. Duplicate and out-of-order frames remain visible in telemetry but are rejected before admission to measurement, waveform, phasor, or protection buffers.
 
+For transformer differential, diagnostic waveform distortion also remains separate from protection authority: **distortion alone never creates a P13 security block**. A restraint-leading external-fault context must arm before qualified CT distortion can assert a security hold.
+
 ## Evaluate the Windows release
 
 1. Download the installer or portable package from [GitHub Releases](https://github.com/masarray/arvrel/releases).
 2. Verify it with the published `SHA256SUMS.txt`.
-3. Start with **Internal demo**.
-4. Review relay settings and CT/VT context.
-5. Run an internal fault scenario or the editable injection workspace.
-6. Review trust, waveform, phasors, relay state, pickup/trip timing, event trace, and operation evidence.
+3. Start with **Internal demo** for feeder evaluation.
+4. Open the Transformer Differential IED and run the deterministic 10-scenario self-test.
+5. Review relay settings, CT/VT or transformer/CT engineering context, and copied evidence.
+6. Use PCAP replay for repeatable process-bus evaluation before moving to live capture.
 7. Install Npcap only for authorized capture on an isolated laboratory network.
 
-See the [five-minute quick start](https://masarray.github.io/arvrel/quick-start.html) and [user guide](docs/USER_GUIDE.md).
+See the [five-minute quick start](https://masarray.github.io/arvrel/quick-start.html), [user guide](docs/USER_GUIDE.md), and [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md).
 
 ## Build the WPF edition from source
 
@@ -144,33 +171,35 @@ Synthetic source / ARIEC61850 parse + SCL model
                     ▼
 Continuity · quality · identity · mapping · scaling · trust
                     │
-          ┌─────────┴─────────┐
-          ▼                   ▼
-One-cycle measurement    Two-cycle evidence
-RMS · phasors · sequence waveform · coherent hold
-          │                   │
-          ▼                   ▼
-Protection engine        WPF P6 workspace
-          │
-          ▼
-Virtual trip latch · operation record · evidence export
+          ┌─────────┴────────────────┐
+          ▼                          ▼
+Feeder measurement             Paired HV/LV transformer path
+RMS · phasors · sequence       sync · CT/vector engineering
+          │                          │
+          ▼                          ▼
+Feeder protection             H1/H2/H5 · CT evidence · 87T/REF
+          └──────────────┬───────────┘
+                         ▼
+            Virtual trip latch · evidence export
 ```
 
-Protection evaluates when coherent measurements arrive, not when WPF renders. Runtime state is isolated per stream and exposed through immutable snapshots.
+Protection evaluates when coherent measurements arrive, not when WPF renders. Runtime state is isolated and exposed through immutable snapshots. The P15 deterministic self-test invokes the same transformer protection core without pretending to validate the packet-capture path.
 
 ## Project layout
 
-- `src/Arvrel.App` — Windows WPF product shell and P6 relay interface;
+- `src/Arvrel.App` — Windows WPF product shell, P6 feeder interface, and transformer practitioner workspace;
 - `src/Arvrel.Application` — deterministic laboratory orchestration used by the WPF product;
 - `src/Arvrel.Capture` — capture contracts and PCAP/PCAPNG replay;
-- `src/Arvrel.ProcessBus` — Sampled Values stream, trust, measurement, and evidence runtime;
-- `src/Arvrel.Protection` — UI-independent protection and virtual-injection logic;
+- `src/Arvrel.ProcessBus` — Sampled Values stream, trust, paired transformer measurement, and evidence runtime;
+- `src/Arvrel.Protection` — UI-independent feeder/transformer protection and deterministic self-test logic;
 - `tests/` — regression coverage for the Windows product and shared engineering core;
 - `installer/` and `scripts/package-release.ps1` — official Windows packaging path.
 
 ## Engineering and safety boundary
 
 ARVREL is virtual-output laboratory software. It does not provide physical relay contacts, operational GOOSE trip, MMS control, autonomous switching, switching authority, IEC 61850 conformance certification, IEC 60255 type-test or calibration evidence, or deterministic hard-real-time guarantees.
+
+The Transformer Self-Test is deterministic software regression evidence only. It does not prove a real CT, merging unit, Ethernet network, relay binary output, or substation protection scheme.
 
 Use live capture only on isolated, authorized laboratory networks. Do not use ARVREL as the sole basis for operational protection settings, commissioning acceptance, or switching decisions.
 

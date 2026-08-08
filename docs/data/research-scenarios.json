@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "product": "ARVREL",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.3",
   "evidenceClass": "deterministic-software-tests",
   "boundary": "These scenarios demonstrate repeatable behavior for the referenced source and fixtures. They are not calibration, IEC 60255 type-test, IEC 61850 conformance, hard-real-time, commissioning, or operational-trip evidence.",
   "scenarios": [

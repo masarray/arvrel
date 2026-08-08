@@ -57,7 +57,14 @@ public sealed class TransformerPractitionerUiSourceTests
         StringAssert.Contains(codeBehind, "protection.RefLowVoltage");
 
         StringAssert.Contains(entryPoint, "new TransformerIedWindow(_processBus)");
-        StringAssert.Contains(entryPoint, "Transformer differential requires two independent HV/LV Sampled Values streams");
+        StringAssert.Contains(entryPoint, "window.InitializeP15PublicTestUi();");
+
+        // P15 allows the practitioner window to open without process-bus data so the
+        // deterministic packaged-core self-test can run. The authoritative Live/Replay
+        // configuration path must still require two distinct HV/LV SV streams.
+        StringAssert.Contains(codeBehind, "Select the high-voltage Sampled Values stream.");
+        StringAssert.Contains(codeBehind, "Select the low-voltage Sampled Values stream.");
+        StringAssert.Contains(codeBehind, "HV and LV must use two distinct Sampled Values streams.");
         Assert.IsFalse(codeBehind.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
