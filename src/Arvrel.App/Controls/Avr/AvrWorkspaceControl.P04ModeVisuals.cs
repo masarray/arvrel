@@ -56,6 +56,7 @@ public partial class AvrWorkspaceControl
             _p04TickAttached = true;
         }
 
+        InstallP05ButtonHoverVisuals();
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshP04ModeVisuals));
     }
 
