@@ -23,7 +23,7 @@
   },
   "engine": {
     "repository": "masarray/ARIEC61850",
-    "commit": "c1afc68c9931e857eb787b0f249db2c2b0b757c4"
+    "commit": "0d0aa4e31c17f9e5a10901ad52fa75e9c4581daf"
   },
   "binarySigning": {
     "status": "not-claimed",
