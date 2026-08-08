@@ -6,6 +6,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Arvrel.App.Controls;
 using Arvrel.Application.Laboratory;
+using Arvrel.Protection;
 
 namespace Arvrel.App;
 
