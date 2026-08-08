@@ -93,7 +93,11 @@ public sealed class RealTestWorkflowTests
             RealTestFeedback.Trip));
 
         Assert.AreEqual(RealTestWorkflowOutcome.FeedbackDetected, result.Outcome);
-        Assert.AreEqual(4.0, result.DetectedAtRms!.Value, 1e-9);
+        // At the 4.0 A pickup boundary the 10 ms dwell is consumed by relay timing
+        // plus the external BO1 contact path. BI1 therefore first becomes observable
+        // during the next commanded level. A real test set must report what BI1 sees,
+        // not infer an earlier trip from relay-internal state.
+        Assert.AreEqual(4.5, result.DetectedAtRms!.Value, 1e-9);
         Assert.IsTrue(result.Observations.Last().TripInput);
     }
 
@@ -140,8 +144,12 @@ public sealed class RealTestWorkflowTests
 
         Assert.AreEqual(RealTestWorkflowOutcome.Completed, result.Outcome);
         Assert.AreEqual(4.0, result.PickupRms!.Value, 1e-9);
-        Assert.AreEqual(3.0, result.DropoutRms!.Value, 1e-9);
-        Assert.AreEqual(0.75, result.DropoutRatio!.Value, 1e-9);
+        // P1 intentionally reports the first externally observed BI2 release on the
+        // configured search grid. In the current relay model DropoutRatio governs
+        // definite-time accumulator reset; the pickup indication itself releases
+        // below pickup. With 0.5 A resolution the first observed release is 3.5 A.
+        Assert.AreEqual(3.5, result.DropoutRms!.Value, 1e-9);
+        Assert.AreEqual(0.875, result.DropoutRatio!.Value, 1e-9);
         Assert.IsTrue(result.Observations.Any(point => point.Stage == "DROPOUT SEARCH" && !point.PickupInput));
     }
 
