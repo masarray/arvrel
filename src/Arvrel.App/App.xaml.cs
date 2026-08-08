@@ -29,6 +29,7 @@ public partial class App : System.Windows.Application
             window.InitializeProductReadyInjectionUx();
             window.InitializeMultiIedWorkspace();
             window.ApplyAvrP02ShellPolish();
+            window.InitializeTransformerIedEntryPoint();
         }
     }
 
