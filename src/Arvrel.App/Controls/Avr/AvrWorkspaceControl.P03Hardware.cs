@@ -121,7 +121,6 @@ public partial class AvrWorkspaceControl
     private void ApplyP03CompactConfigurationTypography()
     {
         var inter = new FontFamily("Inter");
-        ConfigurationPanel.FontFamily = inter;
 
         foreach (var tab in ConfigurationTabs.Items.OfType<TabItem>())
         {
@@ -132,6 +131,7 @@ public partial class AvrWorkspaceControl
 
         foreach (var box in FindVisualChildren<TextBox>(ConfigurationPanel))
         {
+            box.FontFamily = inter;
             box.Height = 27;
             box.FontSize = Math.Min(box.FontSize > 0 ? box.FontSize : 10, 9.5);
         }
