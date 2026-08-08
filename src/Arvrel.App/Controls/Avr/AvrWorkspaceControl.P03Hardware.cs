@@ -153,15 +153,42 @@ public partial class AvrWorkspaceControl
         faceplate.MinHeight = P04FaceplateHeight;
         faceplate.MaxHeight = P04FaceplateHeight;
 
+        Border? innerFrontPanel = null;
         if (faceplate.Child is FrameworkElement deviceCore)
         {
             deviceCore.Height = P04DeviceCoreHeight;
             deviceCore.MinHeight = P04DeviceCoreHeight;
             deviceCore.MaxHeight = P04DeviceCoreHeight;
             deviceCore.VerticalAlignment = VerticalAlignment.Center;
+            innerFrontPanel = deviceCore as Border;
         }
 
-        faceplate.Background = CreateP04BrushedMetalBrush();
+        // One continuous material surface across the complete physical front panel.
+        // The previous pass applied brushed metal only to the outer shell, leaving the
+        // large inner DeviceMetal panel flat gray. Reuse the exact same frozen brush on
+        // both layers so the bezel, logo area, button surround and LCD surround visually
+        // read as one machined/brushed aluminium enclosure. LCD/button/black-glass child
+        // surfaces remain independent and keep their own material contrast.
+        var metalBrush = CreateP04BrushedMetalBrush();
+        faceplate.Background = metalBrush;
+
+        if (innerFrontPanel is not null)
+        {
+            innerFrontPanel.Background = metalBrush;
+            innerFrontPanel.BorderBrush = new LinearGradientBrush(
+                new GradientStopCollection
+                {
+                    new(Color.FromRgb(117, 116, 109), 0.00),
+                    new(Color.FromRgb(229, 224, 209), 0.18),
+                    new(Color.FromRgb(147, 145, 135), 0.50),
+                    new(Color.FromRgb(235, 230, 215), 0.82),
+                    new(Color.FromRgb(105, 106, 101), 1.00)
+                },
+                new Point(0, 0),
+                new Point(1, 0));
+            innerFrontPanel.BorderThickness = new Thickness(1.2);
+        }
+
         faceplate.BorderBrush = new LinearGradientBrush(
             new GradientStopCollection
             {
