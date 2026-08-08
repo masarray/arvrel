@@ -6,7 +6,6 @@ namespace Arvrel.App;
 
 public partial class MainWindow
 {
-    private bool _avrP02ShellApplied;
     private bool _avrToolbarVisibilityHooked;
     private bool _avrShellLoadedRetryHooked;
 
@@ -79,8 +78,6 @@ public partial class MainWindow
                 _avrToolbar.IsVisibleChanged += (_, _) => ApplyToolbarHeight();
             }
         }
-
-        _avrP02ShellApplied = true;
     }
 
     private static void ApplyInterRecursive(DependencyObject root, FontFamily inter)
