@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace Arvrel.App.Controls.Avr;
@@ -31,7 +32,6 @@ public partial class AvrP0HmiControl
             _smoothedTrendVoltage += (snapshot.MeasuredVoltageV - _smoothedTrendVoltage) * alpha;
         }
 
-        // Update only when UpdateHistory has just accepted a low-rate sample.
         if (_trendDivider % 3 != 0 || _trendHistory.Count == 0)
             return;
 
@@ -66,9 +66,6 @@ public partial class AvrP0HmiControl
         SetLine(TrendLower, w, Y(lower));
         TrendScale.Text = $"{lower:0.0}     {setpoint:0.0}     {upper:0.0} V";
 
-        // Fixed spacing prevents the whole trace from being re-scaled every time
-        // a new sample arrives. New values enter at the right and the trace moves
-        // left in small deterministic steps.
         const int capacity = 90;
         var dx = w / Math.Max(1, capacity - 1);
         var points = new PointCollection();
