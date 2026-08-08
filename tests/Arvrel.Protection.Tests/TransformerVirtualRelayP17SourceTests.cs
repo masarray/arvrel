@@ -31,11 +31,11 @@ public sealed class TransformerVirtualRelayP17SourceTests
         foreach (var key in new[] { "F1", "F2", "F3", "F4", "F5", "Up", "Down", "Enter", "Next", "Cancel" })
             StringAssert.Contains(code, key);
 
-        StringAssert.Contains(code, "F1 MEAS");
-        StringAssert.Contains(code, "F2 EVENT");
-        StringAssert.Contains(code, "F3 RECORD");
-        StringAssert.Contains(code, "F4 ENG");
-        StringAssert.Contains(code, "F5 RESET");
+        StringAssert.Contains(code, "SoftKey(\"F1\", \"MEAS\"");
+        StringAssert.Contains(code, "SoftKey(\"F2\", \"EVENT\"");
+        StringAssert.Contains(code, "SoftKey(\"F3\", \"RECORD\"");
+        StringAssert.Contains(code, "SoftKey(\"F4\", \"ENG\"");
+        StringAssert.Contains(code, "SoftKey(\"F5\", \"RESET\"");
     }
 
     [TestMethod]
