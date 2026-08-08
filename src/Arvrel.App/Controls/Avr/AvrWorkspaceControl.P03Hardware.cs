@@ -163,26 +163,27 @@ public partial class AvrWorkspaceControl
             innerFrontPanel = deviceCore as Border;
         }
 
-        // One continuous material surface across the complete physical front panel.
-        // The previous pass applied brushed metal only to the outer shell, leaving the
-        // large inner DeviceMetal panel flat gray. Reuse the exact same frozen brush on
-        // both layers so the bezel, logo area, button surround and LCD surround visually
-        // read as one machined/brushed aluminium enclosure. LCD/button/black-glass child
-        // surfaces remain independent and keep their own material contrast.
-        var metalBrush = CreateP04BrushedMetalBrush();
-        faceplate.Background = metalBrush;
+        // Use the same deterministic brushed-aluminium grain on both physical layers,
+        // but give them slightly different finishing tones. The outer chassis stays a
+        // restrained warm gray-gold while the machined inner front plate is brighter
+        // and a touch more silver. This gives the enclosure depth without making it
+        // look like two unrelated materials. LCD/button/black-glass children keep their
+        // independent material contrast.
+        var outerMetalBrush = CreateP04BrushedMetalBrush(luminanceOffset: 0, goldBias: 2);
+        var innerMetalBrush = CreateP04BrushedMetalBrush(luminanceOffset: 14, goldBias: 0);
+        faceplate.Background = outerMetalBrush;
 
         if (innerFrontPanel is not null)
         {
-            innerFrontPanel.Background = metalBrush;
+            innerFrontPanel.Background = innerMetalBrush;
             innerFrontPanel.BorderBrush = new LinearGradientBrush(
                 new GradientStopCollection
                 {
-                    new(Color.FromRgb(117, 116, 109), 0.00),
-                    new(Color.FromRgb(229, 224, 209), 0.18),
-                    new(Color.FromRgb(147, 145, 135), 0.50),
-                    new(Color.FromRgb(235, 230, 215), 0.82),
-                    new(Color.FromRgb(105, 106, 101), 1.00)
+                    new(Color.FromRgb(126, 125, 118), 0.00),
+                    new(Color.FromRgb(239, 235, 222), 0.18),
+                    new(Color.FromRgb(158, 156, 146), 0.50),
+                    new(Color.FromRgb(244, 239, 225), 0.82),
+                    new(Color.FromRgb(116, 117, 111), 1.00)
                 },
                 new Point(0, 0),
                 new Point(1, 0));
@@ -210,11 +211,13 @@ public partial class AvrWorkspaceControl
         };
     }
 
-    private static ImageBrush CreateP04BrushedMetalBrush()
+    private static ImageBrush CreateP04BrushedMetalBrush(int luminanceOffset = 0, int goldBias = 0)
     {
         // Procedural gray-gold aluminium. The texture is generated once from a tiny
         // deterministic bitmap: strong horizontal correlation gives the brushed grain,
         // while low-amplitude micro variation prevents a synthetic flat-gradient look.
+        // luminanceOffset lets adjacent machined panels share the exact same grain while
+        // carrying slightly different finishes; goldBias only warms R/G, never the grain.
         // No external texture asset, shader, animation, or runtime allocation loop is used.
         const int width = 192;
         const int height = 36;
@@ -249,9 +252,9 @@ public partial class AvrWorkspaceControl
                 var delta = rowNoise + (int)Math.Round(smoothed) + longitudinal + centerHighlight;
 
                 // Warm neutral aluminium: silver first, with a restrained gray-gold cast.
-                var r = ClampByte(197 + delta);
-                var g = ClampByte(193 + delta);
-                var b = ClampByte(181 + delta);
+                var r = ClampByte(197 + luminanceOffset + goldBias + delta);
+                var g = ClampByte(193 + luminanceOffset + (goldBias / 2) + delta);
+                var b = ClampByte(181 + luminanceOffset + delta);
 
                 var index = y * stride + x * 4;
                 pixels[index + 0] = (byte)b;
