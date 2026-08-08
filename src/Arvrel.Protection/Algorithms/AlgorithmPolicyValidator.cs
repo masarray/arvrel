@@ -32,7 +32,7 @@ public static class AlgorithmPolicyValidator
     };
 
     private static readonly Regex TripAssignmentRegex = new(
-        @"(?<![A-Za-z0-9_.])trip\s*=\s*(?<expression>[^\r\n}]*)",
+        @"^trip\s*=(?!=)\s*(?<expression>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     public static AlgorithmValidationResult Validate(string source)
@@ -73,14 +73,17 @@ public static class AlgorithmPolicyValidator
 
     private static void ValidateTripExpressions(string source, ICollection<string> errors)
     {
-        var matches = TripAssignmentRegex.Matches(source);
-        if (matches.Count == 0)
+        var matches = LogicalStatements(source)
+            .Select(statement => TripAssignmentRegex.Match(statement))
+            .Where(match => match.Success)
+            .ToArray();
+        if (matches.Length == 0)
         {
             errors.Add("A trip expression is required.");
             return;
         }
 
-        foreach (Match match in matches)
+        foreach (var match in matches)
         {
             var expression = match.Groups["expression"].Value.Trim();
             if (string.IsNullOrWhiteSpace(expression))
@@ -105,6 +108,88 @@ public static class AlgorithmPolicyValidator
             if (!hasMandatoryGate)
                 errors.Add("Safe Laboratory Mode requires every executable trip expression to conjunctively gate output with smv.allowsTrip.");
         }
+    }
+
+    private static IReadOnlyList<string> LogicalStatements(string source)
+    {
+        var statements = new List<string>();
+        string? current = null;
+        var parentheses = 0;
+
+        foreach (var raw in source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0)
+                continue;
+
+            if (line == "}" || line.EndsWith("{", StringComparison.Ordinal))
+            {
+                if (current is not null)
+                {
+                    statements.Add(current);
+                    current = null;
+                    parentheses = 0;
+                }
+                statements.Add(line);
+                continue;
+            }
+
+            var startsWithContinuationOperator =
+                line.StartsWith("&&", StringComparison.Ordinal) ||
+                line.StartsWith("||", StringComparison.Ordinal);
+            var previousEndsWithContinuationOperator = current is not null &&
+                (current.TrimEnd().EndsWith("&&", StringComparison.Ordinal) ||
+                 current.TrimEnd().EndsWith("||", StringComparison.Ordinal));
+            var continuation = current is not null &&
+                (parentheses > 0 || startsWithContinuationOperator || previousEndsWithContinuationOperator);
+
+            if (!continuation && current is not null)
+            {
+                statements.Add(current);
+                current = null;
+                parentheses = 0;
+            }
+
+            current = current is null ? line : current + " " + line;
+            parentheses += ParenthesisDelta(line);
+        }
+
+        if (current is not null)
+            statements.Add(current);
+
+        return statements;
+    }
+
+    private static int ParenthesisDelta(string value)
+    {
+        var delta = 0;
+        var inString = false;
+        var escaped = false;
+
+        foreach (var character in value)
+        {
+            if (inString)
+            {
+                if (escaped)
+                    escaped = false;
+                else if (character == '\\')
+                    escaped = true;
+                else if (character == '"')
+                    inString = false;
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inString = true;
+                continue;
+            }
+
+            if (character == '(') delta++;
+            if (character == ')') delta--;
+        }
+
+        return delta;
     }
 
     private static bool IsSmvTripGateTerm(string term)
