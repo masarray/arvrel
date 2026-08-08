@@ -161,6 +161,11 @@ public partial class AvrWorkspaceControl
         button.BorderBrush = active ? activeBorder : P04InactiveBorderBrush;
         button.Foreground = active ? activeText : P04InactiveTextBrush;
         button.Effect = active ? activeGlow : null;
+
+        // P05 owns local values on the template chrome so the old XAML hover trigger
+        // can never paint a white frame. Keep those local values synchronized whenever
+        // authority/mode illumination changes while the pointer is not over the button.
+        P05SyncChromeToButton(button);
     }
 
     private static Brush P04Freeze(Color color)
