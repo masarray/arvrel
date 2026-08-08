@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "product": "ARVREL",
   "displayName": "ARVREL Virtual Protection Relay Laboratory",
-  "version": "0.1.0-beta.3",
-  "releaseTag": "v0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
+  "releaseTag": "v0.1.0-beta.4",
   "maturity": "public engineering beta",
   "platforms": [
     "Windows 10 x64",
     "Windows 11 x64"
   ],
   "outputAuthority": "virtual-only",
-  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.3",
+  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.4",
   "requiredReleaseAssets": [
-    "ARVREL-Setup-v0.1.0-beta.3-win-x64.exe",
-    "ARVREL-v0.1.0-beta.3-win-x64-portable.zip",
+    "ARVREL-Setup-v0.1.0-beta.4-win-x64.exe",
+    "ARVREL-v0.1.0-beta.4-win-x64-portable.zip",
     "SHA256SUMS.txt"
   ],
   "integrity": {
@@ -33,7 +33,7 @@
     "status": "release-dependent",
     "note": "CycloneDX SBOM and dependency evidence are published when produced by the release workflow; the selected GitHub Release asset list is authoritative."
   },
-  "safetyBoundary": "ARVREL is virtual-output laboratory software, not a certified protection IED, calibrated relay test set, hard-real-time trip platform, or switching authority.",
+  "safetyBoundary": "ARVREL is virtual-output laboratory software. Modeled IEC 61850 MMS commands terminate inside the virtual process and provide no physical relay contact, OLTC motor, GOOSE trip, switching, or primary-equipment authority.",
   "sourceOfTruth": {
     "releaseWorkflow": "https://github.com/masarray/arvrel/blob/main/.github/workflows/release.yml",
     "versionFile": "https://github.com/masarray/arvrel/blob/main/VERSION",
