@@ -104,12 +104,17 @@ public static class AlgorithmRuntimeRegistry
     {
         ArgumentNullException.ThrowIfNull(settings);
         settings.Validate();
+        var currentSettingsFingerprint = settings.Fingerprint();
         lock (Gate)
         {
             if (!Staged.TryGetValue(element, out var staged) ||
                 !string.Equals(staged.Identity.SourceHash, sourceHash, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only the exact validated staged definition can be activated.");
+            }
+            if (!string.Equals(staged.Identity.SettingsFingerprint, currentSettingsFingerprint, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Active protection settings changed after staging; compile and stage the definition again for the current settings fingerprint.");
             }
 
             if (!Rollback.TryGetValue(element, out var history))
@@ -124,8 +129,7 @@ public static class AlgorithmRuntimeRegistry
             var activatedIdentity = staged.Identity with
             {
                 ActivatedUtc = now,
-                AuthorNote = note,
-                SettingsFingerprint = settings.Fingerprint()
+                AuthorNote = note
             };
             var activated = staged with { Identity = activatedIdentity };
             Active[element] = activated;
