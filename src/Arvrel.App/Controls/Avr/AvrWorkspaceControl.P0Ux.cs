@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Arvrel.Application.Ied;
+using ShapePath = System.Windows.Shapes.Path;
 
 namespace Arvrel.App.Controls.Avr;
 
@@ -188,7 +189,7 @@ public partial class AvrWorkspaceControl
             "MENU" => "M4,7 L20,7 M4,12 L20,12 M4,17 L20,17",
             _ => "M5,12 L19,12"
         };
-        var path = new Path
+        var path = new ShapePath
         {
             Data = Geometry.Parse(geometry),
             Stroke = Brushes.White,
