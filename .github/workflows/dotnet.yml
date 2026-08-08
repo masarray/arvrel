@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: masarray/ARIEC61850
-          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          ref: 0d0aa4e31c17f9e5a10901ad52fa75e9c4581daf
           path: ARIEC61850
           persist-credentials: false
 
@@ -53,21 +53,15 @@ jobs:
           $output = dotnet list .\ARVREL.sln package --vulnerable --include-transitive
           $text = $output | Out-String
           $text | Write-Host
-          if ($LASTEXITCODE -ne 0) {
-            throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE."
-          }
-          if ($text -match 'has the following vulnerable packages') {
-            throw 'The dependency audit reported one or more vulnerable packages.'
-          }
+          if ($LASTEXITCODE -ne 0) { throw "NuGet vulnerability audit failed with exit code $LASTEXITCODE." }
+          if ($text -match 'has the following vulnerable packages') { throw 'The dependency audit reported one or more vulnerable packages.' }
 
       - name: Install Inno Setup for release-candidate packaging
         if: startsWith(github.head_ref, 'release/')
         shell: pwsh
         run: |
           choco install innosetup --yes --no-progress
-          if ($LASTEXITCODE -ne 0) {
-            throw "Inno Setup installation failed with exit code $LASTEXITCODE."
-          }
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed with exit code $LASTEXITCODE." }
 
       - name: Package release candidate
         if: startsWith(github.head_ref, 'release/')
@@ -91,3 +85,35 @@ jobs:
           path: arvrel/artifacts/release/*
           if-no-files-found: error
           retention-days: 14
+
+  legacy-sibling-compile:
+    name: compile-with-pre-control-ARIEC61850
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout ARVREL
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: arvrel
+          persist-credentials: false
+
+      - name: Checkout older ARIEC61850 sibling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: masarray/ARIEC61850
+          ref: c1afc68c9931e857eb787b0f249db2c2b0b757c4
+          path: ARIEC61850
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore against older sibling
+        working-directory: arvrel
+        run: dotnet restore .\ARVREL.sln
+
+      - name: Compile against older sibling
+        working-directory: arvrel
+        run: dotnet build .\ARVREL.sln -c Release --no-restore
