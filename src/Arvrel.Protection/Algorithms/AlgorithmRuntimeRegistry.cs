@@ -61,6 +61,12 @@ public static class AlgorithmRuntimeRegistry
     private static readonly Queue<AlgorithmActivationEvent> Audit = new();
     private static long _generation;
 
+    /// <summary>
+    /// Allocation-free fast-path used by high-rate SMV execution. Full immutable
+    /// snapshots/plans are rebuilt only after a control-plane mutation changes this value.
+    /// </summary>
+    public static long Generation => Volatile.Read(ref _generation);
+
     public static AlgorithmDefinitionIdentity Stage(
         string element,
         string source,
@@ -254,19 +260,22 @@ public static class AlgorithmRuntimeRegistry
 internal sealed class AlgorithmDualModeHost
 {
     private readonly Dictionary<string, RuntimeInstance> _instances = new(StringComparer.OrdinalIgnoreCase);
+    private AlgorithmRuntimeRegistry.RuntimeExecutionPlan _plan = new(-1, Array.Empty<AlgorithmRuntimeRegistry.RuntimePlanEntry>());
     private long _generation = -1;
 
     public IReadOnlyDictionary<string, AlgorithmExecutionResult> Evaluate(MeasurementFrame frame, ProtectionSettings settings)
     {
-        var plan = AlgorithmRuntimeRegistry.GetExecutionPlan();
-        if (_generation != plan.Generation)
+        var generation = AlgorithmRuntimeRegistry.Generation;
+        if (_generation != generation)
         {
-            Reconcile(plan);
-            _generation = plan.Generation;
+            var next = AlgorithmRuntimeRegistry.GetExecutionPlan();
+            Reconcile(next);
+            _plan = next;
+            _generation = next.Generation;
         }
 
         var results = new Dictionary<string, AlgorithmExecutionResult>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in plan.Entries)
+        foreach (var entry in _plan.Entries)
         {
             var key = Key(entry.Element, entry.Comparison.Identity.SourceHash);
             if (!_instances.TryGetValue(key, out var runtime))
