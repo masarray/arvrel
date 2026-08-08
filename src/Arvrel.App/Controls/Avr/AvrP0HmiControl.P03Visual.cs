@@ -52,6 +52,7 @@ public partial class AvrP0HmiControl
     internal void ApplyP03State(AvrSnapshot snapshot, bool severeBlock)
     {
         ApplyP03Layout();
+        ApplyP04ModeBadges(snapshot);
 
         var normal = new SolidColorBrush(Color.FromRgb(54, 91, 112));
         var amber = new SolidColorBrush(Color.FromRgb(190, 119, 20));
@@ -77,5 +78,41 @@ public partial class AvrP0HmiControl
             TimerBar.Foreground = new SolidColorBrush(Color.FromRgb(43, 125, 178));
             MotorBar.Foreground = new SolidColorBrush(Color.FromRgb(60, 143, 91));
         }
+    }
+
+    internal void ApplyP04ModeBadges(AvrSnapshot snapshot)
+    {
+        ApplyP03Layout();
+
+        var remote = snapshot.Authority == AvrControlAuthority.Remote;
+        var automatic = snapshot.Mode == AvrOperatingMode.Automatic;
+
+        if (HomeAuthority.Parent is Border authorityBadge)
+        {
+            authorityBadge.Background = Brush(remote ? "#DDF2FD" : "#FFF1D3");
+            authorityBadge.BorderBrush = Brush(remote ? "#4DA9D8" : "#D2A13B");
+            authorityBadge.BorderThickness = new Thickness(1.25);
+        }
+        HomeAuthority.Foreground = Brush(remote ? "#0D6996" : "#865600");
+        HomeAuthority.FontWeight = FontWeights.Bold;
+
+        if (HomeMode.Parent is Border modeBadge)
+        {
+            modeBadge.Background = Brush(automatic ? "#E1F6E9" : "#FFF0DB");
+            modeBadge.BorderBrush = Brush(automatic ? "#56B77A" : "#D79347");
+            modeBadge.BorderThickness = new Thickness(1.25);
+        }
+        HomeMode.Foreground = Brush(automatic ? "#176E41" : "#8A5011");
+        HomeMode.FontWeight = FontWeights.Bold;
+
+        FooterAuthority.Foreground = HomeAuthority.Foreground;
+        FooterAuthority.FontWeight = FontWeights.Bold;
+        FooterMode.Foreground = HomeMode.Foreground;
+        FooterMode.FontWeight = FontWeights.Bold;
+
+        ControlAuthority.Foreground = remote
+            ? Brush("#176E9A")
+            : Brush("#865600");
+        ControlAuthority.FontWeight = FontWeights.Bold;
     }
 }
