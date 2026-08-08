@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Arvrel.App.Controls;
 
 namespace Arvrel.App.Controls.Avr;
@@ -15,6 +16,7 @@ public partial class AvrWorkspaceControl
     private static readonly Brush P05FlashSurfaceBrush = P05Freeze(Color.FromRgb(239, 245, 247));
     private static readonly Brush P05FlashBorderBrush = P05Freeze(Color.FromRgb(255, 255, 255));
     private static readonly Brush P05FlashTextBrush = P05Freeze(Color.FromRgb(28, 48, 57));
+    private static readonly Brush P05NormalIconBrush = P05Freeze(Color.FromRgb(242, 248, 250));
 
     private void InstallP05ButtonHoverVisuals()
     {
@@ -39,18 +41,31 @@ public partial class AvrWorkspaceControl
         if (sender is not Button button)
             return;
 
+        ApplyP05BrightHover(button);
+
+        // The right bezel keys are rendered through ContentPresenter. Re-apply once at
+        // Render priority so a presenter/template refresh cannot restore the old local
+        // white Lucide foreground after MouseEnter.
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Render,
+            new Action(() =>
+            {
+                if (button.IsMouseOver)
+                    ApplyP05BrightHover(button);
+            }));
+    }
+
+    private void ApplyP05BrightHover(Button button)
+    {
         button.ApplyTemplate();
         if (button.Template.FindName("Chrome", button) is Border chrome)
         {
-            // Intentionally bright like a physical illuminated/pressed key, but never
-            // white-on-white: caption and Lucide glyph are changed to a dark legend.
             chrome.Background = P05FlashSurfaceBrush;
             chrome.BorderBrush = P05FlashBorderBrush;
         }
 
         button.Foreground = P05FlashTextBrush;
-        if (button.Content is LucideIcon icon)
-            icon.Foreground = P05FlashTextBrush;
+        SetP05LucideForeground(button, P05FlashTextBrush);
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
@@ -70,10 +85,19 @@ public partial class AvrWorkspaceControl
         // Remove only the temporary dark legend. Text buttons fall back to DeviceButton
         // styling; LOCAL/REMOTE/AUTO/MANUAL are immediately repainted by P04 below.
         button.ClearValue(Control.ForegroundProperty);
-        if (button.Content is LucideIcon icon)
-            icon.Foreground = Brushes.White;
+        SetP05LucideForeground(button, P05NormalIconBrush);
 
         RefreshP04ModeVisuals();
+    }
+
+    private static void SetP05LucideForeground(DependencyObject root, Brush foreground)
+    {
+        if (root is LucideIcon icon)
+            icon.Foreground = foreground;
+
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+            SetP05LucideForeground(VisualTreeHelper.GetChild(root, i), foreground);
     }
 
     private static bool IsP05HardwareButton(Button? button)
