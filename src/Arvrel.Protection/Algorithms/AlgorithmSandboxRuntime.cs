@@ -521,6 +521,10 @@ internal sealed class AssignmentStatement : Statement
 
 internal sealed class PersistStatement : Statement
 {
+    // One nanosecond only compensates binary floating-point accumulation at an exact
+    // timer boundary (for example 12 x 5 ms). It is far below the laboratory sample
+    // interval and does not advance a protection operation by a meaningful frame.
+    private const double TimerBoundaryEpsilonSeconds = 1e-9;
     private readonly string _target;
     private readonly string _source;
     private readonly Expr _duration;
@@ -548,7 +552,7 @@ internal sealed class PersistStatement : Statement
         else
             timer = timer with { TargetSeconds = durationSeconds };
         context.State.Timers[_target] = timer;
-        context.Set(_target, EvalValue.Boolean(input && timer.ElapsedSeconds >= durationSeconds));
+        context.Set(_target, EvalValue.Boolean(input && timer.ElapsedSeconds + TimerBoundaryEpsilonSeconds >= durationSeconds));
     }
 }
 
