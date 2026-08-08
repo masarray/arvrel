@@ -24,6 +24,7 @@ public sealed class ResearchProtectionEngine
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _settings.Validate();
+        ClearIncompatibleRuntimeIfNeeded(_settings);
         _standard = new ProtectionEngine(_settings);
         _activeSignature = ActiveSignature(AlgorithmRuntimeRegistry.Snapshot());
     }
@@ -34,6 +35,14 @@ public sealed class ResearchProtectionEngine
     {
         ArgumentNullException.ThrowIfNull(settings);
         settings.Validate();
+        var previousFingerprint = _settings.Fingerprint();
+        var nextFingerprint = settings.Fingerprint();
+        if (!string.Equals(previousFingerprint, nextFingerprint, StringComparison.Ordinal))
+        {
+            AlgorithmRuntimeRegistry.ClearSession(
+                $"Protection settings changed from {previousFingerprint[..12]} to {nextFingerprint[..12]}; custom runtime cleared for mandatory restaging.");
+        }
+
         _settings = settings;
         _standard.UpdateSettings(settings, keepTripLatch: false);
         _custom.Reset();
@@ -162,6 +171,19 @@ public sealed class ResearchProtectionEngine
     {
         _standard.ObserveRejectedFrameTimestamp(timestamp);
         _custom.ObserveRejectedFrameTimestamp(timestamp);
+    }
+
+    private static void ClearIncompatibleRuntimeIfNeeded(ProtectionSettings settings)
+    {
+        var fingerprint = settings.Fingerprint();
+        var runtime = AlgorithmRuntimeRegistry.Snapshot();
+        var incompatible = runtime.Staged.Concat(runtime.Active).Any(identity =>
+            !string.Equals(identity.SettingsFingerprint, fingerprint, StringComparison.Ordinal));
+        if (incompatible)
+        {
+            AlgorithmRuntimeRegistry.ClearSession(
+                $"Research engine opened with settings {fingerprint[..12]}; incompatible staged/active custom definitions were cleared for mandatory restaging.");
+        }
     }
 
     private void ObserveActivationTransition(AlgorithmRuntimeRegistrySnapshot runtime)
