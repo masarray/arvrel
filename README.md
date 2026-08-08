@@ -112,7 +112,7 @@ A tester does not need a merging unit, Npcap, or a field PCAP to perform the fir
 
 The internal Transformer source creates synchronized HV/LV snapshots and passes them through the same `TransformerProtectionRuntime` used by the protection path. It does not implement a second 87T/REF algorithm and does not transmit synthetic Ethernet SV.
 
-See [P18 Transformer two-sided injection](docs/P18_TRANSFORMER_TWO_SIDED_INJECTION.md) and the [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md).
+See [P18 Transformer two-sided injection](docs/P18_TRANSFORMER_TWO_SIDED_INJECTION.md) and the [Transformer public test guide](docs/TRANSFORMER_PUBLIC_TEST.md). Public-site maintenance and release-documentation contracts are described in [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md).
 
 ## Trust before trip or virtual control
 
