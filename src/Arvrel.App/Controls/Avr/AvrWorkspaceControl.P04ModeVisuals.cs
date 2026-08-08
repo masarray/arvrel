@@ -38,11 +38,6 @@ public partial class AvrWorkspaceControl
             return;
 
         _p04ModeVisualsInstalled = true;
-
-        // OnInitialized can run while InitializeComponent() is still executing.
-        // AvrWorkspaceControl creates _timer immediately after InitializeComponent,
-        // so touching _timer here can cause a startup NullReferenceException.
-        // Defer timer subscription until Loaded, when construction is complete.
         Loaded += P04ModeVisuals_Loaded;
         Unloaded += P04ModeVisuals_Unloaded;
         AddHandler(Button.ClickEvent, new RoutedEventHandler(P04AnyButton_Click), handledEventsToo: true);
@@ -58,10 +53,6 @@ public partial class AvrWorkspaceControl
 
         InstallP05ButtonHoverVisuals();
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshP04ModeVisuals));
-
-        // P0 installs the fixed faceplate at Loaded priority and P03 applies geometry at
-        // ContextIdle. Apply the final material at ApplicationIdle so it is never replaced
-        // by the older warm/banded surface during startup.
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(ApplyP06MetalSurface));
     }
 
@@ -79,9 +70,6 @@ public partial class AvrWorkspaceControl
 
     private void P04AnyButton_Click(object sender, RoutedEventArgs e)
     {
-        // RenderSnapshot still runs synchronously from several legacy button handlers.
-        // Re-apply the premium black-glass indicator palette and mode illumination at
-        // Render priority so the intermediate legacy palette is never presented on-screen.
         Dispatcher.BeginInvoke(
             DispatcherPriority.Render,
             new Action(() =>
@@ -100,10 +88,6 @@ public partial class AvrWorkspaceControl
             return;
 
         var snapshot = _snapshot;
-
-        // Keep mode keys electrically inhibited by the existing handler logic when
-        // REMOTE is selected, but leave the physical lamps visible. The handler itself
-        // rejects local AUTO/MANUAL changes under REMOTE authority.
         AutoModeButton.IsEnabled = true;
         ManualModeButton.IsEnabled = true;
 
@@ -159,13 +143,14 @@ public partial class AvrWorkspaceControl
         button.FontWeight = active ? FontWeights.Bold : FontWeights.SemiBold;
         button.Background = active ? activeBackground : P04InactiveButtonBrush;
         button.BorderBrush = active ? activeBorder : P04InactiveBorderBrush;
-        button.Foreground = active ? activeText : P04InactiveTextBrush;
-        button.Effect = active ? activeGlow : null;
 
-        // P05 owns local values on the template chrome so the old XAML hover trigger
-        // can never paint a white frame. Keep those local values synchronized whenever
-        // authority/mode illumination changes while the pointer is not over the button.
-        P05SyncChromeToButton(button);
+        // P05 intentionally uses a bright white hover face. The periodic P04 refresh
+        // must not paint the legend white again while the pointer is still over it.
+        button.Foreground = button.IsMouseOver
+            ? P05FlashTextBrush
+            : active ? activeText : P04InactiveTextBrush;
+
+        button.Effect = active ? activeGlow : null;
     }
 
     private static Brush P04Freeze(Color color)
