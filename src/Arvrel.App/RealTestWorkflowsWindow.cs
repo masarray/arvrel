@@ -341,14 +341,19 @@ public sealed class RealTestWorkflowsWindow : Window
     }
 
     private static ComboBox Combo<T>(IEnumerable<T> values, object selected, Thickness margin)
-        => new()
+    {
+        var combo = new ComboBox
         {
             ItemsSource = values,
-            SelectedItem = selected,
-            SelectedIndex = selected is int index ? index : -1,
             Height = 30,
             Margin = margin
         };
+        if (selected is int index)
+            combo.SelectedIndex = index;
+        else
+            combo.SelectedItem = selected;
+        return combo;
+    }
 
     private static TextBox Field(string text, bool rightMargin = true)
         => new()
