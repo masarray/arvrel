@@ -34,9 +34,7 @@ public sealed record VirtualRelayFrontEndProfile(
         ClippingEnabled: true);
 
     public TimeSpan AdcSampleInterval => TimeSpan.FromTicks(TimeSpan.TicksPerSecond / AdcSampleRateHz);
-
     public double CurrentLeastSignificantRms => CurrentFullScaleRms / ((1L << (AdcBits - 1)) - 1d);
-
     public double VoltageLeastSignificantRms => VoltageFullScaleRms / ((1L << (AdcBits - 1)) - 1d);
 
     public void Validate()
@@ -73,8 +71,8 @@ public sealed record VirtualRelayFrontEndProfile(
             VoltageFullScaleRms.ToString("R", CultureInfo.InvariantCulture),
             AdcSampleRateHz.ToString(CultureInfo.InvariantCulture),
             MeasurementGroupDelay.Ticks.ToString(CultureInfo.InvariantCulture),
-            QuantizationEnabled.ToString(CultureInfo.InvariantCulture),
-            ClippingEnabled.ToString(CultureInfo.InvariantCulture));
+            QuantizationEnabled ? "1" : "0",
+            ClippingEnabled ? "1" : "0");
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
