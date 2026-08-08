@@ -67,8 +67,11 @@ public partial class AvrWorkspaceControl
             chrome.ClearValue(Border.BorderBrushProperty);
         }
 
+        // Remove only the temporary dark legend. Text buttons fall back to DeviceButton
+        // styling; LOCAL/REMOTE/AUTO/MANUAL are immediately repainted by P04 below.
+        button.ClearValue(Control.ForegroundProperty);
         if (button.Content is LucideIcon icon)
-            icon.ClearValue(LucideIcon.ForegroundProperty);
+            icon.Foreground = Brushes.White;
 
         RefreshP04ModeVisuals();
     }
