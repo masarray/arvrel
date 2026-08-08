@@ -10,6 +10,7 @@ using Arvrel.App.Infrastructure;
 using Arvrel.App.Services;
 using Arvrel.ProcessBus;
 using Arvrel.Protection;
+using Arvrel.Protection.Algorithms;
 using Microsoft.Win32;
 
 namespace Arvrel.App;
@@ -23,7 +24,7 @@ public partial class MainWindow : Window
     private static readonly Brush PhaseBrush = Freeze(new SolidColorBrush(Color.FromRgb(65, 139, 191)));
 
     private ProtectionSettings _settings = new();
-    private readonly ProtectionEngine _internalEngine;
+    private readonly ResearchProtectionEngine _internalEngine;
     private readonly DeterministicLabScenario _scenario = new();
     private SmvProcessBusController _processBus;
     private readonly DispatcherTimer _timer;
@@ -43,7 +44,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _internalEngine = new ProtectionEngine(_settings);
+        _internalEngine = new ResearchProtectionEngine(_settings);
         _processBus = CreateProcessBus(_settings);
         _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
         _timer = new DispatcherTimer(DispatcherPriority.Background)
@@ -241,7 +242,7 @@ public partial class MainWindow : Window
         if (IsLoaded)
         {
             StatusText.Text = research
-                ? "Research mode active. Standard algorithm source and deterministic shadow staging are exposed."
+                ? "Research mode active. Standard and custom algorithms can run A/B on the same virtual relay measurements."
                 : "Practitioner mode active. Configure and operate the relay through native settings.";
             AddEvent("MODE", research ? "Research algorithm laboratory exposed" : "Practitioner relay workflow active");
         }
@@ -251,10 +252,25 @@ public partial class MainWindow : Window
     {
         if (OperatingModeCombo.SelectedIndex != 1)
         {
-            MessageBox.Show(this, "Switch to Research mode to expose active algorithm source and shadow staging.", "ARVREL operating mode", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Switch to Research mode to expose active algorithm source and the deterministic algorithm laboratory.", "ARVREL operating mode", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+
+        var before = AlgorithmRuntimeRegistry.Snapshot();
         new AlgorithmEditorWindow(_settings) { Owner = this }.ShowDialog();
+        var after = AlgorithmRuntimeRegistry.Snapshot();
+        if (after.Generation != before.Generation)
+        {
+            ResetTransitionMarkers();
+            var latest = after.AuditTrail.LastOrDefault(item => item.Generation > before.Generation);
+            if (latest is not null)
+                AddEvent(latest.Action, $"{latest.Element} · {latest.Version ?? "standard"}");
+            StatusText.Text = after.HasActiveCustom
+                ? "Custom research algorithm active · STANDARD remains shadow reference · VIRTUAL OUTPUT ONLY."
+                : after.Staged.Count > 0
+                    ? "Custom research definition staged and shadowing the standard algorithm."
+                    : "Standard protection algorithm active.";
+        }
     }
 
     private async void ProtectionSettings_Click(object sender, RoutedEventArgs e)
@@ -377,9 +393,10 @@ public partial class MainWindow : Window
         object evidence;
         if (SourceCombo.SelectedIndex == 0)
         {
+            var algorithmRuntime = AlgorithmRuntimeRegistry.Snapshot();
             evidence = new
             {
-                schemaVersion = 2,
+                schemaVersion = 3,
                 exportedAt = DateTimeOffset.Now,
                 application = "ARVREL",
                 operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
@@ -388,7 +405,8 @@ public partial class MainWindow : Window
                 protection = _snapshot,
                 protectionSettings = _settings,
                 settingsFingerprint = _settings.Fingerprint(),
-                algorithmMode = "standard-active/custom-shadow-only",
+                algorithmMode = algorithmRuntime.Mode,
+                algorithmRuntime,
                 events = _events.Reverse().ToArray()
             };
         }
@@ -476,7 +494,7 @@ public partial class MainWindow : Window
         FpsText.Text = "  ·  deterministic";
         StreamHealthText.Text = "  ·  INTERNAL · GOOD";
         WaveformSubtitleText.Text = "Stationary deterministic evidence window · pickup and trip markers remain visible";
-        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · deterministic SMV health gate active";
+        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · deterministic SMV health gate active{AlgorithmRuntimeSuffix(snapshot.AlgorithmRuntime)}";
     }
 
     private void RenderSelectedProcessBusStream()
@@ -518,7 +536,7 @@ public partial class MainWindow : Window
             _ => TripBrush
         };
         WaveformSubtitleText.Text = $"{snapshot.MappingSummary} · {snapshot.ScalingSummary} · gaps {snapshot.SequenceGapCount} · quality {snapshot.InvalidQualityCount}";
-        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · {snapshot.TrustSummary}";
+        RelayFooterText.Text = $"{_settings.GroupName} rev {_settings.Revision} · {snapshot.TrustSummary}{AlgorithmRuntimeSuffix(snapshot.Protection.AlgorithmRuntime)}";
         LcdHeaderText.Text = ViewCombo.SelectedIndex == 1 ? "PRIMARY CURRENT" : "SECONDARY CURRENT";
     }
 
@@ -538,7 +556,10 @@ public partial class MainWindow : Window
         SetElement(Earth50StateText, Earth50Progress, snapshot.Earth50);
         SetElement(Earth51StateText, Earth51Progress, snapshot.Earth51);
 
-        ProtectionReasonText.Text = $"  ·  {snapshot.DecisionReason}";
+        var customActive = snapshot.AlgorithmRuntime.HasActiveCustom;
+        ProtectionReasonText.Text = customActive
+            ? $"  ·  CUSTOM ACTIVE · VIRTUAL ONLY · {snapshot.DecisionReason}"
+            : $"  ·  {snapshot.DecisionReason}";
         var permitted = snapshot.SmvTrust.AllowsTrip;
         PermissionText.Text = permitted ? "TRIP PERMITTED" : "TRIP BLOCKED";
         PermissionText.Foreground = permitted ? HealthyBrush : WarningBrush;
@@ -547,8 +568,8 @@ public partial class MainWindow : Window
 
         var pickup = snapshot.Phase50.Pickup || snapshot.Phase51.Pickup || snapshot.Earth50.Pickup || snapshot.Earth51.Pickup;
         HealthyLed.Fill = snapshot.SmvTrust.AllowsMeasurement ? HealthyBrush : WarningBrush;
-        TopHealthLed.Fill = snapshot.SmvTrust.AllowsTrip ? HealthyBrush : WarningBrush;
-        TopHealthText.Text = snapshot.SmvTrust.AllowsTrip ? "LAB READY" : "TRIP BLOCKED";
+        TopHealthLed.Fill = customActive ? WarningBrush : snapshot.SmvTrust.AllowsTrip ? HealthyBrush : WarningBrush;
+        TopHealthText.Text = customActive ? "CUSTOM ACTIVE" : snapshot.SmvTrust.AllowsTrip ? "LAB READY" : "TRIP BLOCKED";
         PickupLed.Fill = pickup ? WarningBrush : LedOffBrush;
         TripLed.Fill = snapshot.TripLatched ? TripBrush : LedOffBrush;
         PhaseALed.Fill = snapshot.PhaseAPickup ? PhaseBrush : LedOffBrush;
@@ -688,6 +709,13 @@ public partial class MainWindow : Window
         };
         progress.Value = element.Progress * 100;
     }
+
+    private static string AlgorithmRuntimeSuffix(AlgorithmRuntimeRegistrySnapshot runtime)
+        => runtime.HasActiveCustom
+            ? " · CUSTOM ACTIVE · VIRTUAL ONLY"
+            : runtime.Staged.Count > 0
+                ? " · CUSTOM SHADOW"
+                : string.Empty;
 
     private void AddEvent(string code, string detail)
     {
