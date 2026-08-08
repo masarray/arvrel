@@ -18,28 +18,28 @@ public partial class AvrP0HmiControl
             return;
         }
 
-        if (!_trendSmoothingInitialized)
+        // Only advance the visual filter when the existing low-rate trend sampler
+        // accepts a point (~3.3 Hz). Between samples we simply reassert the fixed-X
+        // geometry so UpdateState's generic renderer cannot rescale the history.
+        if (_trendDivider % 3 == 0 && _trendHistory.Count > 0)
         {
-            _smoothedTrendVoltage = snapshot.MeasuredVoltageV;
-            _trendSmoothingInitialized = true;
-        }
-        else
-        {
-            // Visual-only EMA. Control, MMS and displayed numeric values remain raw.
-            // At the existing 3.3 Hz trend sampling rate this removes step-like Y
-            // jumps without introducing a high-FPS animation loop.
-            const double alpha = 0.34;
-            _smoothedTrendVoltage += (snapshot.MeasuredVoltageV - _smoothedTrendVoltage) * alpha;
-        }
+            if (!_trendSmoothingInitialized)
+            {
+                _smoothedTrendVoltage = snapshot.MeasuredVoltageV;
+                _trendSmoothingInitialized = true;
+            }
+            else
+            {
+                const double alpha = 0.34;
+                _smoothedTrendVoltage += (snapshot.MeasuredVoltageV - _smoothedTrendVoltage) * alpha;
+            }
 
-        if (_trendDivider % 3 != 0 || _trendHistory.Count == 0)
-            return;
-
-        var samples = _trendHistory.ToArray();
-        samples[^1] = _smoothedTrendVoltage;
-        _trendHistory.Clear();
-        foreach (var value in samples)
-            _trendHistory.Enqueue(value);
+            var samples = _trendHistory.ToArray();
+            samples[^1] = _smoothedTrendVoltage;
+            _trendHistory.Clear();
+            foreach (var value in samples)
+                _trendHistory.Enqueue(value);
+        }
 
         RenderFixedStepTrend();
     }
