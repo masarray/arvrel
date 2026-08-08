@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Arvrel.Application.Laboratory;
 using Arvrel.Protection;
+using CoreScenario = Arvrel.Application.Laboratory.DeterministicLabScenario;
 
 namespace Arvrel.App;
 
@@ -26,7 +27,7 @@ public sealed class RealTestWorkflowsWindow : Window
     private readonly Button _cancelButton;
     private CancellationTokenSource? _cancellation;
 
-    public RealTestWorkflowsWindow(DeterministicLabScenario source, ClosedLoopVirtualTestBench bench)
+    public RealTestWorkflowsWindow(CoreScenario source, ClosedLoopVirtualTestBench bench)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(bench);
