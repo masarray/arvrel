@@ -36,15 +36,22 @@ public sealed class UnifiedIedSelectorSourceTests
     }
 
     [TestMethod]
-    public void TransformerSelection_ShowsSharedOcrRelayBeforeEngineeringWorkspace()
+    public void TransformerSelection_ShowsCompleteOcrOperatorWorkspaceBeforeEngineeringWorkspace()
     {
         var code = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
+        var workspace = Read("src", "Arvrel.App", "MainWindow.TransformerOcrWorkspace.cs");
 
         StringAssert.Contains(code, "ShowTransformerLanding();");
-        StringAssert.Contains(code, "Exact OCR relay hardware is reused");
-        StringAssert.Contains(code, "No Transformer-specific shell, card, operator rail, button geometry or LED");
+        StringAssert.Contains(code, "_protectionWorkspace.Visibility = Visibility.Visible;");
+        StringAssert.Contains(code, "OperatingModeCombo.Visibility = Visibility.Visible;");
+        StringAssert.Contains(code, "MountTransformerFaceplateIntoOcrWorkspace()");
+        StringAssert.Contains(code, "OCR waveform / injection / phasor workspace is reused");
         StringAssert.Contains(code, "TransformerPublicSelfTest.RunAll()");
         StringAssert.Contains(code, "Applying the live/replay runtime");
+
+        StringAssert.Contains(workspace, "_transformerSharedRelayHost.Child = _transformerFaceplate;");
+        StringAssert.Contains(workspace, "_transformerSharedRelayHost.Child = _ocrWorkspaceRelay;");
+
         Assert.IsFalse(code.Contains("ShowTransformerLanding();\n        OpenTransformerIedWorkspace();", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("TransformerIedButton_Click", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("toolbar.Children.Insert", StringComparison.Ordinal));
