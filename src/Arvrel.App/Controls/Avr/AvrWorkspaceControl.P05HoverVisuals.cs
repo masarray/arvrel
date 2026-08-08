@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace Arvrel.App.Controls.Avr;
 
@@ -38,38 +37,24 @@ public partial class AvrWorkspaceControl
             button.MouseLeave -= P05Button_MouseLeave;
             button.MouseEnter += P05Button_MouseEnter;
             button.MouseLeave += P05Button_MouseLeave;
+
+            // Put local values directly on the template chrome. A local value has
+            // higher WPF precedence than the legacy DeviceButton IsMouseOver trigger,
+            // so that trigger can no longer flash the button white even for one frame.
+            P05SyncChromeToButton(button);
         }
     }
 
     private void P05Button_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (sender is not Button button)
-            return;
-
-        // The legacy DeviceButton template evaluates its near-white IsMouseOver trigger
-        // after MouseEnter. Re-apply our local chrome values at Render priority, after
-        // template triggers have settled, so the white flash can never be presented.
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Render,
-            new Action(() =>
-            {
-                if (button.IsMouseOver)
-                    ApplyP05Hover(button);
-            }));
+        if (sender is Button button)
+            ApplyP05Hover(button);
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (sender is not Button button)
-            return;
-
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Render,
-            new Action(() =>
-            {
-                if (!button.IsMouseOver)
-                    RestoreP05Chrome(button);
-            }));
+        if (sender is Button button)
+            RestoreP05Chrome(button);
     }
 
     private static bool IsP05HardwareButton(Button? button)
@@ -103,25 +88,29 @@ public partial class AvrWorkspaceControl
 
         chrome.Background = background;
         chrome.BorderBrush = border;
-
-        // Lucide keypad glyphs are intentionally white. Keep text-based hardware keys
-        // on the same high-contrast palette so hover never becomes white-on-white or
-        // dark-on-dark, regardless of the legacy template's Foreground trigger.
         button.Foreground = P05HoverTextBrush;
     }
 
     private void RestoreP05Chrome(Button button)
     {
-        button.ApplyTemplate();
-        if (button.Template.FindName("Chrome", button) is Border chrome)
-        {
-            chrome.ClearValue(Border.BackgroundProperty);
-            chrome.ClearValue(Border.BorderBrushProperty);
-        }
-
-        // Re-assert semantic illumination on the left-side authority/mode keys. The
-        // right-side Lucide keys legitimately keep the same near-white foreground.
+        // Never ClearValue here. Clearing would expose the old near-white XAML hover
+        // trigger again while WPF is unwinding IsMouseOver. Instead restore a stable
+        // local chrome value from the semantic button state.
         RefreshP04ModeVisuals();
+        P05SyncChromeToButton(button);
+    }
+
+    private static void P05SyncChromeToButton(Button button)
+    {
+        if (button.IsMouseOver)
+            return;
+
+        button.ApplyTemplate();
+        if (button.Template.FindName("Chrome", button) is not Border chrome)
+            return;
+
+        chrome.Background = button.Background;
+        chrome.BorderBrush = button.BorderBrush;
     }
 
     private static Brush P05Freeze(Color color)
