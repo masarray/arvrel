@@ -248,7 +248,7 @@ public sealed class RealTestWorkflowsWindow : Window
             if (_closeAfterRun)
             {
                 _closeAfterRun = false;
-                Dispatcher.BeginInvoke(new Action(Close));
+                Close();
             }
         }
     }
