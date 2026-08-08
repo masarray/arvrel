@@ -14,6 +14,8 @@ public sealed class UnifiedIedSelectorSourceTests
         StringAssert.Contains(code, "AVR · OLTC Controller");
         StringAssert.Contains(code, "Transformer Differential · 87T / REF");
         StringAssert.Contains(code, "UnifiedIedKind.TransformerDifferential");
+        StringAssert.Contains(code, "public override string ToString() => DisplayName;");
+        StringAssert.Contains(code, "DisplayMemberPath = nameof(UnifiedIedChoice.DisplayName)");
     }
 
     [TestMethod]
@@ -24,22 +26,33 @@ public sealed class UnifiedIedSelectorSourceTests
         StringAssert.Contains(code, "_iedTypeCombo.SelectionChanged -= IedTypeCombo_SelectionChanged;");
         StringAssert.Contains(code, "SelectIed(VirtualIedKind.AutomaticVoltageRegulator);");
         StringAssert.Contains(code, "SelectIed(VirtualIedKind.ProtectionRelay);");
-        StringAssert.Contains(code, "OpenTransformerIedWorkspace();");
         StringAssert.Contains(code, "new TransformerIedWindow(_processBus)");
         StringAssert.Contains(code, "window.InitializeP14PractitionerUi();");
         StringAssert.Contains(code, "window.InitializeP15PublicTestUi();");
+        StringAssert.Contains(code, "window.InitializeP17FaceplateBridge();");
+        StringAssert.Contains(code, "_transformerFaceplate = new VirtualRelayControl");
+        Assert.IsFalse(code.Contains("TransformerVirtualRelayControl", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void TransformerSelection_DoesNotMasqueradeAsAvrOrRequireProcessBusForSelfTest()
+    public void TransformerSelection_ShowsCompleteOcrOperatorWorkspaceBeforeEngineeringWorkspace()
     {
         var code = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
+        var workspace = Read("src", "Arvrel.App", "MainWindow.TransformerOcrWorkspace.cs");
 
         StringAssert.Contains(code, "ShowTransformerLanding();");
-        StringAssert.Contains(code, "Virtual protection only · no physical trip / GOOSE / breaker output");
-        StringAssert.Contains(code, "RUN 10-SCENARIO SELF-TEST");
-        StringAssert.Contains(code, "Applying the live/replay runtime still requires two");
+        StringAssert.Contains(code, "_protectionWorkspace.Visibility = Visibility.Visible;");
+        StringAssert.Contains(code, "OperatingModeCombo.Visibility = Visibility.Visible;");
+        StringAssert.Contains(code, "MountTransformerFaceplateIntoOcrWorkspace()");
+        StringAssert.Contains(code, "OCR waveform / injection / phasor workspace is reused");
+        StringAssert.Contains(code, "TransformerPublicSelfTest.RunAll()");
+        StringAssert.Contains(code, "Applying the live/replay runtime");
+
+        StringAssert.Contains(workspace, "_transformerSharedRelayHost.Child = _transformerFaceplate;");
+        StringAssert.Contains(workspace, "_transformerSharedRelayHost.Child = _ocrWorkspaceRelay;");
+
+        Assert.IsFalse(code.Contains("ShowTransformerLanding();\n        OpenTransformerIedWorkspace();", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("TransformerIedButton_Click", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("toolbar.Children.Insert", StringComparison.Ordinal));
     }

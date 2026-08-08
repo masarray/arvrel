@@ -72,6 +72,21 @@ public partial class VirtualRelayControl : UserControl
     public event RoutedEventHandler? ResetRequested;
     public event EventHandler<VirtualRelayHardwareKeyEventArgs>? HardwareKeyPressed;
 
+    /// <summary>
+    /// Applies presentation-only text substitutions to the existing OCR/P6 hardware
+    /// tree. Geometry, brushes, soft-key chrome, tactile input behavior, lamp optics,
+    /// HMI ownership and protection/runtime state remain untouched.
+    /// </summary>
+    public void ApplyTextOverrides(IReadOnlyDictionary<string, string> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(replacements);
+        foreach (var textBlock in LogicalDescendants<TextBlock>(this))
+        {
+            if (replacements.TryGetValue(textBlock.Text, out var replacement))
+                textBlock.Text = replacement;
+        }
+    }
+
     private void ResetButton_Click(object sender, RoutedEventArgs e)
         => ResetRequested?.Invoke(this, e);
 
