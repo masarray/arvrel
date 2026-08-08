@@ -162,4 +162,30 @@ public sealed class ResearchProtectionEngineTests
         Assert.IsTrue(snapshot.Blocked);
         Assert.IsFalse(snapshot.AlgorithmComparisons.Single(item => item.Element == "50P-1").CustomTripRequested);
     }
+
+    [TestMethod]
+    public void UpdateSettings_ClearsStagedAndActiveCustomRuntimeForMandatoryRestaging()
+    {
+        var settings = new ProtectionSettings();
+        var source = AlgorithmSourceCatalog.Build("50P-1", settings);
+        var staged = AlgorithmRuntimeRegistry.Stage("50P-1", source, settings, "before settings change");
+        _ = AlgorithmRuntimeRegistry.Activate("50P-1", staged.SourceHash, settings);
+        var engine = new ResearchProtectionEngine(settings);
+        Assert.IsTrue(AlgorithmRuntimeRegistry.Snapshot().HasActiveCustom);
+
+        var changed = settings with
+        {
+            Revision = settings.Revision + 1,
+            PhaseInstantaneousPickupA = settings.PhaseInstantaneousPickupA + 0.5
+        };
+        engine.UpdateSettings(changed);
+        var runtime = AlgorithmRuntimeRegistry.Snapshot();
+
+        Assert.IsFalse(runtime.HasActiveCustom);
+        Assert.AreEqual(0, runtime.Staged.Count);
+        Assert.AreEqual(0, runtime.Active.Count);
+        Assert.IsTrue(runtime.AuditTrail.Any(item =>
+            item.Action == "CLEAR_SESSION" &&
+            item.AuthorNote.Contains("mandatory restaging", StringComparison.OrdinalIgnoreCase)));
+    }
 }
