@@ -21,11 +21,8 @@ public partial class AvrWorkspaceControl
         var inter = new FontFamily("Inter");
         FontFamily = inter;
         ApplyWorkspaceFontRecursive(this, inter);
+        ApplyLeanWorkspaceGeometry();
 
-        // Manual experimentation is the primary left-panel workflow. Scenario
-        // shortcuts and the sequence trace duplicated the profile selector and
-        // added visual noise, so keep the engine capability but hide it from the
-        // default operator surface.
         HideSectionByLabel("QUICK SCENARIOS", hideFollowingSibling: true);
         HideSectionByLabel("TEST SEQUENCE", hideFollowingSibling: true);
 
@@ -36,6 +33,7 @@ public partial class AvrWorkspaceControl
         }
 
         InstallCurrentInjectionSlider();
+        WrapAdvancedTimingFields();
 
         var header = FindVisualChildren<TextBlock>(this)
             .FirstOrDefault(x => string.Equals(x.Text, "INJECTION FORM", StringComparison.Ordinal));
@@ -46,6 +44,23 @@ public partial class AvrWorkspaceControl
             .FirstOrDefault(x => x.Text?.StartsWith("Test-set stimulus", StringComparison.Ordinal) == true);
         if (subtitle is not null)
             subtitle.Text = "Adjust U / I live · start source · observe AVR and OLTC response";
+
+        var sourceTarget = FindVisualChildren<TextBlock>(this)
+            .FirstOrDefault(x => string.Equals(x.Text, "CONFIGURED SOURCE TARGET", StringComparison.Ordinal));
+        if (sourceTarget is not null)
+            sourceTarget.Text = "SOURCE SETPOINTS";
+    }
+
+    private void ApplyLeanWorkspaceGeometry()
+    {
+        if (VisualTreeHelper.GetParent(ConfigurationPanel) is not Grid root || root.ColumnDefinitions.Count < 5)
+            return;
+
+        root.ColumnDefinitions[0].MinWidth = 330;
+        root.ColumnDefinitions[0].Width = new GridLength(350);
+        root.ColumnDefinitions[1].Width = new GridLength(8);
+        root.ColumnDefinitions[3].Width = new GridLength(8);
+        root.ColumnDefinitions[4].Width = new GridLength(38);
     }
 
     private void InstallCurrentInjectionSlider()
@@ -57,8 +72,9 @@ public partial class AvrWorkspaceControl
         if (voltageIndex < 0)
             return;
 
-        // Insert after the voltage slider scale row.
-        var insertAt = Math.Min(stack.Children.Count, voltageIndex + 3);
+        // Immediately follow the voltage slider and its scale row so U and I
+        // read as one coherent manual-injection control group.
+        var insertAt = Math.Min(stack.Children.Count, voltageIndex + 2);
 
         var header = new Grid { Margin = new Thickness(0, 2, 0, 0) };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -92,7 +108,7 @@ public partial class AvrWorkspaceControl
         };
         _sourceCurrentSlider.ValueChanged += SourceCurrentSlider_ValueChanged;
 
-        var scale = new Grid { Margin = new Thickness(0, 2, 0, 10) };
+        var scale = new Grid { Margin = new Thickness(0, 2, 0, 8) };
         scale.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         scale.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         scale.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -109,6 +125,44 @@ public partial class AvrWorkspaceControl
         stack.Children.Insert(insertAt + 2, scale);
 
         InjectionCurrentBox.LostFocus += (_, _) => SyncCurrentSliderFromModel();
+    }
+
+    private void WrapAdvancedTimingFields()
+    {
+        DependencyObject? current = RampBox;
+        Grid? timingGrid = null;
+        StackPanel? host = null;
+        while (current is not null)
+        {
+            if (current is Grid grid && grid.Parent is StackPanel stack)
+            {
+                timingGrid = grid;
+                host = stack;
+                break;
+            }
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+
+        if (timingGrid is null || host is null)
+            return;
+
+        var index = host.Children.IndexOf(timingGrid);
+        if (index < 0)
+            return;
+
+        host.Children.RemoveAt(index);
+        var advanced = new Expander
+        {
+            Header = "Advanced ramp / timing",
+            IsExpanded = false,
+            Foreground = new SolidColorBrush(Color.FromRgb(143, 167, 184)),
+            FontSize = 9.2,
+            Margin = new Thickness(0, 3, 0, 1),
+            Content = timingGrid
+        };
+        host.Children.Insert(index, advanced);
     }
 
     private TextBlock CurrentScaleText(string text, HorizontalAlignment alignment)
