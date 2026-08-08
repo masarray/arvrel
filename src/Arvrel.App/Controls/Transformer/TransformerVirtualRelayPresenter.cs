@@ -106,11 +106,17 @@ internal sealed class TransformerVirtualRelayPresenter
 
     public void UpdateEnvironment(ProcessBusSourceMode sourceMode, int streamCount, bool engineeringOpen)
     {
+        var normalizedStreamCount = Math.Max(0, streamCount);
+        var changed = _sourceMode != sourceMode ||
+                      _streamCount != normalizedStreamCount ||
+                      _engineeringOpen != engineeringOpen;
+
         _sourceMode = sourceMode;
-        _streamCount = Math.Max(0, streamCount);
+        _streamCount = normalizedStreamCount;
         _engineeringOpen = engineeringOpen;
         UpdateRelayFooter();
-        Render();
+        if (changed)
+            Render();
     }
 
     public void UpdateSnapshot(TransformerProtectionRuntimeSnapshot? snapshot)
@@ -374,7 +380,8 @@ internal sealed class TransformerVirtualRelayPresenter
     private void UpdateRelayFooter()
     {
         var runtime = _snapshot?.State.ToString().ToUpperInvariant() ?? "WAITING";
-        _relay.RelayFooterText.Text = $"{SourceLabel(_sourceMode)} · {_streamCount} SV · {runtime} · ENG {(_engineeringOpen ? "OPEN" : "CLOSED")}";
+        SetTextIfChanged(_relay.RelayFooterText,
+            $"{SourceLabel(_sourceMode)} · {_streamCount} SV · {runtime} · ENG {(_engineeringOpen ? "OPEN" : "CLOSED")}");
     }
 
     private void Render()
@@ -412,11 +419,32 @@ internal sealed class TransformerVirtualRelayPresenter
     private void RenderHome()
     {
         var snapshot = _snapshot;
-        var state = snapshot?.State.ToString().ToUpperInvariant() ?? "WAITING";
-        var pair = snapshot?.Pairing.Code ?? (_streamCount >= 2 ? "NOT CONFIGURED" : "WAIT 2 SV");
-        var active = string.IsNullOrWhiteSpace(snapshot?.Protection?.ActiveElement) ? "—" : snapshot.Protection.ActiveElement;
-        SetLcd("ARVREL 87T · HOME",
-            $"STATE   {Trim(state, 18)}\nPAIR    {Trim(pair, 18)}\nACTIVE  {Trim(active, 18)}\nENG     {(_engineeringOpen ? "OPEN" : "CLOSED")}",
+        var measurement = snapshot?.Measurement;
+        var phases = snapshot?.Protection?.Differential.Phases;
+        if (measurement is null || phases is null)
+        {
+            SetLcd("TRANSFORMER SINGLE LINE",
+                "HV --CT--[ 87T ]--CT-- LV\n" +
+                "          |     |\n" +
+                "        NGR     NGR\n\n" +
+                "WAITING FOR PAIRED CURRENT",
+                "F1 MEAS · F2 EVENT · F3 RECORD · F4 ENG");
+            return;
+        }
+
+        var phaseA = phases.Single(item => item.Phase == TransformerPhase.A);
+        var phaseB = phases.Single(item => item.Phase == TransformerPhase.B);
+        var phaseC = phases.Single(item => item.Phase == TransformerPhase.C);
+        var hv = measurement.HighVoltage;
+        var lv = measurement.LowVoltage;
+
+        SetLcd("TRANSFORMER SINGLE LINE · SECONDARY A",
+            "HV --CT--[ 87T ]--CT-- LV\n" +
+            $"A  {hv.FundamentalCurrentA.PhaseA.Magnitude,5:0.000}       {lv.FundamentalCurrentA.PhaseA.Magnitude,5:0.000}\n" +
+            $"B  {hv.FundamentalCurrentA.PhaseB.Magnitude,5:0.000}       {lv.FundamentalCurrentA.PhaseB.Magnitude,5:0.000}\n" +
+            $"C  {hv.FundamentalCurrentA.PhaseC.Magnitude,5:0.000}       {lv.FundamentalCurrentA.PhaseC.Magnitude,5:0.000}\n" +
+            $"N  {NeutralText(hv),5}       {NeutralText(lv),5}\n" +
+            $"Id {phaseA.OperatingCurrentPu:0.00}  {phaseB.OperatingCurrentPu:0.00}  {phaseC.OperatingCurrentPu:0.00} pu",
             "F1 MEAS · F2 EVENT · F3 RECORD · F4 ENG");
     }
 
@@ -571,16 +599,35 @@ internal sealed class TransformerVirtualRelayPresenter
 
     private void SetLcd(string header, string body, string footer)
     {
-        _lcdHeader.Text = header;
-        _lcdBody.Text = body;
-        _lcdFooter.Text = footer;
+        // Avoid invalidating WPF text/layout on every high-rate runtime snapshot when
+        // the formatted LCD content did not actually change. This is particularly
+        // important for synchronized internal injection where snapshots arrive much
+        // faster than a human-readable relay display needs to repaint.
+        SetTextIfChanged(_lcdHeader, header);
+        SetTextIfChanged(_lcdBody, body);
+        SetTextIfChanged(_lcdFooter, footer);
     }
+
+    private static void SetTextIfChanged(TextBlock target, string value)
+    {
+        if (!string.Equals(target.Text, value, StringComparison.Ordinal))
+            target.Text = value;
+    }
+
+    private static string NeutralText(TransformerWindingMeasurement measurement)
+        => measurement.NeutralCurrentAvailable
+            ? measurement.NeutralCurrentA.Magnitude.ToString("0.000", CultureInfo.InvariantCulture)
+            : "--";
 
     private Brush ResolveBrush(string key, Brush fallback)
         => _relay.TryFindResource(key) as Brush ?? fallback;
 
     private void SetLamp(Ellipse lens, bool active, Brush brush)
-        => lens.Fill = active ? brush : _ledOffBrush;
+    {
+        var desired = active ? brush : _ledOffBrush;
+        if (!ReferenceEquals(lens.Fill, desired))
+            lens.Fill = desired;
+    }
 
     private static string Stage(TransformerElementSnapshot element)
         => element.State switch
