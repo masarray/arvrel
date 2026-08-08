@@ -27,26 +27,28 @@ public partial class AvrWorkspaceControl
             return;
 
         _p05HoverInstalled = true;
-        AddHandler(Mouse.MouseEnterEvent, new MouseEventHandler(P05Button_MouseEnter), handledEventsToo: true);
-        AddHandler(Mouse.MouseLeaveEvent, new MouseEventHandler(P05Button_MouseLeave), handledEventsToo: true);
+        foreach (var button in FindVisualChildren<Button>(this))
+        {
+            if (!IsP05HardwareButton(button))
+                continue;
+
+            button.MouseEnter -= P05Button_MouseEnter;
+            button.MouseLeave -= P05Button_MouseLeave;
+            button.MouseEnter += P05Button_MouseEnter;
+            button.MouseLeave += P05Button_MouseLeave;
+        }
     }
 
     private void P05Button_MouseEnter(object sender, MouseEventArgs e)
     {
-        var button = FindAncestorButton(e.OriginalSource as DependencyObject);
-        if (!IsP05HardwareButton(button))
-            return;
-
-        ApplyP05Hover(button!);
+        if (sender is Button button)
+            ApplyP05Hover(button);
     }
 
     private void P05Button_MouseLeave(object sender, MouseEventArgs e)
     {
-        var button = FindAncestorButton(e.OriginalSource as DependencyObject);
-        if (!IsP05HardwareButton(button))
-            return;
-
-        RestoreP05Chrome(button!);
+        if (sender is Button button)
+            RestoreP05Chrome(button);
     }
 
     private static bool IsP05HardwareButton(Button? button)
@@ -55,7 +57,7 @@ public partial class AvrWorkspaceControl
             return false;
 
         var tag = button.Tag?.ToString()?.ToUpperInvariant();
-        if (tag is "ENTER" or "LEFT" or "RIGHT" or "HOME" or "MENU" or
+        if (tag is "ENTER" or "LEFT" or "RIGHT" or "BACK" or "HOME" or "MENU" or
             "REMOTE_ACTIVE" or "AUTO_ACTIVE" or "LOCAL_ACTIVE" or "MANUAL_ACTIVE")
             return true;
 
