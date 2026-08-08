@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Windows;
@@ -11,6 +12,7 @@ namespace Arvrel.App;
 
 public sealed class RealTestWorkflowsWindow : Window
 {
+    private readonly CoreScenario _source;
     private readonly RealTestWorkflowEngine _engine;
     private readonly ComboBox _workflowCombo;
     private readonly ComboBox _signalCombo;
@@ -26,11 +28,14 @@ public sealed class RealTestWorkflowsWindow : Window
     private readonly Button _runButton;
     private readonly Button _cancelButton;
     private CancellationTokenSource? _cancellation;
+    private bool _workflowRunning;
+    private bool _closeAfterRun;
 
     public RealTestWorkflowsWindow(CoreScenario source, ClosedLoopVirtualTestBench bench)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(bench);
+        _source = source;
         _engine = new RealTestWorkflowEngine(source, bench);
 
         Title = "ARVREL — Real Test Workflows";
@@ -206,14 +211,16 @@ public sealed class RealTestWorkflowsWindow : Window
         actions.Children.Add(_runButton);
 
         _workflowCombo.SelectionChanged += (_, _) => RefreshWorkflowFields();
-        RefreshWorkflowFields();
+        Closing += WorkflowWindow_Closing;
         Closed += (_, _) => _cancellation?.Cancel();
+        RefreshWorkflowFields();
     }
 
     private async void RunButton_Click(object sender, RoutedEventArgs e)
     {
         _cancellation?.Dispose();
         _cancellation = new CancellationTokenSource();
+        _workflowRunning = true;
         _runButton.IsEnabled = false;
         _cancelButton.IsEnabled = true;
         _resultsText.Text = "Running deterministic closed-loop workflow…";
@@ -235,23 +242,46 @@ public sealed class RealTestWorkflowsWindow : Window
         }
         finally
         {
+            _workflowRunning = false;
             _cancelButton.IsEnabled = false;
             _runButton.IsEnabled = true;
+            if (_closeAfterRun)
+            {
+                _closeAfterRun = false;
+                Dispatcher.BeginInvoke(new Action(Close));
+            }
         }
     }
 
+    private void WorkflowWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        if (!_workflowRunning)
+            return;
+
+        e.Cancel = true;
+        _closeAfterRun = true;
+        _cancellation?.Cancel();
+        _resultsText.Text = "Cancelling active workflow and de-energizing the virtual source…";
+    }
+
     private WorkflowRequest CaptureRequest()
-        => new(
-            _workflowCombo.SelectedIndex,
+    {
+        var workflowIndex = _workflowCombo.SelectedIndex;
+        var sequence = workflowIndex == 3;
+        var pulse = workflowIndex == 1;
+        return new WorkflowRequest(
+            workflowIndex,
             (VirtualInjectionSignal)(_signalCombo.SelectedItem ?? VirtualInjectionSignal.PhaseACurrent),
             (RealTestFeedback)(_feedbackCombo.SelectedItem ?? RealTestFeedback.Pickup),
-            Number(_startText.Text, "Start RMS"),
-            Number(_endText.Text, "End RMS"),
-            Number(_stepText.Text, "Step RMS"),
+            sequence ? 0 : Number(_startText.Text, "Start RMS"),
+            sequence ? 0 : Number(_endText.Text, "End RMS"),
+            sequence ? 1 : Number(_stepText.Text, "Step RMS"),
             Milliseconds(_dwellText.Text, "Dwell / pulse"),
-            Number(_baselineText.Text, "Baseline RMS"),
-            Milliseconds(_resetText.Text, "Reset / post"),
-            _faultPresetCombo.SelectedItem as string ?? "Three-phase fault");
+            pulse ? Number(_baselineText.Text, "Baseline RMS") : 0,
+            pulse || sequence ? Milliseconds(_resetText.Text, "Reset / post") : TimeSpan.FromMilliseconds(20),
+            _faultPresetCombo.SelectedItem as string ?? "Three-phase fault",
+            _source.ActiveProfile);
+    }
 
     private object RunRequest(WorkflowRequest request, CancellationToken token)
         => request.WorkflowIndex switch
@@ -264,8 +294,15 @@ public sealed class RealTestWorkflowsWindow : Window
 
     private static StateSequenceDefinition BuildStateSequence(WorkflowRequest request)
     {
-        var normal = VirtualInjectionPresets.Create("Normal balanced");
-        var fault = VirtualInjectionPresets.Create(request.FaultPreset);
+        var context = request.SourceContext;
+        var normal = (VirtualInjectionPresets.Create("Normal balanced", context.FrequencyHz) with
+        {
+            CurrentTransformer = context.CurrentTransformer
+        }).Normalize();
+        var fault = (VirtualInjectionPresets.Create(request.FaultPreset, context.FrequencyHz) with
+        {
+            CurrentTransformer = context.CurrentTransformer
+        }).Normalize();
         return new StateSequenceDefinition(
             "Operator state sequence",
             new[]
@@ -421,5 +458,6 @@ public sealed class RealTestWorkflowsWindow : Window
         TimeSpan Dwell,
         double Baseline,
         TimeSpan Reset,
-        string FaultPreset);
+        string FaultPreset,
+        VirtualInjectionProfile SourceContext);
 }
