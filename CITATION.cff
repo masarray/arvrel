@@ -9,16 +9,19 @@ authors:
 repository-code: "https://github.com/masarray/arvrel"
 url: "https://github.com/masarray/arvrel"
 license: "GPL-3.0-or-later"
-version: "0.1.0-beta.1"
-date-released: 2026-08-03
+version: "0.1.0-beta.3"
+date-released: 2026-08-08
 keywords:
   - IEC 61850
   - Sampled Values
   - protection relay
+  - transformer differential
+  - restricted earth fault
   - process bus
   - power systems
   - virtual laboratory
 abstract: >-
   ARVREL is a vendor-neutral Windows virtual protection relay laboratory for
   IEC 61850 Sampled Values engineering, education, process-bus analysis,
-  protection-algorithm research, and virtual trip evidence.
+  protection-algorithm research, transformer differential evaluation, and
+  virtual trip evidence.
