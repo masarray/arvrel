@@ -15,8 +15,11 @@ public sealed class TransformerVirtualRelayP17SourceTests
         StringAssert.Contains(main, "using Arvrel.App.Controls.VirtualRelay;");
         StringAssert.Contains(main, "private VirtualRelayControl? _transformerFaceplate;");
         StringAssert.Contains(main, "_transformerFaceplate = new VirtualRelayControl");
-        StringAssert.Contains(main, "No Transformer-specific shell, card, operator rail, button geometry or LED");
-        StringAssert.Contains(sharedCode, "It owns hardware geometry and visual");
+        StringAssert.Contains(main, "normal path mounts the shared VirtualRelayControl into the OCR relay host");
+        StringAssert.Contains(sharedCode, "Native P6 virtual relay hardware");
+        StringAssert.Contains(sharedCode, "HardwareKeyPressed");
+        StringAssert.Contains(sharedCode, "SetSoftKeys");
+        StringAssert.Contains(sharedCode, "SetLcdTrustState");
         StringAssert.Contains(sharedXaml, "VrOuterShellBrush");
         StringAssert.Contains(sharedXaml, "VrFrontFaceBrush");
         StringAssert.Contains(sharedXaml, "VrHardwareKeyStyle");
