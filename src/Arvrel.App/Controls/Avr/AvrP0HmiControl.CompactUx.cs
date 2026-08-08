@@ -6,18 +6,26 @@ namespace Arvrel.App.Controls.Avr;
 
 public partial class AvrP0HmiControl
 {
+    private bool _interLoadedHooked;
+
     internal void ApplyCompactVisualPolish()
     {
-        var inter = new FontFamily("Inter, Segoe UI");
+        var inter = new FontFamily("Inter");
         FontFamily = inter;
         ApplyFontRecursive(this, inter);
 
-        // A real AVR display is landscape and information-dense. Keep the trend
-        // as supporting context and reserve vertical space for the hero values.
+        if (!_interLoadedHooked)
+        {
+            _interLoadedHooked = true;
+            Loaded += (_, _) => ApplyFontRecursive(this, new FontFamily("Inter"));
+        }
+
+        // Landscape, information-dense AVR display. The trend is context, not
+        // the hero, so the body can scale larger while keeping a calm hierarchy.
         MinHeight = 0;
         if (HomePage.RowDefinitions.Count > 4)
-            HomePage.RowDefinitions[4].Height = new GridLength(84);
-        HomePage.Margin = new Thickness(7, 5, 7, 5);
+            HomePage.RowDefinitions[4].Height = new GridLength(78);
+        HomePage.Margin = new Thickness(7, 5, 7, 4);
 
         VoltageHero.FontSize = 34;
         VoltageHero.Margin = new Thickness(0, -2, 0, 0);
