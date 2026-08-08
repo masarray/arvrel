@@ -49,8 +49,8 @@ public sealed record AlgorithmAbComparisonSnapshot(
 /// <summary>
 /// Process-local activation control plane for Research Mode. Definitions are immutable
 /// and content-addressed. This registry never exposes a physical/GOOSE/MMS output path;
-/// activation only changes which deterministic result ProtectionEngine may use for its
-/// existing virtual-trip projection.
+/// activation only changes which deterministic result ResearchProtectionEngine may use
+/// for its existing virtual-trip projection.
 /// </summary>
 public static class AlgorithmRuntimeRegistry
 {
@@ -275,11 +275,19 @@ internal sealed class AlgorithmDualModeHost
         return results;
     }
 
-    public AlgorithmRuntimeRegistry.RuntimePlanEntry? PlanFor(string element)
-        => AlgorithmRuntimeRegistry.GetExecutionPlan().Entries.FirstOrDefault(entry => string.Equals(entry.Element, element, StringComparison.OrdinalIgnoreCase));
-
     public void Reset()
     {
+        foreach (var runtime in _instances.Values)
+            runtime.Instance.Reset();
+    }
+
+    public void ObserveRejectedFrameTimestamp(DateTimeOffset timestamp)
+    {
+        // A rejected Ethernet frame must never advance a custom protection timer from
+        // stale measurements. Resetting only custom dynamic state is conservative and
+        // deterministic; the native reference engine independently advances its time
+        // anchor while SMV trust remains blocked by the process-bus ingress policy.
+        _ = timestamp;
         foreach (var runtime in _instances.Values)
             runtime.Instance.Reset();
     }
