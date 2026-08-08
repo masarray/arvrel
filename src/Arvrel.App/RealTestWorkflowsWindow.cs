@@ -26,9 +26,7 @@ public sealed class RealTestWorkflowsWindow : Window
     private readonly Button _cancelButton;
     private CancellationTokenSource? _cancellation;
 
-    public RealTestWorkflowsWindow(
-        DeterministicLabScenario source,
-        ClosedLoopVirtualTestBench bench)
+    public RealTestWorkflowsWindow(DeterministicLabScenario source, ClosedLoopVirtualTestBench bench)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(bench);
@@ -71,7 +69,7 @@ public sealed class RealTestWorkflowsWindow : Window
         });
         headerStack.Children.Add(new TextBlock
         {
-            Text = "Ramp, pulse ramp, pickup/dropout search and state sequencing operate through the P0 virtual wiring and TESTSET BI feedback only.",
+            Text = "Ramp, pulse ramp, pickup/dropout search and state sequencing use the P0 virtual wiring and TESTSET BI feedback only.",
             Margin = new Thickness(0, 3, 0, 0),
             FontSize = 10.5,
             Foreground = Brush("#64748B")
@@ -96,55 +94,27 @@ public sealed class RealTestWorkflowsWindow : Window
             setupGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         setup.Child = setupGrid;
 
-        _workflowCombo = new ComboBox
-        {
-            ItemsSource = new[] { "Step ramp", "Pulse ramp", "Pickup / dropout search", "State sequence" },
-            SelectedIndex = 0,
-            Height = 30,
-            Margin = new Thickness(8, 3, 16, 3)
-        };
+        _workflowCombo = Combo(new[] { "Step ramp", "Pulse ramp", "Pickup / dropout search", "State sequence" }, 0, new Thickness(8, 3, 16, 3));
         AddField(setupGrid, "WORKFLOW", _workflowCombo, 0, 0);
-
-        _signalCombo = new ComboBox
-        {
-            ItemsSource = Enum.GetValues<VirtualInjectionSignal>(),
-            SelectedItem = VirtualInjectionSignal.PhaseACurrent,
-            Height = 30,
-            Margin = new Thickness(8, 3, 0, 3)
-        };
+        _signalCombo = Combo(Enum.GetValues<VirtualInjectionSignal>(), VirtualInjectionSignal.PhaseACurrent, new Thickness(8, 3, 0, 3));
         AddField(setupGrid, "SIGNAL", _signalCombo, 0, 2);
 
         _startText = Field("2.0");
         AddField(setupGrid, "START RMS", _startText, 1, 0);
-        _endText = Field("6.0");
+        _endText = Field("6.0", rightMargin: false);
         AddField(setupGrid, "END RMS", _endText, 1, 2);
-
         _stepText = Field("0.25");
         AddField(setupGrid, "STEP RMS", _stepText, 2, 0);
-        _dwellText = Field("10");
+        _dwellText = Field("10", rightMargin: false);
         AddField(setupGrid, "DWELL / PULSE ms", _dwellText, 2, 2);
-
         _baselineText = Field("1.0");
         AddField(setupGrid, "BASELINE RMS", _baselineText, 3, 0);
-        _resetText = Field("20");
-        AddField(setupGrid, "RESET ms", _resetText, 3, 2);
+        _resetText = Field("20", rightMargin: false);
+        AddField(setupGrid, "RESET / POST ms", _resetText, 3, 2);
 
-        _feedbackCombo = new ComboBox
-        {
-            ItemsSource = Enum.GetValues<RealTestFeedback>(),
-            SelectedItem = RealTestFeedback.Pickup,
-            Height = 30,
-            Margin = new Thickness(8, 3, 16, 3)
-        };
+        _feedbackCombo = Combo(Enum.GetValues<RealTestFeedback>(), RealTestFeedback.Pickup, new Thickness(8, 3, 16, 3));
         AddField(setupGrid, "STOP / ADVANCE", _feedbackCombo, 4, 0);
-
-        _faultPresetCombo = new ComboBox
-        {
-            ItemsSource = VirtualInjectionPresets.Names,
-            SelectedItem = "Three-phase fault",
-            Height = 30,
-            Margin = new Thickness(8, 3, 0, 3)
-        };
+        _faultPresetCombo = Combo(VirtualInjectionPresets.Names, "Three-phase fault", new Thickness(8, 3, 0, 3));
         AddField(setupGrid, "FAULT STATE", _faultPresetCombo, 4, 2);
 
         var results = new Border
@@ -208,7 +178,6 @@ public sealed class RealTestWorkflowsWindow : Window
             FontSize = 9.5,
             VerticalAlignment = VerticalAlignment.Center
         });
-
         var actions = new StackPanel { Orientation = Orientation.Horizontal };
         Grid.SetColumn(actions, 1);
         footerGrid.Children.Add(actions);
@@ -250,8 +219,9 @@ public sealed class RealTestWorkflowsWindow : Window
 
         try
         {
+            var request = CaptureRequest();
             var token = _cancellation.Token;
-            var result = await Task.Run<object>(() => RunSelectedWorkflow(token), token);
+            var result = await Task.Run(() => RunRequest(request, token), token);
             _resultsText.Text = FormatResult(result);
         }
         catch (OperationCanceledException)
@@ -269,38 +239,39 @@ public sealed class RealTestWorkflowsWindow : Window
         }
     }
 
-    private object RunSelectedWorkflow(CancellationToken token)
-    {
-        var signal = (VirtualInjectionSignal)(_signalCombo.SelectedItem ?? VirtualInjectionSignal.PhaseACurrent);
-        var feedback = (RealTestFeedback)(_feedbackCombo.SelectedItem ?? RealTestFeedback.Pickup);
-        var start = Number(_startText.Text, "Start RMS");
-        var end = Number(_endText.Text, "End RMS");
-        var step = Number(_stepText.Text, "Step RMS");
-        var dwell = Milliseconds(_dwellText.Text, "Dwell / pulse");
-        var baseline = Number(_baselineText.Text, "Baseline RMS");
-        var reset = Milliseconds(_resetText.Text, "Reset");
+    private WorkflowRequest CaptureRequest()
+        => new(
+            _workflowCombo.SelectedIndex,
+            (VirtualInjectionSignal)(_signalCombo.SelectedItem ?? VirtualInjectionSignal.PhaseACurrent),
+            (RealTestFeedback)(_feedbackCombo.SelectedItem ?? RealTestFeedback.Pickup),
+            Number(_startText.Text, "Start RMS"),
+            Number(_endText.Text, "End RMS"),
+            Number(_stepText.Text, "Step RMS"),
+            Milliseconds(_dwellText.Text, "Dwell / pulse"),
+            Number(_baselineText.Text, "Baseline RMS"),
+            Milliseconds(_resetText.Text, "Reset / post"),
+            _faultPresetCombo.SelectedItem as string ?? "Three-phase fault");
 
-        return _workflowCombo.SelectedIndex switch
+    private object RunRequest(WorkflowRequest request, CancellationToken token)
+        => request.WorkflowIndex switch
         {
-            0 => _engine.RunRamp(new StepRampDefinition("Operator step ramp", signal, start, end, step, dwell, feedback), token),
-            1 => _engine.RunPulseRamp(new PulseRampDefinition("Operator pulse ramp", signal, baseline, start, end, step, dwell, reset, feedback), token),
-            2 => _engine.RunPickupDropoutSearch(new PickupDropoutSearchDefinition("Operator pickup/dropout search", signal, Math.Min(start, end), Math.Max(start, end), step, dwell), token),
-            _ => _engine.RunStateSequence(BuildStateSequence(dwell, reset, feedback), token)
+            0 => _engine.RunRamp(new StepRampDefinition("Operator step ramp", request.Signal, request.Start, request.End, request.Step, request.Dwell, request.Feedback), token),
+            1 => _engine.RunPulseRamp(new PulseRampDefinition("Operator pulse ramp", request.Signal, request.Baseline, request.Start, request.End, request.Step, request.Dwell, request.Reset, request.Feedback), token),
+            2 => _engine.RunPickupDropoutSearch(new PickupDropoutSearchDefinition("Operator pickup/dropout search", request.Signal, Math.Min(request.Start, request.End), Math.Max(request.Start, request.End), request.Step, request.Dwell), token),
+            _ => _engine.RunStateSequence(BuildStateSequence(request), token)
         };
-    }
 
-    private StateSequenceDefinition BuildStateSequence(TimeSpan faultDuration, TimeSpan postDuration, RealTestFeedback feedback)
+    private static StateSequenceDefinition BuildStateSequence(WorkflowRequest request)
     {
-        var preset = _faultPresetCombo.SelectedItem as string ?? "Three-phase fault";
         var normal = VirtualInjectionPresets.Create("Normal balanced");
-        var fault = VirtualInjectionPresets.Create(preset);
+        var fault = VirtualInjectionPresets.Create(request.FaultPreset);
         return new StateSequenceDefinition(
             "Operator state sequence",
             new[]
             {
                 new RealTestState("Pre-fault", normal, TimeSpan.FromMilliseconds(100)),
-                new RealTestState("Fault", fault, faultDuration, feedback),
-                new RealTestState("Post-fault", normal, postDuration)
+                new RealTestState("Fault", fault, request.Dwell, request.Feedback),
+                new RealTestState("Post-fault", normal, request.Reset)
             });
     }
 
@@ -368,12 +339,22 @@ public sealed class RealTestWorkflowsWindow : Window
         _faultPresetCombo.IsEnabled = sequence;
     }
 
-    private static TextBox Field(string text)
+    private static ComboBox Combo<T>(IEnumerable<T> values, object selected, Thickness margin)
+        => new()
+        {
+            ItemsSource = values,
+            SelectedItem = selected,
+            SelectedIndex = selected is int index ? index : -1,
+            Height = 30,
+            Margin = margin
+        };
+
+    private static TextBox Field(string text, bool rightMargin = true)
         => new()
         {
             Text = text,
             Height = 30,
-            Margin = new Thickness(8, 3, 16, 3),
+            Margin = rightMargin ? new Thickness(8, 3, 16, 3) : new Thickness(8, 3, 0, 3),
             Padding = new Thickness(7, 3, 7, 3),
             VerticalContentAlignment = VerticalAlignment.Center
         };
@@ -398,7 +379,7 @@ public sealed class RealTestWorkflowsWindow : Window
 
     private static double Number(string text, string name)
     {
-        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
             throw new ArgumentException($"{name} must be a finite number using '.' as decimal separator.");
         return value;
     }
@@ -406,7 +387,7 @@ public sealed class RealTestWorkflowsWindow : Window
     private static TimeSpan Milliseconds(string text, string name)
     {
         var value = Number(text, name);
-        if (!double.IsFinite(value) || value <= 0)
+        if (value <= 0)
             throw new ArgumentOutOfRangeException(name, "Duration must be greater than zero.");
         return TimeSpan.FromMilliseconds(value);
     }
@@ -423,4 +404,16 @@ public sealed class RealTestWorkflowsWindow : Window
         brush.Freeze();
         return brush;
     }
+
+    private sealed record WorkflowRequest(
+        int WorkflowIndex,
+        VirtualInjectionSignal Signal,
+        RealTestFeedback Feedback,
+        double Start,
+        double End,
+        double Step,
+        TimeSpan Dwell,
+        double Baseline,
+        TimeSpan Reset,
+        string FaultPreset);
 }
