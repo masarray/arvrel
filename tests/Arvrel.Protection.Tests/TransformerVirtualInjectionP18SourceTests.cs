@@ -35,13 +35,35 @@ public sealed class TransformerVirtualInjectionP18SourceTests
     public void SharedWaveformPhasorAndRelayLcdConsumeInjectedEvidence()
     {
         var ui = Read("src", "Arvrel.App", "MainWindow.TransformerVirtualInjection.cs");
-        var integration = Read("src", "Arvrel.App", "MainWindow.TransformerVirtualInjectionIntegration.cs");
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
 
         StringAssert.Contains(ui, "SmvScope.Frame = new WaveformFrame(");
         StringAssert.Contains(ui, "PhasorDisplayProjector.Project(side.Measurement.Phasors");
-        StringAssert.Contains(integration, "HV --CT--[ 87T ]--CT-- LV");
-        StringAssert.Contains(integration, "phaseA.OperatingCurrentPu");
-        StringAssert.Contains(integration, "measurement.NeutralCurrentAvailable");
+        StringAssert.Contains(presenter, "HV --CT--[ 87T ]--CT-- LV");
+        StringAssert.Contains(presenter, "phaseA.OperatingCurrentPu");
+        StringAssert.Contains(presenter, "measurement.HighVoltage");
+        StringAssert.Contains(presenter, "measurement.LowVoltage");
+        StringAssert.Contains(presenter, "NeutralCurrentAvailable");
+    }
+
+    [TestMethod]
+    public void TransformerRelayLcd_HasStablePresenterOwnedHomePage()
+    {
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
+        var integration = Read("src", "Arvrel.App", "MainWindow.TransformerVirtualInjectionIntegration.cs");
+
+        StringAssert.Contains(presenter, "TRANSFORMER SINGLE LINE · SECONDARY A");
+        StringAssert.Contains(presenter, "SetTextIfChanged(_lcdHeader, header);");
+        StringAssert.Contains(presenter, "SetTextIfChanged(_lcdBody, body);");
+        StringAssert.Contains(presenter, "SetTextIfChanged(_lcdFooter, footer);");
+        Assert.IsFalse(presenter.Contains("SetLcd(\"ARVREL 87T · HOME\"", StringComparison.Ordinal),
+            "The old HOME header re-arms the P18 overlay and causes visible text ping-pong/flicker.");
+
+        // The legacy P18 overlay is retained only for source-history compatibility.
+        // Its lookup requires a TextBlock containing both 87T and HOME. The official
+        // presenter no longer emits such a header, so it cannot become a second LCD writer.
+        StringAssert.Contains(integration, "text.Text.Contains(\"87T\", StringComparison.Ordinal)");
+        StringAssert.Contains(integration, "text.Text.Contains(\"HOME\", StringComparison.Ordinal)");
     }
 
     [TestMethod]
