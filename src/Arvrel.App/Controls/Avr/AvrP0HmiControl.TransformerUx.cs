@@ -13,19 +13,23 @@ public partial class AvrP0HmiControl
         var neutral = TapText(settings.NeutralTap);
         var minimum = TapText(settings.MinimumTap);
         var maximum = TapText(settings.MaximumTap);
+        var endRaise = snapshot.TapPosition >= settings.MaximumTap;
+        var endLower = snapshot.TapPosition <= settings.MinimumTap;
 
         TapHero.Text = tap;
         MeasuredTap.Text = tap;
         TapRange.Text = $"{minimum} … {maximum} · N {neutral}";
         TapFeedback.Text = snapshot.PendingTapPosition is int pending
             ? $"TARGET {TapText(pending)} · {snapshot.MotorTravelRemainingSeconds:0.0}s"
-            : snapshot.TapPosition == settings.NeutralTap
-                ? "FEEDBACK VALID · NEUTRAL"
-                : $"FEEDBACK VALID · N {neutral}";
-        ControlTapRange.Text = $"{minimum} … {maximum} · neutral {neutral} · {settings.TapStepPercent:0.###}%/step";
+            : endRaise
+                ? "END RAISE · FEEDBACK VALID"
+                : endLower
+                    ? "END LOWER · FEEDBACK VALID"
+                    : snapshot.TapPosition == settings.NeutralTap
+                        ? "FEEDBACK VALID · NEUTRAL"
+                        : $"FEEDBACK VALID · N {neutral}";
+        ControlTapRange.Text = $"{minimum} … {maximum} · neutral {neutral} · {settings.TapStepPercent:0.###}%/step · EndR {(endRaise ? "ON" : "OFF")} · EndL {(endLower ? "ON" : "OFF")}";
 
-        // Fixed hardware display: preserve breathing room around the actual-voltage
-        // unit/setpoint column rather than letting the hero value collide with it.
         TapHero.FontSize = 52;
         TapHero.MinWidth = 90;
         TapHero.TextAlignment = TextAlignment.Left;
@@ -41,12 +45,13 @@ public partial class AvrP0HmiControl
             measurementGrid.VerticalAlignment = VerticalAlignment.Center;
         }
 
+        var limitState = endRaise ? " · END RAISE" : endLower ? " · END LOWER" : string.Empty;
         FooterReason.Text = snapshot.SourceEnergized
-            ? snapshot.Reason
-            : $"Simulated transformer · neutral tap {neutral} · source OFF";
+            ? snapshot.Reason + limitState
+            : $"Simulated transformer · neutral tap {neutral} · source OFF{limitState}";
         BottomStatus.Text = snapshot.SourceEnergized
-            ? $"{HomeAuthority.Text} · {HomeMode.Text} · TAP {tap}/{maximum} · {StateText(snapshot.State).ToUpperInvariant()}"
-            : $"SIMULATED TRANSFORMER · TAP {tap}/{maximum} · NEUTRAL {neutral} · SOURCE OFF";
+            ? $"{HomeAuthority.Text} · {HomeMode.Text} · TAP {tap}/{maximum}{limitState} · {StateText(snapshot.State).ToUpperInvariant()}"
+            : $"SIMULATED TRANSFORMER · TAP {tap}/{maximum} · NEUTRAL {neutral}{limitState} · SOURCE OFF";
     }
 
     private static string TapText(int tap) => tap.ToString("00", CultureInfo.InvariantCulture);
