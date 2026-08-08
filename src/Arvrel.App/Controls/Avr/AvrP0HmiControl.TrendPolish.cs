@@ -18,9 +18,9 @@ public partial class AvrP0HmiControl
             return;
         }
 
-        // Only advance the visual filter when the existing low-rate trend sampler
-        // accepts a point (~3.3 Hz). Between samples we simply reassert the fixed-X
-        // geometry so UpdateState's generic renderer cannot rescale the history.
+        // The process history is still sampled only by the existing divider
+        // (~3.3 Hz). We smooth the Y value only when a real trend sample is
+        // accepted; control logic, numeric LCD values and MMS values remain raw.
         if (_trendDivider % 3 == 0 && _trendHistory.Count > 0)
         {
             if (!_trendSmoothingInitialized)
@@ -41,6 +41,8 @@ public partial class AvrP0HmiControl
                 _trendHistory.Enqueue(value);
         }
 
+        // Horizontal motion is interpolated only at the existing UI tick
+        // (~10 Hz). No animation clock, no 60-FPS loop and no extra timer.
         RenderFixedStepTrend();
     }
 
@@ -68,12 +70,16 @@ public partial class AvrP0HmiControl
 
         const int capacity = 90;
         var dx = w / Math.Max(1, capacity - 1);
-        var points = new PointCollection();
+        var phase = (_trendDivider % 3) / 3.0; // 0, 1/3, 2/3 between real samples.
+        var scroll = phase * dx;
+        var points = new PointCollection(values.Length);
         for (var i = 0; i < values.Length; i++)
         {
             var ageFromNewest = values.Length - 1 - i;
-            var x = Math.Max(0, w - ageFromNewest * dx);
-            points.Add(new Point(x, Y(values[i])));
+            var x = w - ageFromNewest * dx - scroll;
+            if (x < -dx)
+                continue;
+            points.Add(new Point(Math.Max(0, x), Y(values[i])));
         }
 
         TrendPath.Points = points;
