@@ -44,31 +44,33 @@ public partial class MainWindow
 
     private void RealTestWorkflowButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_closedLoopBench is null)
+        if (_closedLoopBench is null || _realTestWorkflowWindow is not null)
             return;
 
+        // P1 owns the closed-loop clock exclusively while the workflow console is open.
+        // Stop normal injection, close the mutable wiring editor, and disable its launcher
+        // before entering the modal workflow surface.
         _internalRunning = false;
         if (_scenario.IsRunning)
             _scenario.StopInjection();
+        if (_virtualWiringWindow is not null)
+        {
+            _virtualWiringWindow.Close();
+            _virtualWiringWindow = null;
+        }
+        if (_closedLoopWiringButton is not null)
+            _closedLoopWiringButton.IsEnabled = false;
         UpdateRunButton();
         RefreshVirtualInjectionRunStopPresentation();
-
-        if (_realTestWorkflowWindow is not null)
-        {
-            if (_realTestWorkflowWindow.WindowState == WindowState.Minimized)
-                _realTestWorkflowWindow.WindowState = WindowState.Normal;
-            _realTestWorkflowWindow.Activate();
-            return;
-        }
 
         _realTestWorkflowWindow = new RealTestWorkflowsWindow(_scenario.CoreScenario, _closedLoopBench)
         {
             Owner = this
         };
         _realTestWorkflowWindow.Closed += RealTestWorkflowWindow_Closed;
-        _realTestWorkflowWindow.Show();
-        AddEvent("TEST MODE", "P1 real test workflow console opened");
+        AddEvent("TEST MODE", "P1 real test workflow console opened · exclusive bench ownership");
         StatusText.Text = "P1 real test workflows ready · ramp, pulse ramp, pickup/dropout search and state sequencing use TESTSET BI feedback authority.";
+        _realTestWorkflowWindow.ShowDialog();
     }
 
     private void RealTestWorkflowWindow_Closed(object? sender, EventArgs e)
@@ -76,6 +78,8 @@ public partial class MainWindow
         if (_realTestWorkflowWindow is not null)
             _realTestWorkflowWindow.Closed -= RealTestWorkflowWindow_Closed;
         _realTestWorkflowWindow = null;
+        if (_closedLoopWiringButton is not null)
+            _closedLoopWiringButton.IsEnabled = true;
         _internalRunning = false;
         UpdateRunButton();
         RefreshVirtualInjectionRunStopPresentation();
@@ -88,6 +92,8 @@ public partial class MainWindow
         _realTestWorkflowWindow.Closed -= RealTestWorkflowWindow_Closed;
         _realTestWorkflowWindow.Close();
         _realTestWorkflowWindow = null;
+        if (_closedLoopWiringButton is not null)
+            _closedLoopWiringButton.IsEnabled = true;
     }
 }
 
