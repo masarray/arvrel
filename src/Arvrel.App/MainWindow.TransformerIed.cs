@@ -21,7 +21,13 @@ public partial class MainWindow
     private sealed record UnifiedIedChoice(
         UnifiedIedKind Kind,
         string DisplayName,
-        string Function);
+        string Function)
+    {
+        // The shell ComboBox uses a custom selection presenter. Keep the record's
+        // string representation user-facing so the selected value never falls back
+        // to the generated record text ("UnifiedIedChoice { Kind = ... }").
+        public override string ToString() => DisplayName;
+    }
 
     private static readonly IReadOnlyList<UnifiedIedChoice> UnifiedIedChoices =
     [
