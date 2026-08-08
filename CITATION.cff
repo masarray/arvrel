@@ -9,7 +9,7 @@ authors:
 repository-code: "https://github.com/masarray/arvrel"
 url: "https://github.com/masarray/arvrel"
 license: "GPL-3.0-or-later"
-version: "0.1.0-beta.4"
+version: "0.1.0-beta.5"
 date-released: 2026-08-08
 keywords:
   - IEC 61850
@@ -19,11 +19,12 @@ keywords:
   - OLTC
   - transformer differential
   - restricted earth fault
+  - secondary injection
   - process bus
   - power systems
   - virtual laboratory
 abstract: >-
   ARVREL is a vendor-neutral Windows virtual protection and control IED laboratory for
   IEC 61850 engineering, Sampled Values analysis, virtual feeder and transformer
-  protection, AVR/OLTC simulation, laboratory MMS interoperability, education, and
-  reviewable engineering evidence.
+  protection, AVR/OLTC simulation, synchronized two-sided transformer secondary injection,
+  laboratory MMS interoperability, education, and reviewable engineering evidence.
