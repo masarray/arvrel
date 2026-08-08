@@ -130,7 +130,7 @@ public sealed class AlgorithmSandboxRuntimeTests
             "setting(\"PhaseInstantaneousPickupA\")",
             StringComparison.Ordinal);
 
-        var exception = Assert.ThrowsException<AlgorithmCompilationException>(
+        var exception = Assert.ThrowsExactly<AlgorithmCompilationException>(
             () => AlgorithmSandboxCompiler.Compile("50P-1", source, settings));
 
         StringAssert.Contains(exception.Message, "duration");
@@ -145,7 +145,7 @@ public sealed class AlgorithmSandboxRuntimeTests
             "NotExposedSetting",
             StringComparison.Ordinal);
 
-        var exception = Assert.ThrowsException<AlgorithmCompilationException>(
+        var exception = Assert.ThrowsExactly<AlgorithmCompilationException>(
             () => AlgorithmSandboxCompiler.Compile("50P-1", source, settings));
 
         StringAssert.Contains(exception.Message, "Unknown or non-exposed setting");
@@ -157,7 +157,7 @@ public sealed class AlgorithmSandboxRuntimeTests
         var settings = new ProtectionSettings();
         var source = AlgorithmSourceCatalog.Build("67P", settings);
 
-        var exception = Assert.ThrowsException<AlgorithmCompilationException>(
+        var exception = Assert.ThrowsExactly<AlgorithmCompilationException>(
             () => AlgorithmSandboxCompiler.Compile("67P", source, settings));
 
         StringAssert.Contains(exception.Message, "restricted to 50P-1, 51P, 50N and 51N");
@@ -169,7 +169,7 @@ public sealed class AlgorithmSandboxRuntimeTests
         var settings = new ProtectionSettings();
         var source = AlgorithmSourceCatalog.Build("50P-1", settings) + new string(' ', AlgorithmSandboxCompiler.MaximumSourceBytes + 1);
 
-        var exception = Assert.ThrowsException<AlgorithmCompilationException>(
+        var exception = Assert.ThrowsExactly<AlgorithmCompilationException>(
             () => AlgorithmSandboxCompiler.Compile("50P-1", source, settings));
 
         StringAssert.Contains(exception.Message, "memory limit");
