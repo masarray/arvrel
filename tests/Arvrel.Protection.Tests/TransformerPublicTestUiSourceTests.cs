@@ -55,18 +55,18 @@ public sealed class TransformerPublicTestUiSourceTests
         Assert.IsFalse(entryPoint.Contains("if (SourceCombo.SelectedIndex == 0)", StringComparison.Ordinal));
         Assert.IsFalse(entryPoint.Contains("Start Live Npcap capture first", StringComparison.Ordinal));
         Assert.IsFalse(entryPoint.Contains("Replay a PCAP/PCAPNG containing at least two", StringComparison.Ordinal));
-        StringAssert.Contains(entryPoint, "Applying the live/replay runtime still requires two");
+        StringAssert.Contains(entryPoint, "still requires two distinct HV/LV streams");
     }
 
     [TestMethod]
-    public void P17_FaceplateCanInvokeSameP15CoreSelfTestWithoutCreatingAnotherAlgorithm()
+    public void P17_SharedOcrPresenterCanInvokeSameP15CoreSelfTestWithoutCreatingAnotherAlgorithm()
     {
         var entryPoint = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
-        var faceplate = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
 
         StringAssert.Contains(entryPoint, "TransformerPublicSelfTest.RunAll()");
-        StringAssert.Contains(faceplate, "RUN 10-SCENARIO SELF-TEST");
-        Assert.IsFalse(faceplate.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
+        StringAssert.Contains(presenter, "10 DETERMINISTIC CASES");
+        Assert.IsFalse(presenter.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
     private static string Read(params string[] segments)
