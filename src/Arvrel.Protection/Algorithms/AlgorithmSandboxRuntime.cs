@@ -175,7 +175,7 @@ public sealed class AlgorithmInstance
         // blocking is always fail-safe/additive.
         var tripRequested = operationReached && tripExpression && frame.SmvTrust.AllowsTrip && !block;
         var blocked = operationReached && (!frame.SmvTrust.AllowsTrip || block);
-        var progress = Progress(_program.Element, context, settings);
+        var progress = Progress(context);
         var quantity = context.TryGetNumber("operatingCurrent", out var operatingCurrent)
             ? operatingCurrent
             : OperatingQuantity(_program.Element, frame);
@@ -219,7 +219,7 @@ public sealed class AlgorithmInstance
         return delta < TimeSpan.Zero || delta > TimeSpan.FromSeconds(1) ? TimeSpan.Zero : delta;
     }
 
-    private double Progress(string element, EvaluationContext context, ProtectionSettings settings)
+    private double Progress(EvaluationContext context)
     {
         if (context.TryGetNumber("progress", out var progress))
             return progress;
@@ -325,11 +325,11 @@ internal sealed class AlgorithmProgram
 
 internal static class ProgramParser
 {
-    private static readonly Regex ElementRegex = new(@"\belement\s+\"(?<element>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex DeclarationRegex = new(@"^(?:measurement|input|phasor)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<expr>.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex AssignmentRegex = new(@"^(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<expr>.+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex IntegrateRegex = new(@"^integrate\((?<rate>.+)\)\s+when\s+(?<condition>.+?)\s+reset\s+using\s+setting\(\"(?<reset>[^\"]+)\"\)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex PersistRegex = new(@"^(?<source>[A-Za-z_][A-Za-z0-9_]*)\.persist\((?<duration>.+)\)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex ElementRegex = new("\\belement\\s+\"(?<element>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex DeclarationRegex = new("^(?:measurement|input|phasor)\\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(?<expr>.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex AssignmentRegex = new("^(?<name>[A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(?<expr>.+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex IntegrateRegex = new("^integrate\\((?<rate>.+)\\)\\s+when\\s+(?<condition>.+?)\\s+reset\\s+using\\s+setting\\(\"(?<reset>[^\"]+)\"\\)\\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex PersistRegex = new("^(?<source>[A-Za-z_][A-Za-z0-9_]*)\\.persist\\((?<duration>.+)\\)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     public static AlgorithmProgram Parse(string expectedElement, string source)
     {
