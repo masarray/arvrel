@@ -7,6 +7,8 @@ namespace Arvrel.App;
 public partial class MainWindow
 {
     private bool _avrP02ShellApplied;
+    private bool _avrToolbarVisibilityHooked;
+    private bool _avrShellLoadedRetryHooked;
 
     internal void ApplyAvrP02ShellPolish()
     {
@@ -16,9 +18,9 @@ public partial class MainWindow
 
         if (_avrToolbar is null)
         {
-            if (!_avrP02ShellApplied)
+            if (!_avrShellLoadedRetryHooked)
             {
-                _avrP02ShellApplied = true;
+                _avrShellLoadedRetryHooked = true;
                 Loaded += (_, _) => ApplyAvrP02ShellPolish();
             }
             return;
@@ -71,8 +73,11 @@ public partial class MainWindow
                 => root.RowDefinitions[1].Height = new GridLength(_avrToolbar.Visibility == Visibility.Visible ? 34 : 54);
 
             ApplyToolbarHeight();
-            if (!_avrP02ShellApplied)
+            if (!_avrToolbarVisibilityHooked)
+            {
+                _avrToolbarVisibilityHooked = true;
                 _avrToolbar.IsVisibleChanged += (_, _) => ApplyToolbarHeight();
+            }
         }
 
         _avrP02ShellApplied = true;
