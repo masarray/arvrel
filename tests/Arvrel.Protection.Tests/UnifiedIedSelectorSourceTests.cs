@@ -26,24 +26,25 @@ public sealed class UnifiedIedSelectorSourceTests
         StringAssert.Contains(code, "_iedTypeCombo.SelectionChanged -= IedTypeCombo_SelectionChanged;");
         StringAssert.Contains(code, "SelectIed(VirtualIedKind.AutomaticVoltageRegulator);");
         StringAssert.Contains(code, "SelectIed(VirtualIedKind.ProtectionRelay);");
-        StringAssert.Contains(code, "OpenTransformerIedWorkspace();");
         StringAssert.Contains(code, "new TransformerIedWindow(_processBus)");
         StringAssert.Contains(code, "window.InitializeP14PractitionerUi();");
         StringAssert.Contains(code, "window.InitializeP15PublicTestUi();");
-        StringAssert.Contains(code, "TransformerVirtualRelayControl");
+        StringAssert.Contains(code, "window.InitializeP17FaceplateBridge();");
+        StringAssert.Contains(code, "_transformerFaceplate = new VirtualRelayControl");
+        Assert.IsFalse(code.Contains("TransformerVirtualRelayControl", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void TransformerSelection_ShowsOperatorRelayBeforeEngineeringWorkspace()
+    public void TransformerSelection_ShowsSharedOcrRelayBeforeEngineeringWorkspace()
     {
         var code = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
 
         StringAssert.Contains(code, "ShowTransformerLanding();");
-        StringAssert.Contains(code, "Virtual relay front panel is active");
-        StringAssert.Contains(code, "No physical trip · no GOOSE · no breaker output");
-        StringAssert.Contains(code, "10 deterministic core scenarios");
-        StringAssert.Contains(code, "Applying the live/replay runtime still requires two");
+        StringAssert.Contains(code, "Exact OCR relay hardware is reused");
+        StringAssert.Contains(code, "No Transformer-specific shell, card, operator rail, button geometry or LED");
+        StringAssert.Contains(code, "TransformerPublicSelfTest.RunAll()");
+        StringAssert.Contains(code, "Applying the live/replay runtime");
         Assert.IsFalse(code.Contains("ShowTransformerLanding();\n        OpenTransformerIedWorkspace();", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("TransformerIedButton_Click", StringComparison.Ordinal));
         Assert.IsFalse(code.Contains("toolbar.Children.Insert", StringComparison.Ordinal));
