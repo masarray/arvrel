@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Arvrel.App.Controls.VirtualRelay;
+using Arvrel.ProcessBus;
 using Arvrel.Protection;
 
 namespace Arvrel.App;
@@ -151,20 +152,20 @@ public partial class MainWindow
         ProtectionReasonText.Text = $"  ·  {TrimTransformerWorkspaceLine(snapshot.DecisionReason, 78)}";
         switch (snapshot.State)
         {
-            case ProcessBus.TransformerRuntimeState.Ready:
-            case ProcessBus.TransformerRuntimeState.Pickup:
+            case TransformerRuntimeState.Ready:
+            case TransformerRuntimeState.Pickup:
                 PermissionText.Text = "TRIP PERMITTED";
                 PermissionText.Foreground = HealthyBrush;
                 break;
-            case ProcessBus.TransformerRuntimeState.TripLatched:
+            case TransformerRuntimeState.TripLatched:
                 PermissionText.Text = "TRIP LATCHED";
                 PermissionText.Foreground = TripBrush;
                 break;
-            case ProcessBus.TransformerRuntimeState.PairBlocked:
+            case TransformerRuntimeState.PairBlocked:
                 PermissionText.Text = "PAIR BLOCKED";
                 PermissionText.Foreground = WarningBrush;
                 break;
-            case ProcessBus.TransformerRuntimeState.ProtectionBlocked:
+            case TransformerRuntimeState.ProtectionBlocked:
                 PermissionText.Text = "PROTECTION BLOCKED";
                 PermissionText.Foreground = WarningBrush;
                 break;
