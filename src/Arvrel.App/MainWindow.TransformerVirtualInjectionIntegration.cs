@@ -21,6 +21,8 @@ public partial class MainWindow
             return;
 
         InitializeTransformerVirtualInjection();
+        if (_transformerVirtualInjectionRuntime is not null)
+            _transformerVirtualInjectionRuntime.SnapshotChanged += TransformerInjectionLcdSnapshotChanged;
         _timer.Tick += TransformerInjectionFinalProjection_Tick;
         _transformerInjectionIntegrationTimer = new DispatcherTimer(DispatcherPriority.ContextIdle)
         {
@@ -36,6 +38,8 @@ public partial class MainWindow
     {
         _transformerInjectionIntegrationTimer?.Stop();
         _transformerInjectionIntegrationTimer = null;
+        if (_transformerVirtualInjectionRuntime is not null)
+            _transformerVirtualInjectionRuntime.SnapshotChanged -= TransformerInjectionLcdSnapshotChanged;
         if (_transformerInjectionShellActive)
             DeactivateTransformerInjectionShell();
     }
@@ -58,7 +62,13 @@ public partial class MainWindow
         if (!internalSource && _transformerVirtualInjectionRuntime?.IsRunning == true)
             StopTransformerVirtualInjection(announce: false);
 
-        SetTransformerInjectionWorkspaceActive(internalSource);
+        // Never publish/reset the synthetic runtime while Live Capture or PCAP Replay
+        // owns Transformer evidence. Only hide its editor; the real paired-SV runtime
+        // remains the sole authority in those source modes.
+        if (internalSource)
+            SetTransformerInjectionWorkspaceActive(true);
+        else if (_transformerInjectionView is not null)
+            _transformerInjectionView.Visibility = Visibility.Collapsed;
         RefreshTransformerInjectionDrawerVisibility();
 
         if (internalSource)
@@ -87,7 +97,10 @@ public partial class MainWindow
     {
         _transformerInjectionShellActive = true;
         InstallTransformerInjectionRunHandlers();
-        SetTransformerInjectionWorkspaceActive(SourceCombo.SelectedIndex == 0);
+        if (SourceCombo.SelectedIndex == 0)
+            SetTransformerInjectionWorkspaceActive(true);
+        else if (_transformerInjectionView is not null)
+            _transformerInjectionView.Visibility = Visibility.Collapsed;
         DegradeSmvButton.Visibility = Visibility.Collapsed;
         if (InjectFaultButton.Content is StackPanel panel)
         {
@@ -103,8 +116,10 @@ public partial class MainWindow
 
     private void DeactivateTransformerInjectionShell()
     {
-        StopTransformerVirtualInjection(announce: false);
-        SetTransformerInjectionWorkspaceActive(false);
+        if (_transformerVirtualInjectionRuntime?.IsRunning == true)
+            StopTransformerVirtualInjection(announce: false);
+        if (_transformerInjectionView is not null)
+            _transformerInjectionView.Visibility = Visibility.Collapsed;
         RestoreVirtualInjectionRunHandlers();
         _phasorRefreshTimer?.Start();
         _virtualInjectionRunStopTimer?.Start();
@@ -199,6 +214,18 @@ public partial class MainWindow
         // waveform/phasor/header presentation while Transformer Internal demo is active.
         RenderTransformerInjectionAnalysis();
         RenderTransformerRelaySingleLineIfHome();
+    }
+
+    private void TransformerInjectionLcdSnapshotChanged(object? sender, TransformerProtectionRuntimeSnapshotChangedEventArgs e)
+    {
+        if (!IsTransformerInternalInjectionActive)
+            return;
+        // Advance() raises synchronously, while the injection tick performs its final
+        // snapshot publication before returning. Queue the SLD projection so it runs
+        // after that publication and avoids HOME-page text flicker.
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Render,
+            new Action(RenderTransformerRelaySingleLineIfHome));
     }
 
     private void RenderTransformerRelaySingleLineIfHome()
