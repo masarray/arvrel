@@ -33,8 +33,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The original non-P2 faceplate implementation remains source history only. -->
+    <!-- Historical relay menu implementations remain for audit context. P1 uses
+         one consolidated HMI controller that owns the production LCD/key model. -->
     <Compile Remove="MainWindow.RelayFaceplate.cs" />
+    <Compile Remove="MainWindow.RelayFaceplate.P2.cs" />
 
     <!-- P6 owns all relay hardware geometry and materials. Keep the legacy files
          for audit history and source-level regression context, but do not compile
