@@ -33,17 +33,17 @@ public sealed class TransformerPublicTestUiSourceTests
     }
 
     [TestMethod]
-    public void P15_InitializesAfterP14AndBeforeDialog()
+    public void P15_InitializesAfterP14AndBeforeNonModalPractitionerInteraction()
     {
         var entryPoint = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
 
         StringAssert.Contains(entryPoint, "window.InitializeP14PractitionerUi();");
         StringAssert.Contains(entryPoint, "window.InitializeP15PublicTestUi();");
-        StringAssert.Contains(entryPoint, "window.ShowDialog();");
+        StringAssert.Contains(entryPoint, "window.Show();");
 
         var p14Index = entryPoint.IndexOf("window.InitializeP14PractitionerUi();", StringComparison.Ordinal);
         var p15Index = entryPoint.IndexOf("window.InitializeP15PublicTestUi();", StringComparison.Ordinal);
-        var showIndex = entryPoint.IndexOf("window.ShowDialog();", StringComparison.Ordinal);
+        var showIndex = entryPoint.IndexOf("window.Show();", StringComparison.Ordinal);
         Assert.IsTrue(p14Index >= 0 && p15Index > p14Index && showIndex > p15Index);
     }
 
@@ -56,6 +56,17 @@ public sealed class TransformerPublicTestUiSourceTests
         Assert.IsFalse(entryPoint.Contains("Start Live Npcap capture first", StringComparison.Ordinal));
         Assert.IsFalse(entryPoint.Contains("Replay a PCAP/PCAPNG containing at least two", StringComparison.Ordinal));
         StringAssert.Contains(entryPoint, "Applying the live/replay runtime still requires two");
+    }
+
+    [TestMethod]
+    public void P17_FaceplateCanInvokeSameP15CoreSelfTestWithoutCreatingAnotherAlgorithm()
+    {
+        var entryPoint = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
+        var faceplate = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
+
+        StringAssert.Contains(entryPoint, "TransformerPublicSelfTest.RunAll()");
+        StringAssert.Contains(faceplate, "RUN 10-SCENARIO SELF-TEST");
+        Assert.IsFalse(faceplate.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
     private static string Read(params string[] segments)
