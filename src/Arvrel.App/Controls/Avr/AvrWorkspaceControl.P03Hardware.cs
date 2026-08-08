@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace Arvrel.App.Controls.Avr;
@@ -9,6 +10,8 @@ namespace Arvrel.App.Controls.Avr;
 public partial class AvrWorkspaceControl
 {
     private const double P03ConfigurationWidth = 300.0;
+    private const double P04FaceplateHeight = 580.0;
+    private const double P04DeviceCoreHeight = 548.0;
 
     private bool _p03HardwareApplied;
     private bool _p03TimerHooked;
@@ -142,26 +145,119 @@ public partial class AvrWorkspaceControl
 
     private static void ApplyP03MetalFaceplate(Border faceplate)
     {
-        faceplate.Background = new LinearGradientBrush(
+        // Add physical metal above and below the existing 548 px device core while
+        // preserving LCD/keypad geometry exactly. The complete device is still scaled
+        // uniformly by the Viewbox, so this behaves like a taller real enclosure rather
+        // than a responsive dashboard.
+        faceplate.Height = P04FaceplateHeight;
+        faceplate.MinHeight = P04FaceplateHeight;
+        faceplate.MaxHeight = P04FaceplateHeight;
+
+        if (faceplate.Child is FrameworkElement deviceCore)
+        {
+            deviceCore.Height = P04DeviceCoreHeight;
+            deviceCore.MinHeight = P04DeviceCoreHeight;
+            deviceCore.MaxHeight = P04DeviceCoreHeight;
+            deviceCore.VerticalAlignment = VerticalAlignment.Center;
+        }
+
+        faceplate.Background = CreateP04BrushedMetalBrush();
+        faceplate.BorderBrush = new LinearGradientBrush(
             new GradientStopCollection
             {
-                new(Color.FromRgb(213, 219, 222), 0.00),
-                new(Color.FromRgb(184, 193, 198), 0.24),
-                new(Color.FromRgb(205, 212, 216), 0.50),
-                new(Color.FromRgb(167, 177, 182), 0.76),
-                new(Color.FromRgb(198, 205, 209), 1.00)
+                new(Color.FromRgb(101, 100, 94), 0.00),
+                new(Color.FromRgb(224, 220, 207), 0.22),
+                new(Color.FromRgb(125, 124, 117), 0.50),
+                new(Color.FromRgb(232, 228, 215), 0.78),
+                new(Color.FromRgb(92, 94, 91), 1.00)
             },
             new Point(0, 0),
-            new Point(1, 1));
-        faceplate.BorderBrush = new SolidColorBrush(Color.FromRgb(92, 105, 112));
-        faceplate.BorderThickness = new Thickness(1.4);
+            new Point(1, 0));
+        faceplate.BorderThickness = new Thickness(1.6);
         faceplate.Effect = new DropShadowEffect
         {
-            BlurRadius = 12,
+            BlurRadius = 14,
             ShadowDepth = 2,
-            Opacity = 0.28,
+            Opacity = 0.32,
             Color = Color.FromRgb(4, 10, 14)
         };
+    }
+
+    private static ImageBrush CreateP04BrushedMetalBrush()
+    {
+        // Procedural gray-gold aluminium. The texture is generated once from a tiny
+        // deterministic bitmap: strong horizontal correlation gives the brushed grain,
+        // while low-amplitude micro variation prevents a synthetic flat-gradient look.
+        // No external texture asset, shader, animation, or runtime allocation loop is used.
+        const int width = 192;
+        const int height = 36;
+        const int stride = width * 4;
+        var pixels = new byte[stride * height];
+
+        static int ClampByte(int value) => Math.Clamp(value, 0, 255);
+        static int HashNoise(int x, int y)
+        {
+            unchecked
+            {
+                uint n = (uint)(x * 374761393 + y * 668265263 + 0x5A17);
+                n = (n ^ (n >> 13)) * 1274126177u;
+                n ^= n >> 16;
+                return (int)(n % 13) - 6;
+            }
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            var rowNoise = HashNoise(3, y) * 2;
+            if (y % 9 == 0) rowNoise -= 9;
+            else if (y % 7 == 0) rowNoise += 6;
+            else if (y % 3 == 0) rowNoise -= 3;
+
+            var smoothed = 0.0;
+            for (var x = 0; x < width; x++)
+            {
+                smoothed = smoothed * 0.82 + HashNoise(x, y) * 0.18;
+                var longitudinal = (int)Math.Round(2.5 * Math.Sin(x * 0.075 + y * 0.41));
+                var centerHighlight = (int)Math.Round(5.0 * Math.Sin(Math.PI * x / Math.Max(1, width - 1)));
+                var delta = rowNoise + (int)Math.Round(smoothed) + longitudinal + centerHighlight;
+
+                // Warm neutral aluminium: silver first, with a restrained gray-gold cast.
+                var r = ClampByte(197 + delta);
+                var g = ClampByte(193 + delta);
+                var b = ClampByte(181 + delta);
+
+                var index = y * stride + x * 4;
+                pixels[index + 0] = (byte)b;
+                pixels[index + 1] = (byte)g;
+                pixels[index + 2] = (byte)r;
+                pixels[index + 3] = 255;
+            }
+        }
+
+        var bitmap = BitmapSource.Create(
+            width,
+            height,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            stride);
+        bitmap.Freeze();
+
+        var brush = new ImageBrush(bitmap)
+        {
+            TileMode = TileMode.Tile,
+            ViewportUnits = BrushMappingMode.Absolute,
+            Viewport = new Rect(0, 0, width, height),
+            ViewboxUnits = BrushMappingMode.Absolute,
+            Viewbox = new Rect(0, 0, width, height),
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Left,
+            AlignmentY = AlignmentY.Top
+        };
+        brush.Freeze();
+        return brush;
     }
 
     private void ApplyP03BlackGlassStatusDisplay()
