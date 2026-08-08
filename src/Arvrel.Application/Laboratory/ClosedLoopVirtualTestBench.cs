@@ -191,14 +191,15 @@ public sealed class ClosedLoopVirtualTestBench
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _relay = relay ?? throw new ArgumentNullException(nameof(relay));
         _topology = topology ?? VirtualTestBenchTopology.Default;
-        var profile = contactProfile ?? VirtualRelayContactProfile.NumericalRelayDefault;
-        profile.Validate();
-        _pickupContact = new DelayedBinaryContact(profile.PickupOperateDelay, profile.ReleaseDelay);
-        _tripContact = new DelayedBinaryContact(profile.TripOperateDelay, profile.ReleaseDelay);
+        ContactProfile = contactProfile ?? VirtualRelayContactProfile.NumericalRelayDefault;
+        ContactProfile.Validate();
+        _pickupContact = new DelayedBinaryContact(ContactProfile.PickupOperateDelay, ContactProfile.ReleaseDelay);
+        _tripContact = new DelayedBinaryContact(ContactProfile.TripOperateDelay, ContactProfile.ReleaseDelay);
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
     public VirtualTestBenchTopology Topology => _topology;
+    public VirtualRelayContactProfile ContactProfile { get; }
     public bool AutoStopOnTrip { get; set; } = true;
     public ProtectionSnapshot LastProtection => _lastProtection;
     public VirtualTestSetTimingSnapshot TestSetSnapshot => Snapshot();
@@ -226,9 +227,7 @@ public sealed class ClosedLoopVirtualTestBench
     public void UpdateSettings(ProtectionSettings settings, bool keepTripLatch = false)
     {
         _relay.UpdateSettings(settings, keepTripLatch);
-        _pickupContact.Reset();
-        _tripContact.Reset();
-        ClearTestTiming();
+        ResetObserverState();
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
@@ -236,10 +235,20 @@ public sealed class ClosedLoopVirtualTestBench
     {
         _relay.Reset();
         _source.Restart(keepProfile);
+        ResetObserverState();
+        _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Clears only the external test-set/contact observer. The injector profile,
+    /// relay settings and relay algorithm state remain owned by their existing
+    /// reset/apply workflows.
+    /// </summary>
+    public void ResetObserverState()
+    {
         _pickupContact.Reset();
         _tripContact.Reset();
         ClearTestTiming();
-        _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
     public ClosedLoopVirtualTestBenchStep Advance(TimeSpan delta)
@@ -249,6 +258,8 @@ public sealed class ClosedLoopVirtualTestBench
 
         if (_source.IsRunning && _injectionStartedAt is null)
             BeginTest(_source.OutputStateChangedAt);
+        else if (!_source.IsRunning && _injectionStartedAt is not null && _outputStoppedAt is null)
+            _outputStoppedAt = _source.OutputStateChangedAt;
 
         if (delta == TimeSpan.Zero)
             return AdvanceQuantum(TimeSpan.Zero);
