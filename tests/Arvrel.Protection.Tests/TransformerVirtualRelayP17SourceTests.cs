@@ -6,92 +6,105 @@ namespace Arvrel.Protection.Tests;
 public sealed class TransformerVirtualRelayP17SourceTests
 {
     [TestMethod]
-    public void Faceplate_ReusesArvrelRelayLanguageForTransformerFunctions()
+    public void TransformerFaceplate_InstantiatesExactSharedOcrHardware()
     {
-        var code = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
+        var main = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
+        var sharedXaml = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml");
+        var sharedCode = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml.cs");
 
-        StringAssert.Contains(code, "ARVREL 87T");
-        StringAssert.Contains(code, "TRANSFORMER DIFFERENTIAL RELAY");
-        StringAssert.Contains(code, "TR-87T");
-        StringAssert.Contains(code, "87T-HS");
-        StringAssert.Contains(code, "REF HV");
-        StringAssert.Contains(code, "REF LV");
-        StringAssert.Contains(code, "HARMONICS H2 / H5");
-        StringAssert.Contains(code, "SV PAIR / TRUST");
-        StringAssert.Contains(code, "VIRTUAL TRIP OUTPUT ONLY · NO GOOSE · NO BREAKER OUTPUT");
+        StringAssert.Contains(main, "using Arvrel.App.Controls.VirtualRelay;");
+        StringAssert.Contains(main, "private VirtualRelayControl? _transformerFaceplate;");
+        StringAssert.Contains(main, "_transformerFaceplate = new VirtualRelayControl");
+        StringAssert.Contains(main, "No Transformer-specific shell, card, operator rail, button geometry or LED");
+        StringAssert.Contains(sharedCode, "It owns hardware geometry and visual");
+        StringAssert.Contains(sharedXaml, "VrOuterShellBrush");
+        StringAssert.Contains(sharedXaml, "VrFrontFaceBrush");
+        StringAssert.Contains(sharedXaml, "VrHardwareKeyStyle");
+        StringAssert.Contains(sharedXaml, "VrFunctionKeyStyle");
+        StringAssert.Contains(sharedXaml, "RelayLampControl");
+
+        Assert.IsFalse(File.Exists(FindPath("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs")),
+            "P17 must not keep an improvised Transformer-specific relay hardware clone.");
     }
 
     [TestMethod]
-    public void Faceplate_HasRealOperatorKeysAndAnnunciation()
+    public void TransformerPresenter_OnlyRemapsIdentityLabelsAndAuthoritativeState()
     {
-        var code = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
+        var sharedCode = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml.cs");
 
-        foreach (var label in new[] { "HEALTHY", "PICKUP", "TRIP", "87T", "87T-HS", "REF HV", "REF LV", "BLOCK" })
-            StringAssert.Contains(code, label);
+        StringAssert.Contains(sharedCode, "ApplyTextOverrides");
+        StringAssert.Contains(presenter, "[\" 650\"] = \" 87T\"");
+        StringAssert.Contains(presenter, "[\"PROCESS BUS PROTECTION RELAY\"] = \"TRANSFORMER DIFFERENTIAL RELAY\"");
+        StringAssert.Contains(presenter, "[\"PHASE A\"] = \"87T\"");
+        StringAssert.Contains(presenter, "[\"PHASE B\"] = \"87T-HS\"");
+        StringAssert.Contains(presenter, "[\"PHASE C\"] = \"REF HV\"");
+        StringAssert.Contains(presenter, "[\"EARTH\"] = \"REF LV\"");
+        StringAssert.Contains(presenter, "[\"SMV BLOCK\"] = \"BLOCK\"");
+        StringAssert.Contains(presenter, "TransformerProtectionRuntimeSnapshot? _snapshot");
+        StringAssert.Contains(presenter, "var protection = snapshot?.Protection;");
+
+        Assert.IsFalse(presenter.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
+        Assert.IsFalse(presenter.Contains("StandardSlopeThresholdPu", StringComparison.Ordinal));
+        Assert.IsFalse(presenter.Contains("MinimumBiasIncreasePu", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void TransformerPresenter_ReusesOcrHardwareKeysAndLamps()
+    {
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
+        var xaml = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml");
+
         foreach (var key in new[] { "F1", "F2", "F3", "F4", "F5", "Up", "Down", "Enter", "Next", "Cancel" })
-            StringAssert.Contains(code, key);
+            StringAssert.Contains(xaml, key);
 
-        StringAssert.Contains(code, "SoftKey(\"F1\", \"MEAS\"");
-        StringAssert.Contains(code, "SoftKey(\"F2\", \"EVENT\"");
-        StringAssert.Contains(code, "SoftKey(\"F3\", \"RECORD\"");
-        StringAssert.Contains(code, "SoftKey(\"F4\", \"ENG\"");
-        StringAssert.Contains(code, "SoftKey(\"F5\", \"RESET\"");
+        foreach (var lamp in new[] { "HealthyLamp", "PickupLamp", "TripLamp", "PhaseALamp", "PhaseBLamp", "PhaseCLamp", "EarthLamp", "BlockLamp" })
+        {
+            StringAssert.Contains(xaml, lamp);
+            StringAssert.Contains(presenter, $"_relay.{lamp}.Lens");
+        }
+
+        StringAssert.Contains(presenter, "F1\": button.ToolTip = \"Transformer measurements\"");
+        StringAssert.Contains(presenter, "F2\": button.ToolTip = \"Transformer events\"");
+        StringAssert.Contains(presenter, "F3\": button.ToolTip = \"Transformer records and self-test\"");
+        StringAssert.Contains(presenter, "F4\": button.ToolTip = \"Transformer engineering\"");
+        StringAssert.Contains(presenter, "F5\": button.ToolTip = \"Reset transformer runtime\"");
     }
 
     [TestMethod]
-    public void Faceplate_ConsumesAuthoritativeRuntimeSnapshotWithoutProtectionReimplementation()
+    public void Faceplate_ConsumesExistingRuntimeBridgeAndKeepsEngineeringNonModal()
     {
-        var faceplate = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
         var bridge = Read("src", "Arvrel.App", "TransformerIedWindow.P17.cs");
         var main = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
 
-        StringAssert.Contains(faceplate, "UpdateSnapshot(TransformerProtectionRuntimeSnapshot? snapshot)");
-        StringAssert.Contains(faceplate, "snapshot.Protection");
-        StringAssert.Contains(faceplate, "protection?.Differential");
         StringAssert.Contains(bridge, "FaceplateSnapshotChanged");
         StringAssert.Contains(bridge, "_lastSnapshot");
         StringAssert.Contains(bridge, "_runtime.Reset()");
+        StringAssert.Contains(main, "window.InitializeP17FaceplateBridge();");
         StringAssert.Contains(main, "window.FaceplateSnapshotChanged += TransformerWorkspace_FaceplateSnapshotChanged;");
-        StringAssert.Contains(main, "_transformerFaceplate?.UpdateSnapshot(e.Snapshot);");
-
-        Assert.IsFalse(faceplate.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
-        Assert.IsFalse(bridge.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
-        Assert.IsFalse(main.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
-        Assert.IsFalse(faceplate.Contains("StandardSlopeThresholdPu", StringComparison.Ordinal));
-        Assert.IsFalse(faceplate.Contains("MinimumBiasIncreasePu", StringComparison.Ordinal));
-    }
-
-    [TestMethod]
-    public void Faceplate_SeparatesOperatorAndEngineeringWorkspaces()
-    {
-        var main = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
-
-        StringAssert.Contains(main, "Operator front panel");
-        StringAssert.Contains(main, "Open engineering workspace");
+        StringAssert.Contains(main, "_transformerFaceplatePresenter?.UpdateSnapshot(e.Snapshot);");
         StringAssert.Contains(main, "window.Show();");
         StringAssert.Contains(main, "if (_transformerWorkspaceWindow is { IsVisible: true } existing)");
-        StringAssert.Contains(main, "existing.Activate();");
-        StringAssert.Contains(main, "_transformerWorkspaceWindow.Close();");
         StringAssert.Contains(main, "TransformerPublicSelfTest.RunAll()");
         Assert.IsFalse(main.Contains("window.ShowDialog();", StringComparison.Ordinal));
+        Assert.IsFalse(main.Contains("new TransformerProtectionEngine", StringComparison.Ordinal));
     }
 
     [TestMethod]
     public void RecordsPage_UsesExistingDeterministicPublicSelfTest()
     {
-        var faceplate = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayControl.cs");
+        var presenter = Read("src", "Arvrel.App", "Controls", "Transformer", "TransformerVirtualRelayPresenter.cs");
         var main = Read("src", "Arvrel.App", "MainWindow.TransformerIed.cs");
 
-        StringAssert.Contains(faceplate, "RECORDS / SELF-TEST");
-        StringAssert.Contains(faceplate, "RUN 10-SCENARIO SELF-TEST");
-        StringAssert.Contains(faceplate, "transformer-public-beta-v1");
+        StringAssert.Contains(presenter, "RECORDS / SELF-TEST");
+        StringAssert.Contains(presenter, "10 DETERMINISTIC CASES");
         StringAssert.Contains(main, "TransformerPublicSelfTest.RunAll()");
     }
 
     private static string Read(params string[] segments)
-        => File.ReadAllText(Locate(segments));
+        => File.ReadAllText(FindPath(segments));
 
-    private static string Locate(params string[] segments)
+    private static string FindPath(params string[] segments)
     {
         var starts = new[]
         {
@@ -104,11 +117,11 @@ public sealed class TransformerVirtualRelayP17SourceTests
             for (var current = start; current is not null; current = current.Parent)
             {
                 var candidate = Path.Combine(new[] { current.FullName }.Concat(segments).ToArray());
-                if (File.Exists(candidate))
+                if (File.Exists(candidate) || Directory.Exists(Path.GetDirectoryName(candidate)!))
                     return candidate;
             }
         }
 
-        throw new FileNotFoundException($"Unable to locate {Path.Combine(segments)} from the test workspace.");
+        return Path.Combine(new[] { Environment.CurrentDirectory }.Concat(segments).ToArray());
     }
 }
