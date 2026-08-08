@@ -1,4 +1,3 @@
-using System.Windows.Threading;
 using Arvrel.ProcessBus;
 
 namespace Arvrel.App;
@@ -7,13 +6,23 @@ public partial class TransformerIedWindow
 {
     private bool _p17FaceplateBridgeInitialized;
     private TransformerProtectionRuntimeSnapshot? _p17LastPublishedSnapshot;
+    private EventHandler<TransformerProtectionRuntimeSnapshotChangedEventArgs>? _faceplateSnapshotChanged;
 
     /// <summary>
     /// Presentation bridge for the P17 operator faceplate. The practitioner window
     /// remains the owner of TransformerProcessBusProtectionRuntime; this event only
     /// publishes snapshots that have already been produced by that authority.
     /// </summary>
-    internal event EventHandler<TransformerProtectionRuntimeSnapshotChangedEventArgs>? FaceplateSnapshotChanged;
+    internal event EventHandler<TransformerProtectionRuntimeSnapshotChangedEventArgs>? FaceplateSnapshotChanged
+    {
+        add
+        {
+            _faceplateSnapshotChanged += value;
+            InitializeP17FaceplateBridge();
+            PublishFaceplateSnapshot(force: true);
+        }
+        remove => _faceplateSnapshotChanged -= value;
+    }
 
     internal TransformerProtectionRuntimeSnapshot? FaceplateSnapshot => _lastSnapshot;
 
@@ -60,7 +69,7 @@ public partial class TransformerIedWindow
             return;
 
         _p17LastPublishedSnapshot = snapshot;
-        FaceplateSnapshotChanged?.Invoke(this, new TransformerProtectionRuntimeSnapshotChangedEventArgs(snapshot));
+        _faceplateSnapshotChanged?.Invoke(this, new TransformerProtectionRuntimeSnapshotChangedEventArgs(snapshot));
     }
 
     private void P17FaceplateBridge_Closed(object? sender, EventArgs e)
