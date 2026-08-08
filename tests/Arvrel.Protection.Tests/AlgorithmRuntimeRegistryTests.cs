@@ -65,6 +65,26 @@ public sealed class AlgorithmRuntimeRegistryTests
     }
 
     [TestMethod]
+    public void Activate_AfterSettingsChange_IsRejectedUntilRestaged()
+    {
+        var stagedSettings = new ProtectionSettings();
+        var source = AlgorithmSourceCatalog.Build("50P-1", stagedSettings);
+        var staged = AlgorithmRuntimeRegistry.Stage("50P-1", source, stagedSettings);
+        var changedSettings = stagedSettings with
+        {
+            Revision = stagedSettings.Revision + 1,
+            PhaseInstantaneousPickupA = stagedSettings.PhaseInstantaneousPickupA + 0.25
+        };
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(
+            () => AlgorithmRuntimeRegistry.Activate("50P-1", staged.SourceHash, changedSettings));
+
+        StringAssert.Contains(exception.Message, "settings changed after staging");
+        Assert.IsFalse(AlgorithmRuntimeRegistry.IsActive("50P-1"));
+        Assert.AreNotEqual(staged.SettingsFingerprint, changedSettings.Fingerprint());
+    }
+
+    [TestMethod]
     public void Rollback_FromFirstCustom_ReturnsToStandardRuntime()
     {
         var settings = new ProtectionSettings();
