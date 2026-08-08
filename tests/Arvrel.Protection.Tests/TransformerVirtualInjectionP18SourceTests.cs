@@ -50,7 +50,9 @@ public sealed class TransformerVirtualInjectionP18SourceTests
         var integration = Read("src", "Arvrel.App", "MainWindow.TransformerVirtualInjectionIntegration.cs");
 
         StringAssert.Contains(integration, "Never publish/reset the synthetic runtime while Live Capture or PCAP Replay");
-        StringAssert.Contains(integration, "if (internalSource)\n            SetTransformerInjectionWorkspaceActive(true);");
+        StringAssert.Contains(integration, "if (internalSource)");
+        StringAssert.Contains(integration, "SetTransformerInjectionWorkspaceActive(true);");
+        StringAssert.Contains(integration, "_transformerInjectionView.Visibility = Visibility.Collapsed;");
         Assert.IsFalse(integration.Contains("SetTransformerInjectionWorkspaceActive(internalSource);", StringComparison.Ordinal));
     }
 
