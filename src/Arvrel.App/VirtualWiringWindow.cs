@@ -41,7 +41,7 @@ public sealed class VirtualWiringWindow : Window
             Background = Brushes.White,
             BorderBrush = Brush("#D6E0E8"),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 12)
+            Padding = new Thickness(16, 12, 16, 12)
         };
         root.Children.Add(header);
         var headerGrid = new Grid();
@@ -80,7 +80,7 @@ public sealed class VirtualWiringWindow : Window
         var timing = new Border
         {
             Margin = new Thickness(12, 10, 12, 0),
-            Padding = new Thickness(12, 9),
+            Padding = new Thickness(12, 9, 12, 9),
             Background = Brushes.White,
             BorderBrush = Brush("#D6E0E8"),
             BorderThickness = new Thickness(1),
@@ -120,7 +120,7 @@ public sealed class VirtualWiringWindow : Window
             Background = Brushes.White,
             BorderBrush = Brush("#D6E0E8"),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Padding = new Thickness(14, 9)
+            Padding = new Thickness(14, 9, 14, 9)
         };
         Grid.SetRow(footer, 3);
         root.Children.Add(footer);
@@ -201,7 +201,7 @@ public sealed class VirtualWiringWindow : Window
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(0, 0, 0, 5),
-            Padding = new Thickness(10, 7)
+            Padding = new Thickness(10, 7, 10, 7)
         };
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
