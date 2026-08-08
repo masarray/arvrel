@@ -80,9 +80,29 @@ public partial class MainWindow
         _realTestWorkflowWindow = null;
         if (_closedLoopWiringButton is not null)
             _closedLoopWiringButton.IsEnabled = true;
+
         _internalRunning = false;
+        RefreshAfterRealTestWorkflow();
         UpdateRunButton();
         RefreshVirtualInjectionRunStopPresentation();
+    }
+
+    private void RefreshAfterRealTestWorkflow()
+    {
+        if (_closedLoopBench is null)
+            return;
+
+        SyncVirtualInjectionEditorFromProfile(_scenario.ActiveProfile);
+        var current = _closedLoopBench.Advance(TimeSpan.Zero);
+        _snapshot = current.Protection;
+        var displayStep = _scenario.Project(current.Source, _pickupPosition, _tripPosition) with
+        {
+            Measurement = current.RelayMeasurement
+        };
+        RenderInternal(displayStep, _snapshot);
+        StatusText.Text = current.TestSet.TripDetectedAt is not null
+            ? "P1 workflow complete · output stopped · test-set trip evidence retained."
+            : "P1 workflow complete · output stopped · relay and test-set evidence retained.";
     }
 
     private void RealTestWorkflowOwner_Closed(object? sender, EventArgs e)
