@@ -179,7 +179,7 @@ public partial class AvrWorkspaceControl
     {
         if (_configurationOverlayPrepared)
             return;
-        if (VisualTreeHelper.GetParent(ConfigurationPanel) is not Grid root)
+        if (VisualTreeHelper.GetParent(ConfigurationPanel) is not Grid)
             return;
 
         _configurationOverlayPrepared = true;
@@ -191,12 +191,10 @@ public partial class AvrWorkspaceControl
         ConfigurationColumn.Width = new GridLength(38);
         UpdateConfigurationOverlayWidth();
 
+        // SetConfigurationExpanded toggles this element after attempting to resize
+        // the legacy right column. The visibility change is therefore the stable
+        // point at which we restore a 38 px rail and make the panel an overlay.
         ConfigurationExpanded.IsVisibleChanged += (_, _) => UpdateConfigurationOverlayWidth();
-        ConfigurationColumn.SizeChanged += (_, _) =>
-        {
-            if (Math.Abs(ConfigurationColumn.ActualWidth - 38) > 0.5 || ConfigurationColumn.Width.Value != 38)
-                ConfigurationColumn.Width = new GridLength(38);
-        };
     }
 
     private void UpdateConfigurationOverlayWidth()
