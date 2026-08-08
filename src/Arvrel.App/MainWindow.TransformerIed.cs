@@ -150,8 +150,8 @@ public partial class MainWindow
             return;
         }
 
-        // Transformer now uses the exact same P6/OCR VirtualRelayControl hardware.
-        // Only its presentation text, lamp mapping and authoritative data source differ.
+        // Transformer reuses both the exact P6/OCR hardware and the complete OCR
+        // operator workspace. Only the relay presentation and protection projection differ.
         ShowTransformerLanding();
     }
 
@@ -162,8 +162,8 @@ public partial class MainWindow
 
         _transformerFaceplate = new VirtualRelayControl
         {
-            Margin = new Thickness(18, 12, 18, 12),
-            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
@@ -177,8 +177,9 @@ public partial class MainWindow
             RunTransformerFaceplateSelfTest,
             ResetTransformerFaceplateRuntime);
 
-        // No Transformer-specific shell, card, operator rail, button geometry or LED
-        // geometry is created here. The shared OCR P6 hardware is the visual surface.
+        // This hidden fallback is not the normal Transformer operator surface. The
+        // normal path mounts the shared VirtualRelayControl into the OCR relay host so
+        // waveform, injection, phasor and operation evidence remain exactly in place.
         _transformerLanding = new Border
         {
             Background = Brushes.Transparent,
@@ -206,34 +207,56 @@ public partial class MainWindow
         if (_protectionToolbar is not null)
             _protectionToolbar.Visibility = Visibility.Visible;
         if (_protectionWorkspace is not null)
-            _protectionWorkspace.Visibility = Visibility.Collapsed;
+            _protectionWorkspace.Visibility = Visibility.Visible;
         if (_avrToolbar is not null)
             _avrToolbar.Visibility = Visibility.Collapsed;
         if (_avrWorkspace is not null)
             _avrWorkspace.Visibility = Visibility.Collapsed;
         if (_transformerLanding is not null)
-            _transformerLanding.Visibility = Visibility.Visible;
+            _transformerLanding.Visibility = Visibility.Collapsed;
 
-        OperatingModeCombo.Visibility = Visibility.Collapsed;
+        OperatingModeCombo.Visibility = Visibility.Visible;
         if (_topHealthBadge is not null)
             _topHealthBadge.Visibility = Visibility.Visible;
+
+        // Normal operator path: keep the complete OCR waveform/injection/phasor
+        // workspace and replace only the physical relay child in its right-hand host.
+        var mountedInSharedWorkspace = MountTransformerFaceplateIntoOcrWorkspace();
+        if (!mountedInSharedWorkspace && _transformerLanding is not null)
+        {
+            // Defensive fallback only. It preserves access to the Transformer relay if
+            // a future shell refactor makes the OCR host temporarily unresolvable.
+            if (_protectionWorkspace is not null)
+                _protectionWorkspace.Visibility = Visibility.Collapsed;
+            _transformerLanding.Child = _transformerFaceplate;
+            _transformerLanding.Visibility = Visibility.Visible;
+            OperatingModeCombo.Visibility = Visibility.Collapsed;
+        }
 
         _transformerFaceplateTimer?.Start();
         RefreshTransformerFaceplateEnvironment();
         if (_transformerLastSnapshot is not null)
+        {
             _transformerFaceplatePresenter?.UpdateSnapshot(_transformerLastSnapshot);
+            RenderTransformerOperationWorkspace();
+        }
 
         Title = "ARVREL — Transformer Differential IED Lab";
         if (_labSubtitleText is not null)
             _labSubtitleText.Text = "Transformer differential virtual relay · paired Sampled Values laboratory";
         EngineModeText.Text = "IED · TR-87T";
-        StatusText.Text = "Transformer Differential selected. Exact OCR relay hardware is reused; F4 opens paired-SV engineering and evidence.";
-        AddEvent("IED", "Transformer Differential · shared P6/OCR relay hardware selected");
+        StatusText.Text = mountedInSharedWorkspace
+            ? "Transformer Differential selected. OCR waveform / injection / phasor workspace is reused; F4 opens paired-SV engineering and evidence."
+            : "Transformer Differential selected. Shared relay fallback active; F4 opens paired-SV engineering and evidence.";
+        AddEvent("IED", mountedInSharedWorkspace
+            ? "Transformer Differential · complete OCR operator workspace reused"
+            : "Transformer Differential · shared relay fallback selected");
     }
 
     private void HideTransformerLanding()
     {
         _transformerFaceplateTimer?.Stop();
+        RestoreOcrRelayIntoSharedWorkspace();
         if (_transformerLanding is not null)
             _transformerLanding.Visibility = Visibility.Collapsed;
 
@@ -318,6 +341,7 @@ public partial class MainWindow
     {
         _transformerLastSnapshot = e.Snapshot;
         _transformerFaceplatePresenter?.UpdateSnapshot(e.Snapshot);
+        RenderTransformerOperationWorkspace();
     }
 
     private void TransformerWorkspace_Closed(object? sender, EventArgs e)
