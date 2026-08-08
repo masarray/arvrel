@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -239,8 +240,29 @@ public partial class AvrWorkspaceControl
                 _ => key
             };
 
-            if (button.Content is not LucideIcon)
-                button.Content = CreateNativeLucideIcon(key);
+            LucideIcon icon;
+            if (button.Content is LucideIcon existingIcon)
+            {
+                icon = existingIcon;
+            }
+            else
+            {
+                icon = CreateNativeLucideIcon(key);
+                button.Content = icon;
+            }
+
+            // Bind at the exact moment the final runtime icon is installed. This removes
+            // the Loaded/MouseEnter race entirely: DeviceButton owns the foreground and
+            // the Lucide glyph follows it for normal, hover, pressed and disabled states.
+            BindingOperations.SetBinding(
+                icon,
+                LucideIcon.ForegroundProperty,
+                new Binding(nameof(Control.Foreground))
+                {
+                    Source = button,
+                    Mode = BindingMode.OneWay
+                });
+
             styledCount++;
         }
 
@@ -260,8 +282,7 @@ public partial class AvrWorkspaceControl
                 _ => LucideIconKind.Activity
             },
             Width = 18,
-            Height = 18,
-            Foreground = Brushes.White
+            Height = 18
         };
 
     private void P0FrontPanelPreviewMouseDown(object sender, MouseButtonEventArgs e)
