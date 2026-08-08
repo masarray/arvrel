@@ -58,6 +58,11 @@ public partial class MainWindow
         if (!_transformerInjectionShellActive)
             return;
 
+        // Other deferred bootstrap modules can finish after P18. Re-enforce the
+        // handler set while Transformer is selected so one click can never start
+        // both the feeder OCR scenario and the paired Transformer source.
+        EnsureTransformerInjectionRunHandlers();
+
         var internalSource = SourceCombo.SelectedIndex == 0;
         if (!internalSource && _transformerVirtualInjectionRuntime?.IsRunning == true)
             StopTransformerVirtualInjection(announce: false);
@@ -96,7 +101,14 @@ public partial class MainWindow
     private void ActivateTransformerInjectionShell()
     {
         _transformerInjectionShellActive = true;
-        InstallTransformerInjectionRunHandlers();
+        // A feeder injection may still be running when the operator changes IED type.
+        // Stop it before arming the paired Transformer source; configured OCR values
+        // remain retained for when the operator returns to OCR.
+        if (_scenario.IsRunning)
+            _scenario.StopInjection();
+        _internalRunning = false;
+
+        EnsureTransformerInjectionRunHandlers();
         if (SourceCombo.SelectedIndex == 0)
             SetTransformerInjectionWorkspaceActive(true);
         else if (_transformerInjectionView is not null)
@@ -133,15 +145,19 @@ public partial class MainWindow
         _transformerInjectionShellActive = false;
     }
 
-    private void InstallTransformerInjectionRunHandlers()
+    private void EnsureTransformerInjectionRunHandlers()
     {
-        if (_transformerInjectionRunHandlerInstalled)
-            return;
+        // Remove all known lifecycle handlers first. Routed-event removal is safe even
+        // when a handler has not been registered yet, and prevents deferred bootstrap
+        // order from creating duplicate source authorities.
         RunButton.Click -= VirtualInjectionRunButton_Click;
         RunButton.Click -= RunButton_Click;
+        RunButton.Click -= TransformerVirtualInjectionRunButton_Click;
         RunButton.Click += TransformerVirtualInjectionRunButton_Click;
+
         InjectFaultButton.Click -= VirtualInjectionFaultPreset_Click;
         InjectFaultButton.Click -= InjectFault_Click;
+        InjectFaultButton.Click -= TransformerVirtualInjectionFaultButton_Click;
         InjectFaultButton.Click += TransformerVirtualInjectionFaultButton_Click;
         _transformerInjectionRunHandlerInstalled = true;
     }
@@ -151,8 +167,13 @@ public partial class MainWindow
         if (!_transformerInjectionRunHandlerInstalled)
             return;
         RunButton.Click -= TransformerVirtualInjectionRunButton_Click;
+        RunButton.Click -= VirtualInjectionRunButton_Click;
+        RunButton.Click -= RunButton_Click;
         RunButton.Click += VirtualInjectionRunButton_Click;
+
         InjectFaultButton.Click -= TransformerVirtualInjectionFaultButton_Click;
+        InjectFaultButton.Click -= VirtualInjectionFaultPreset_Click;
+        InjectFaultButton.Click -= InjectFault_Click;
         InjectFaultButton.Click += VirtualInjectionFaultPreset_Click;
         _transformerInjectionRunHandlerInstalled = false;
     }
