@@ -21,6 +21,7 @@ public sealed class TransformerProtectionEngine
     private readonly TimeSpan[] _highSetElapsed = new TimeSpan[3];
     private readonly bool[] _differentialPickupLatch = new bool[3];
     private readonly bool[] _highSetPickupLatch = new bool[3];
+    private readonly TransformerExternalFaultSecurityCoordinator _externalFaultSecurity = new();
     private TimeSpan _refHighVoltageElapsed;
     private TimeSpan _refLowVoltageElapsed;
     private bool _refHighVoltagePickupLatch;
@@ -72,21 +73,28 @@ public sealed class TransformerProtectionEngine
             phaseSnapshots[index] = EvaluateDifferentialPhase(
                 index,
                 phase,
+                frame.Timestamp,
                 highVoltage.For(phase),
                 lowVoltage.For(phase),
                 Math.Max(frame.HighVoltage.SecondHarmonicRatio.For(phase), frame.LowVoltage.SecondHarmonicRatio.For(phase)),
                 Math.Max(frame.HighVoltage.FifthHarmonicRatio.For(phase), frame.LowVoltage.FifthHarmonicRatio.For(phase)),
+                frame.HighVoltage.CtSaturationEvidence.For(phase),
+                frame.LowVoltage.CtSaturationEvidence.For(phase),
                 differentialPickupPermitted,
                 differentialMeasurementAvailable,
                 delta);
         }
 
+        var externalFault = TransformerExternalFaultSecurityCoordinator.BuildSnapshot(
+            phaseSnapshots,
+            _settings.Differential87T.ExternalFaultSecurity);
         var differential = BuildDifferentialSnapshot(phaseSnapshots, differentialMeasurementAvailable);
         var refHighVoltage = EvaluateRef(
             "87N-HV",
             frame.HighVoltage,
             _settings.Differential87T.HighVoltageCompensation,
             _settings.RefHighVoltage,
+            externalFault.RefHighVoltageBlocked,
             delta,
             ref _refHighVoltageElapsed,
             ref _refHighVoltagePickupLatch);
@@ -95,6 +103,7 @@ public sealed class TransformerProtectionEngine
             frame.LowVoltage,
             _settings.Differential87T.LowVoltageCompensation,
             _settings.RefLowVoltage,
+            externalFault.RefLowVoltageBlocked,
             delta,
             ref _refLowVoltageElapsed,
             ref _refLowVoltagePickupLatch);
@@ -111,6 +120,7 @@ public sealed class TransformerProtectionEngine
 
         var blocked =
             (_settings.Differential87T.AnyEnabled && !differentialMeasurementAvailable) ||
+            externalFault.AnyBlocked ||
             (_settings.RefHighVoltage.Enabled && refHighVoltage.Element.State == ProtectionStageState.Blocked) ||
             (_settings.RefLowVoltage.Enabled && refLowVoltage.Element.State == ProtectionStageState.Blocked) ||
             (differentialOperated && !differentialTripAllowed) ||
@@ -126,11 +136,13 @@ public sealed class TransformerProtectionEngine
         var activeElement = _tripLatched ? _latchedElement ?? currentActiveElement : currentActiveElement;
         var decisionReason = _tripLatched
             ? $"TRIP LATCHED · {activeElement}"
-            : blocked
-                ? $"PROTECTION BLOCKED · {activeElement}"
-                : activeElement == "READY"
-                    ? "Transformer measurements stable · no pickup"
-                    : $"OPERATING · {activeElement}";
+            : externalFault.AnyBlocked
+                ? $"EXTERNAL-FAULT SECURITY · {activeElement}"
+                : blocked
+                    ? $"PROTECTION BLOCKED · {activeElement}"
+                    : activeElement == "READY"
+                        ? "Transformer measurements stable · no pickup"
+                        : $"OPERATING · {activeElement}";
 
         return new TransformerProtectionSnapshot(
             frame.Timestamp,
@@ -141,7 +153,10 @@ public sealed class TransformerProtectionEngine
             _tripLatched,
             blocked,
             activeElement,
-            decisionReason);
+            decisionReason)
+        {
+            ExternalFaultSecurity = externalFault
+        };
     }
 
     public void Reset()
@@ -153,10 +168,13 @@ public sealed class TransformerProtectionEngine
     private TransformerDifferentialPhaseSnapshot EvaluateDifferentialPhase(
         int index,
         TransformerPhase phase,
+        DateTimeOffset timestamp,
         Complex highVoltage,
         Complex lowVoltage,
         double secondHarmonicRatio,
         double fifthHarmonicRatio,
+        TransformerCtSaturationPhaseEvidence highVoltageCtEvidence,
+        TransformerCtSaturationPhaseEvidence lowVoltageCtEvidence,
         bool pickupPermitted,
         bool measurementAvailable,
         TimeSpan delta)
@@ -164,7 +182,7 @@ public sealed class TransformerProtectionEngine
         var settings = _settings.Differential87T;
         var operating = (highVoltage + lowVoltage).Magnitude;
         var restraint = (highVoltage.Magnitude + lowVoltage.Magnitude) / 2;
-        var baseThreshold = DifferentialThreshold(settings, restraint);
+        var baseThreshold = settings.StandardSlopeThresholdPu(restraint);
         var harmonicBlocked = settings.HarmonicSecurityMode == TransformerHarmonicSecurityMode.Blocking &&
                               (secondHarmonicRatio >= settings.SecondHarmonicThreshold ||
                                fifthHarmonicRatio >= settings.FifthHarmonicThreshold);
@@ -174,7 +192,17 @@ public sealed class TransformerProtectionEngine
             : 0;
         var threshold = baseThreshold + harmonicRestraint;
 
-        var restrainedEligible = settings.Enabled && measurementAvailable && pickupPermitted && !harmonicBlocked;
+        var externalFault = _externalFaultSecurity.EvaluatePhase(
+            index,
+            timestamp,
+            operating,
+            restraint,
+            highVoltageCtEvidence,
+            lowVoltageCtEvidence,
+            settings.ExternalFaultSecurity,
+            measurementAvailable);
+
+        var restrainedEligible = settings.Enabled && measurementAvailable && pickupPermitted && !harmonicBlocked && !externalFault.Blocked;
         var restrainedPickup = ResolvePickup(
             _differentialPickupLatch[index],
             operating,
@@ -186,7 +214,8 @@ public sealed class TransformerProtectionEngine
         var restrainedOperated = settings.Enabled && restrainedPickup && _differentialElapsed[index] >= settings.OperateDelay;
 
         var highSetHarmonicBlocked = harmonicBlocked && !settings.HighSetBypassesHarmonicSecurity;
-        var highSetEligible = settings.HighSetEnabled && measurementAvailable && pickupPermitted && !highSetHarmonicBlocked;
+        var highSetExternalFaultBlocked = settings.ExternalFaultSecurity.SuperviseHighSet && externalFault.Blocked;
+        var highSetEligible = settings.HighSetEnabled && measurementAvailable && pickupPermitted && !highSetHarmonicBlocked && !highSetExternalFaultBlocked;
         var highSetPickup = ResolvePickup(
             _highSetPickupLatch[index],
             operating,
@@ -197,17 +226,24 @@ public sealed class TransformerProtectionEngine
         _highSetElapsed[index] = Accumulate(_highSetElapsed[index], highSetPickup, delta);
         var highSetOperated = settings.HighSetEnabled && highSetPickup && _highSetElapsed[index] >= settings.HighSetDelay;
 
+        var distortionObserved = externalFault.HighVoltageSaturationSuspected || externalFault.LowVoltageSaturationSuspected;
         var reason = !measurementAvailable
             ? "Paired HV/LV measurement unavailable."
-            : harmonicBlocked && !highSetOperated
-                ? $"Harmonic security active · H2 {secondHarmonicRatio:P1} · H5 {fifthHarmonicRatio:P1}."
-                : highSetOperated
-                    ? $"Unrestrained high-set operate · Idiff {operating:0.000} pu."
-                    : restrainedOperated
-                        ? $"Biased differential operate · Idiff {operating:0.000} pu > {threshold:0.000} pu."
-                        : restrainedPickup || highSetPickup
-                            ? $"Differential pickup · Idiff {operating:0.000} pu."
-                            : $"Restrained · Idiff {operating:0.000} pu · Ibias {restraint:0.000} pu.";
+            : externalFault.Blocked
+                ? $"External-fault CT saturation security active · Idiff {operating:0.000} pu · Ibias {restraint:0.000} pu."
+                : harmonicBlocked && !highSetOperated
+                    ? $"Harmonic security active · H2 {secondHarmonicRatio:P1} · H5 {fifthHarmonicRatio:P1}."
+                    : highSetOperated
+                        ? $"Unrestrained high-set operate · Idiff {operating:0.000} pu."
+                        : restrainedOperated
+                            ? $"Biased differential operate · Idiff {operating:0.000} pu > {threshold:0.000} pu."
+                            : restrainedPickup || highSetPickup
+                                ? $"Differential pickup · Idiff {operating:0.000} pu."
+                                : externalFault.Armed
+                                    ? $"External-fault candidate armed · Ibias {restraint:0.000} pu · waiting for CT saturation evidence."
+                                    : distortionObserved
+                                        ? "CT waveform distortion observed without restraint-leading external-fault sequence; no security block."
+                                        : $"Restrained · Idiff {operating:0.000} pu · Ibias {restraint:0.000} pu.";
 
         return new TransformerDifferentialPhaseSnapshot(
             phase,
@@ -221,7 +257,18 @@ public sealed class TransformerProtectionEngine
             restrainedOperated,
             highSetPickup,
             highSetOperated,
-            reason);
+            reason)
+        {
+            ExternalFaultArmed = externalFault.Armed,
+            HighVoltageCtSaturationSuspected = externalFault.HighVoltageSaturationSuspected,
+            LowVoltageCtSaturationSuspected = externalFault.LowVoltageSaturationSuspected,
+            HighVoltageExternalFaultBlocked = externalFault.HighVoltageBlocked,
+            LowVoltageExternalFaultBlocked = externalFault.LowVoltageBlocked,
+            HighVoltageCtDistortionRatio = highVoltageCtEvidence.DistortionRatio,
+            LowVoltageCtDistortionRatio = lowVoltageCtEvidence.DistortionRatio,
+            HighVoltageCtPeakAsymmetry = highVoltageCtEvidence.PeakAsymmetry,
+            LowVoltageCtPeakAsymmetry = lowVoltageCtEvidence.PeakAsymmetry
+        };
     }
 
     private TransformerDifferentialSnapshot BuildDifferentialSnapshot(
@@ -234,6 +281,7 @@ public sealed class TransformerProtectionEngine
         var highSetPickup = phases.Any(phase => phase.HighSetPickup);
         var highSetOperated = phases.Any(phase => phase.HighSetOperated);
         var harmonicBlocked = phases.Any(phase => phase.HarmonicBlocked && phase.OperatingCurrentPu >= phase.ThresholdPu);
+        var externalFaultBlocked = phases.Any(phase => phase.ExternalFaultSecurityBlocked);
         var maximumOperating = phases.Max(phase => phase.OperatingCurrentPu);
         var maximumThreshold = phases.Max(phase => phase.ThresholdPu);
 
@@ -242,32 +290,37 @@ public sealed class TransformerProtectionEngine
             settings.Enabled,
             restrainedPickup,
             restrainedOperated,
-            !measurementAvailable || harmonicBlocked,
+            !measurementAvailable || harmonicBlocked || externalFaultBlocked,
             MaximumProgress(_differentialElapsed, settings.OperateDelay),
             maximumOperating,
             maximumThreshold,
             restrainedOperated
                 ? "Biased transformer differential operated."
-                : harmonicBlocked
-                    ? "Restrained by configured harmonic security."
-                    : !measurementAvailable
-                        ? "Paired HV/LV measurement unavailable."
-                        : "Biased transformer differential ready.");
+                : externalFaultBlocked
+                    ? "Restrained by external-fault CT saturation security."
+                    : harmonicBlocked
+                        ? "Restrained by configured harmonic security."
+                        : !measurementAvailable
+                            ? "Paired HV/LV measurement unavailable."
+                            : "Biased transformer differential ready.");
 
+        var highSetBlocked = settings.ExternalFaultSecurity.SuperviseHighSet && externalFaultBlocked;
         var highSet = BuildElement(
             "87T-HS",
             settings.HighSetEnabled,
             highSetPickup,
             highSetOperated,
-            !measurementAvailable,
+            !measurementAvailable || highSetBlocked,
             MaximumProgress(_highSetElapsed, settings.HighSetDelay),
             maximumOperating,
             settings.HighSetPickupPu,
             highSetOperated
                 ? "Unrestrained transformer differential high-set operated."
-                : !measurementAvailable
-                    ? "Paired HV/LV measurement unavailable."
-                    : "Unrestrained transformer differential high-set ready.");
+                : highSetBlocked
+                    ? "High-set supervised by external-fault CT saturation security."
+                    : !measurementAvailable
+                        ? "Paired HV/LV measurement unavailable."
+                        : "Unrestrained transformer differential high-set ready.");
 
         return new TransformerDifferentialSnapshot(restrained, highSet, phases);
     }
@@ -277,6 +330,7 @@ public sealed class TransformerProtectionEngine
         TransformerWindingMeasurement measurement,
         TransformerWindingCompensation compensation,
         RestrictedEarthFaultSettings settings,
+        bool externalFaultSecurityBlocked,
         TimeSpan delta,
         ref TimeSpan elapsed,
         ref bool pickupLatch)
@@ -321,6 +375,23 @@ public sealed class TransformerProtectionEngine
         var operating = (residual + neutral).Magnitude;
         var restraint = (residual.Magnitude + neutral.Magnitude) / 2;
         var threshold = settings.MinimumPickupPu + settings.BiasSlope * restraint;
+        if (externalFaultSecurityBlocked)
+        {
+            elapsed = TimeSpan.Zero;
+            pickupLatch = false;
+            return new RestrictedEarthFaultSnapshot(
+                BuildElement(elementCode, true, false, false, true, 0, operating, threshold, "REF supervised by external-fault CT saturation security."),
+                residual.Magnitude,
+                neutral.Magnitude,
+                operating,
+                restraint,
+                threshold,
+                true)
+            {
+                ExternalFaultSecurityBlocked = true
+            };
+        }
+
         var eligible = measurement.Trust.AllowsPickup;
         var pickup = ResolvePickup(pickupLatch, operating, threshold, settings.DropoutRatio, eligible);
         pickupLatch = pickup;
@@ -396,13 +467,6 @@ public sealed class TransformerProtectionEngine
             : operating >= threshold;
     }
 
-    private static double DifferentialThreshold(TransformerDifferentialSettings settings, double restraint)
-    {
-        var firstRegion = Math.Min(restraint, settings.SlopeBreakpointPu);
-        var secondRegion = Math.Max(0, restraint - settings.SlopeBreakpointPu);
-        return settings.MinimumPickupPu + settings.Slope1 * firstRegion + settings.Slope2 * secondRegion;
-    }
-
     private static TimeSpan Accumulate(TimeSpan elapsed, bool pickup, TimeSpan delta)
         => pickup ? elapsed + delta : TimeSpan.Zero;
 
@@ -431,6 +495,7 @@ public sealed class TransformerProtectionEngine
             if (refHighVoltage.Element.State == ProtectionStageState.Blocked) return "87N-HV BLOCKED";
             if (refLowVoltage.Element.State == ProtectionStageState.Blocked) return "87N-LV BLOCKED";
             if (differential.Restrained87T.State == ProtectionStageState.Blocked) return "87T BLOCKED";
+            if (differential.HighSet87T.State == ProtectionStageState.Blocked) return "87T-HS BLOCKED";
         }
         return "READY";
     }
@@ -460,6 +525,7 @@ public sealed class TransformerProtectionEngine
         Array.Fill(_highSetElapsed, TimeSpan.Zero);
         Array.Fill(_differentialPickupLatch, false);
         Array.Fill(_highSetPickupLatch, false);
+        _externalFaultSecurity.Reset();
         _refHighVoltageElapsed = TimeSpan.Zero;
         _refLowVoltageElapsed = TimeSpan.Zero;
         _refHighVoltagePickupLatch = false;

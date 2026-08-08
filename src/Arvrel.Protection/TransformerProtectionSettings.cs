@@ -3,6 +3,69 @@ using System.Text;
 
 namespace Arvrel.Protection;
 
+public sealed record TransformerExternalFaultSecuritySettings
+{
+    public bool Enabled { get; init; }
+    public double MinimumBiasPu { get; init; } = 2.0;
+    public double MinimumBiasIncreasePu { get; init; } = 0.50;
+    public double MaximumInitialDifferentialToBiasRatio { get; init; } = 0.20;
+    public TimeSpan ArmingDuration { get; init; } = TimeSpan.FromMilliseconds(80);
+    public TimeSpan SecurityHold { get; init; } = TimeSpan.FromMilliseconds(120);
+    public double DistortionRatioThreshold { get; init; } = 0.12;
+    public double PeakAsymmetryThreshold { get; init; } = 0.08;
+    public double SevereDistortionRatioThreshold { get; init; } = 0.25;
+    public bool SuperviseHighSet { get; init; } = true;
+    public bool SuperviseRef { get; init; } = true;
+
+    public void Validate()
+    {
+        ValidatePositive(MinimumBiasPu, nameof(MinimumBiasPu));
+        ValidatePositive(MinimumBiasIncreasePu, nameof(MinimumBiasIncreasePu));
+        ValidateRatio(MaximumInitialDifferentialToBiasRatio, nameof(MaximumInitialDifferentialToBiasRatio));
+        ValidateDuration(ArmingDuration, nameof(ArmingDuration));
+        ValidateDuration(SecurityHold, nameof(SecurityHold));
+        ValidateRatio(DistortionRatioThreshold, nameof(DistortionRatioThreshold));
+        if (!double.IsFinite(PeakAsymmetryThreshold) || PeakAsymmetryThreshold is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(PeakAsymmetryThreshold));
+        ValidateRatio(SevereDistortionRatioThreshold, nameof(SevereDistortionRatioThreshold));
+        if (SevereDistortionRatioThreshold < DistortionRatioThreshold)
+            throw new ArgumentOutOfRangeException(
+                nameof(SevereDistortionRatioThreshold),
+                "Severe distortion threshold must be greater than or equal to the normal distortion threshold.");
+    }
+
+    public string CanonicalIdentity() => ProtectionSettings.CanonicalJoin(
+        Enabled,
+        MinimumBiasPu,
+        MinimumBiasIncreasePu,
+        MaximumInitialDifferentialToBiasRatio,
+        ArmingDuration.Ticks,
+        SecurityHold.Ticks,
+        DistortionRatioThreshold,
+        PeakAsymmetryThreshold,
+        SevereDistortionRatioThreshold,
+        SuperviseHighSet,
+        SuperviseRef);
+
+    private static void ValidatePositive(double value, string name)
+    {
+        if (!double.IsFinite(value) || value <= 0)
+            throw new ArgumentOutOfRangeException(name);
+    }
+
+    private static void ValidateRatio(double value, string name)
+    {
+        if (!double.IsFinite(value) || value < 0 || value > 5)
+            throw new ArgumentOutOfRangeException(name);
+    }
+
+    private static void ValidateDuration(TimeSpan value, string name)
+    {
+        if (value <= TimeSpan.Zero || value > TimeSpan.FromSeconds(10))
+            throw new ArgumentOutOfRangeException(name);
+    }
+}
+
 public sealed record TransformerDifferentialSettings
 {
     /// <summary>
@@ -36,6 +99,7 @@ public sealed record TransformerDifferentialSettings
     public double SecondHarmonicRestraintGain { get; init; } = 2.0;
     public double FifthHarmonicRestraintGain { get; init; } = 1.0;
 
+    public TransformerExternalFaultSecuritySettings ExternalFaultSecurity { get; init; } = new();
     public TransformerWindingCompensation HighVoltageCompensation { get; init; } = new();
     public TransformerWindingCompensation LowVoltageCompensation { get; init; } = new();
 
@@ -83,6 +147,8 @@ public sealed record TransformerDifferentialSettings
         ValidateRatio(FifthHarmonicThreshold, nameof(FifthHarmonicThreshold));
         ValidateNonNegative(SecondHarmonicRestraintGain, nameof(SecondHarmonicRestraintGain));
         ValidateNonNegative(FifthHarmonicRestraintGain, nameof(FifthHarmonicRestraintGain));
+        ArgumentNullException.ThrowIfNull(ExternalFaultSecurity);
+        ExternalFaultSecurity.Validate();
         HighVoltageCompensation.Validate(nameof(HighVoltageCompensation));
         LowVoltageCompensation.Validate(nameof(LowVoltageCompensation));
     }
@@ -105,6 +171,7 @@ public sealed record TransformerDifferentialSettings
         FifthHarmonicThreshold,
         SecondHarmonicRestraintGain,
         FifthHarmonicRestraintGain,
+        ExternalFaultSecurity.CanonicalIdentity(),
         HighVoltageCompensation.CanonicalIdentity(),
         LowVoltageCompensation.CanonicalIdentity());
 

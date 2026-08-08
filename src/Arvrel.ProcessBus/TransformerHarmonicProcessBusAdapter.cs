@@ -3,9 +3,10 @@ using Arvrel.Protection;
 namespace Arvrel.ProcessBus;
 
 /// <summary>
-/// P10 adapter that enriches an already validated HV/LV SV pair with measured H2/H5
-/// current ratios. Alignment remains owned by TransformerProcessBusAdapter; this class
-/// only adds harmonic evidence after the pair has passed synchronization checks.
+/// P10/P13 waveform-evidence adapter. It enriches an already validated HV/LV SV pair
+/// with measured H2/H5 ratios plus vendor-neutral CT waveform-distortion evidence.
+/// Alignment remains owned by TransformerProcessBusAdapter; protection decisions remain
+/// inside TransformerProtectionEngine.
 /// </summary>
 public sealed class TransformerHarmonicProcessBusAdapter
 {
@@ -50,6 +51,12 @@ public sealed class TransformerHarmonicProcessBusAdapter
 
         var policy = harmonicSettings ?? new TransformerHarmonicEstimatorSettings();
         policy.Validate();
+        var ctPolicy = new TransformerCtSaturationEstimatorSettings
+        {
+            WindowCycles = policy.WindowCycles,
+            MinimumSamplesPerCycle = policy.MinimumSamplesPerCycle,
+            MinimumFundamentalRms = policy.MinimumFundamentalRms
+        };
 
         try
         {
@@ -65,16 +72,30 @@ public sealed class TransformerHarmonicProcessBusAdapter
                 lowVoltage.Waveform.PhaseC,
                 lowVoltage.SamplesPerCycle,
                 policy);
+            var highVoltageCtEvidence = TransformerCtSaturationEstimator.EstimateThreePhase(
+                highVoltage.Waveform.PhaseA,
+                highVoltage.Waveform.PhaseB,
+                highVoltage.Waveform.PhaseC,
+                highVoltage.SamplesPerCycle,
+                ctPolicy);
+            var lowVoltageCtEvidence = TransformerCtSaturationEstimator.EstimateThreePhase(
+                lowVoltage.Waveform.PhaseA,
+                lowVoltage.Waveform.PhaseB,
+                lowVoltage.Waveform.PhaseC,
+                lowVoltage.SamplesPerCycle,
+                ctPolicy);
 
             var highVoltageMeasurement = pair.Measurement.HighVoltage with
             {
                 SecondHarmonicRatio = highVoltageHarmonics.SecondRatios,
-                FifthHarmonicRatio = highVoltageHarmonics.FifthRatios
+                FifthHarmonicRatio = highVoltageHarmonics.FifthRatios,
+                CtSaturationEvidence = highVoltageCtEvidence
             };
             var lowVoltageMeasurement = pair.Measurement.LowVoltage with
             {
                 SecondHarmonicRatio = lowVoltageHarmonics.SecondRatios,
-                FifthHarmonicRatio = lowVoltageHarmonics.FifthRatios
+                FifthHarmonicRatio = lowVoltageHarmonics.FifthRatios,
+                CtSaturationEvidence = lowVoltageCtEvidence
             };
             var measurement = pair.Measurement with
             {
@@ -82,8 +103,9 @@ public sealed class TransformerHarmonicProcessBusAdapter
                 LowVoltage = lowVoltageMeasurement
             };
 
-            var reliable = CountReliable(highVoltageHarmonics) + CountReliable(lowVoltageHarmonics);
-            var detail = $"{pair.Diagnostics.Detail} H2/H5 coherent DFT ratios available on {reliable}/6 phase inputs.";
+            var harmonicReliable = CountReliable(highVoltageHarmonics) + CountReliable(lowVoltageHarmonics);
+            var ctReliable = highVoltageCtEvidence.ReliablePhaseCount + lowVoltageCtEvidence.ReliablePhaseCount;
+            var detail = $"{pair.Diagnostics.Detail} H2/H5 coherent DFT ratios available on {harmonicReliable}/6 phase inputs; CT waveform evidence available on {ctReliable}/6.";
             return pair with
             {
                 Measurement = measurement,
@@ -114,7 +136,7 @@ public sealed class TransformerHarmonicProcessBusAdapter
             {
                 Aligned = false,
                 Code = "PAIR_HARMONIC_ESTIMATE_INVALID",
-                Detail = $"Paired SV alignment passed, but H2/H5 estimation is not trustworthy: {detail}"
+                Detail = $"Paired SV alignment passed, but waveform evidence is not trustworthy: {detail}"
             }
         };
     }

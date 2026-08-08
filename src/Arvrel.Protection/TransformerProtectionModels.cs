@@ -128,6 +128,7 @@ public sealed record TransformerWindingMeasurement(
     public bool NeutralCurrentAvailable { get; init; }
     public TransformerHarmonicRatios SecondHarmonicRatio { get; init; } = TransformerHarmonicRatios.Zero;
     public TransformerHarmonicRatios FifthHarmonicRatio { get; init; } = TransformerHarmonicRatios.Zero;
+    public TransformerCtSaturationEvidence CtSaturationEvidence { get; init; } = TransformerCtSaturationEvidence.None;
 
     public void Validate(string name)
     {
@@ -135,8 +136,10 @@ public sealed record TransformerWindingMeasurement(
         ArgumentNullException.ThrowIfNull(Trust);
         ArgumentNullException.ThrowIfNull(SecondHarmonicRatio);
         ArgumentNullException.ThrowIfNull(FifthHarmonicRatio);
+        ArgumentNullException.ThrowIfNull(CtSaturationEvidence);
         SecondHarmonicRatio.Validate($"{name}.{nameof(SecondHarmonicRatio)}");
         FifthHarmonicRatio.Validate($"{name}.{nameof(FifthHarmonicRatio)}");
+        CtSaturationEvidence.Validate($"{name}.{nameof(CtSaturationEvidence)}");
     }
 }
 
@@ -176,7 +179,19 @@ public sealed record TransformerDifferentialPhaseSnapshot(
     bool RestrainedOperated,
     bool HighSetPickup,
     bool HighSetOperated,
-    string Reason);
+    string Reason)
+{
+    public bool ExternalFaultArmed { get; init; }
+    public bool HighVoltageCtSaturationSuspected { get; init; }
+    public bool LowVoltageCtSaturationSuspected { get; init; }
+    public bool HighVoltageExternalFaultBlocked { get; init; }
+    public bool LowVoltageExternalFaultBlocked { get; init; }
+    public bool ExternalFaultSecurityBlocked => HighVoltageExternalFaultBlocked || LowVoltageExternalFaultBlocked;
+    public double HighVoltageCtDistortionRatio { get; init; }
+    public double LowVoltageCtDistortionRatio { get; init; }
+    public double HighVoltageCtPeakAsymmetry { get; init; }
+    public double LowVoltageCtPeakAsymmetry { get; init; }
+}
 
 public sealed record TransformerDifferentialSnapshot(
     TransformerElementSnapshot Restrained87T,
@@ -190,7 +205,45 @@ public sealed record RestrictedEarthFaultSnapshot(
     double OperatingCurrentPu,
     double RestraintCurrentPu,
     double ThresholdPu,
-    bool NeutralCurrentAvailable);
+    bool NeutralCurrentAvailable)
+{
+    public bool ExternalFaultSecurityBlocked { get; init; }
+}
+
+public sealed record TransformerExternalFaultSecurityPhaseSnapshot(
+    TransformerPhase Phase,
+    bool Armed,
+    bool HighVoltageSaturationSuspected,
+    bool LowVoltageSaturationSuspected,
+    bool HighVoltageBlocked,
+    bool LowVoltageBlocked,
+    double HighVoltageDistortionRatio,
+    double LowVoltageDistortionRatio,
+    double HighVoltagePeakAsymmetry,
+    double LowVoltagePeakAsymmetry,
+    string Reason)
+{
+    public bool Blocked => HighVoltageBlocked || LowVoltageBlocked;
+}
+
+public sealed record TransformerExternalFaultSecuritySnapshot(
+    bool Enabled,
+    bool AnyArmed,
+    bool AnyBlocked,
+    bool RefHighVoltageBlocked,
+    bool RefLowVoltageBlocked,
+    IReadOnlyList<TransformerExternalFaultSecurityPhaseSnapshot> Phases,
+    string Reason)
+{
+    public static TransformerExternalFaultSecuritySnapshot Disabled { get; } = new(
+        false,
+        false,
+        false,
+        false,
+        false,
+        Array.Empty<TransformerExternalFaultSecurityPhaseSnapshot>(),
+        "External-fault CT saturation security disabled.");
+}
 
 public sealed record TransformerProtectionSnapshot(
     DateTimeOffset Timestamp,
@@ -201,4 +254,7 @@ public sealed record TransformerProtectionSnapshot(
     bool TripLatched,
     bool Blocked,
     string ActiveElement,
-    string DecisionReason);
+    string DecisionReason)
+{
+    public TransformerExternalFaultSecuritySnapshot ExternalFaultSecurity { get; init; } = TransformerExternalFaultSecuritySnapshot.Disabled;
+}
