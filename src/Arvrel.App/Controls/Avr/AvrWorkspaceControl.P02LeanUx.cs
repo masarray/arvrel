@@ -170,16 +170,29 @@ public partial class AvrWorkspaceControl
         if (text is null)
             return;
 
-        if (hideFollowingSibling && text.Parent is Panel panel)
+        FrameworkElement section = text;
+        DependencyObject? current = text;
+        StackPanel? stack = null;
+        while (current is not null)
         {
-            var index = panel.Children.IndexOf(text);
-            text.Visibility = Visibility.Collapsed;
-            if (index >= 0 && index + 1 < panel.Children.Count)
-                panel.Children[index + 1].Visibility = Visibility.Collapsed;
-            return;
+            if (current is FrameworkElement element && element.Parent is StackPanel parentStack)
+            {
+                section = element;
+                stack = parentStack;
+                break;
+            }
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
         }
 
-        text.Visibility = Visibility.Collapsed;
+        section.Visibility = Visibility.Collapsed;
+        if (!hideFollowingSibling || stack is null)
+            return;
+
+        var index = stack.Children.IndexOf(section);
+        if (index >= 0 && index + 1 < stack.Children.Count)
+            stack.Children[index + 1].Visibility = Visibility.Collapsed;
     }
 
     private static void ApplyWorkspaceFontRecursive(DependencyObject root, FontFamily font)
