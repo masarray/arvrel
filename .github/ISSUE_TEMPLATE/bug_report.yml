@@ -7,11 +7,13 @@ body:
     attributes:
       value: |
         Do not attach customer captures, proprietary SCL files, credentials, station names, or employer-confidential data. Use the private security-advisory workflow for vulnerabilities.
+
+        For Transformer Differential IED defects, run the built-in 10-scenario self-test first and paste its copied evidence below. A deterministic self-test failure should be reported before changing transformer settings.
   - type: input
     id: version
     attributes:
       label: ARVREL version or commit
-      placeholder: v0.1.0-beta.1 / commit SHA
+      placeholder: v0.1.0-beta.3 / commit SHA
     validations:
       required: true
   - type: input
@@ -27,6 +29,7 @@ body:
       label: Source mode
       options:
         - Internal demo
+        - Transformer deterministic self-test
         - Live Npcap
         - PCAP/PCAPNG replay
         - Settings or SCL import
@@ -34,10 +37,18 @@ body:
     validations:
       required: true
   - type: textarea
+    id: transformer_self_test
+    attributes:
+      label: Transformer self-test evidence
+      description: For Transformer IED issues, use COPY EVIDENCE after RUN 10-SCENARIO SELF-TEST and paste the complete sanitized report here. For unrelated feeder issues, enter Not applicable.
+      placeholder: PASS · 10/10 · transformer-public-beta-v1, or paste the failed scenario evidence
+    validations:
+      required: true
+  - type: textarea
     id: reproduction
     attributes:
       label: Reproduction steps
-      description: Include synthetic APPID/VLAN/svID/sample-rate details when relevant.
+      description: Include synthetic APPID/VLAN/svID/sample-rate details when relevant. For transformer Live/Replay issues, identify HV/LV stream roles without exposing restricted station data.
     validations:
       required: true
   - type: textarea
@@ -56,7 +67,7 @@ body:
     id: evidence
     attributes:
       label: Synthetic evidence and logs
-      description: Paste sanitized event trace, trust state, crash-log excerpt, test fixture, or screenshot.
+      description: Paste sanitized event trace, trust state, P13 state, crash-log excerpt, test fixture, or screenshot. Never upload restricted process-bus captures merely to reproduce a software issue.
   - type: checkboxes
     id: boundary
     attributes:
