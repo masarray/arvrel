@@ -11,11 +11,13 @@ namespace Arvrel.Protection;
 public sealed class ResearchProtectionEngine
 {
     private ProtectionSettings _settings;
+    private string _settingsFingerprint;
     private readonly ProtectionEngine _standard;
     private readonly AlgorithmDualModeHost _custom = new();
     private readonly Dictionary<string, PickupEvidence> _pickupEvidence = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _standardHashes = new(StringComparer.OrdinalIgnoreCase);
-    private string _standardHashFingerprint = string.Empty;
+    private AlgorithmRuntimeRegistrySnapshot? _runtimeSnapshot;
+    private long _runtimeGeneration = -1;
     private string _activeSignature = string.Empty;
     private bool _tripLatched;
     private ProtectionOperationEvidence? _latchedOperation;
@@ -24,9 +26,10 @@ public sealed class ResearchProtectionEngine
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _settings.Validate();
-        ClearIncompatibleRuntimeIfNeeded(_settings);
+        _settingsFingerprint = _settings.Fingerprint();
+        ClearIncompatibleRuntimeIfNeeded(_settingsFingerprint);
         _standard = new ProtectionEngine(_settings);
-        _activeSignature = ActiveSignature(AlgorithmRuntimeRegistry.Snapshot());
+        _activeSignature = ActiveSignature(CurrentRuntime());
     }
 
     public ProtectionSettings Settings => _settings;
@@ -35,7 +38,7 @@ public sealed class ResearchProtectionEngine
     {
         ArgumentNullException.ThrowIfNull(settings);
         settings.Validate();
-        var previousFingerprint = _settings.Fingerprint();
+        var previousFingerprint = _settingsFingerprint;
         var nextFingerprint = settings.Fingerprint();
         if (!string.Equals(previousFingerprint, nextFingerprint, StringComparison.Ordinal))
         {
@@ -44,23 +47,24 @@ public sealed class ResearchProtectionEngine
         }
 
         _settings = settings;
+        _settingsFingerprint = nextFingerprint;
         _standard.UpdateSettings(settings, keepTripLatch: false);
         _custom.Reset();
         _standardHashes.Clear();
-        _standardHashFingerprint = string.Empty;
         _pickupEvidence.Clear();
+        InvalidateRuntimeCache();
         if (!keepTripLatch)
         {
             _tripLatched = false;
             _latchedOperation = null;
         }
-        _activeSignature = ActiveSignature(AlgorithmRuntimeRegistry.Snapshot());
+        _activeSignature = ActiveSignature(CurrentRuntime());
     }
 
     public ProtectionSnapshot Evaluate(MeasurementFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame.SmvTrust);
-        var runtime = AlgorithmRuntimeRegistry.Snapshot();
+        var runtime = CurrentRuntime();
         ObserveActivationTransition(runtime);
 
         var standard = _standard.Evaluate(frame);
@@ -164,7 +168,7 @@ public sealed class ResearchProtectionEngine
         _pickupEvidence.Clear();
         _tripLatched = false;
         _latchedOperation = null;
-        _activeSignature = ActiveSignature(AlgorithmRuntimeRegistry.Snapshot());
+        _activeSignature = ActiveSignature(CurrentRuntime());
     }
 
     public void ObserveRejectedFrameTimestamp(DateTimeOffset timestamp)
@@ -173,9 +177,25 @@ public sealed class ResearchProtectionEngine
         _custom.ObserveRejectedFrameTimestamp(timestamp);
     }
 
-    private static void ClearIncompatibleRuntimeIfNeeded(ProtectionSettings settings)
+    private AlgorithmRuntimeRegistrySnapshot CurrentRuntime()
     {
-        var fingerprint = settings.Fingerprint();
+        var generation = AlgorithmRuntimeRegistry.Generation;
+        if (_runtimeSnapshot is not null && _runtimeGeneration == generation)
+            return _runtimeSnapshot;
+
+        _runtimeSnapshot = AlgorithmRuntimeRegistry.Snapshot();
+        _runtimeGeneration = _runtimeSnapshot.Generation;
+        return _runtimeSnapshot;
+    }
+
+    private void InvalidateRuntimeCache()
+    {
+        _runtimeSnapshot = null;
+        _runtimeGeneration = -1;
+    }
+
+    private static void ClearIncompatibleRuntimeIfNeeded(string fingerprint)
+    {
         var runtime = AlgorithmRuntimeRegistry.Snapshot();
         var incompatible = runtime.Staged.Concat(runtime.Active).Any(identity =>
             !string.Equals(identity.SettingsFingerprint, fingerprint, StringComparison.Ordinal));
@@ -233,12 +253,6 @@ public sealed class ResearchProtectionEngine
 
     private string StandardSourceHash(string element)
     {
-        var fingerprint = _settings.Fingerprint();
-        if (!string.Equals(_standardHashFingerprint, fingerprint, StringComparison.Ordinal))
-        {
-            _standardHashes.Clear();
-            _standardHashFingerprint = fingerprint;
-        }
         if (_standardHashes.TryGetValue(element, out var hash))
             return hash;
 
