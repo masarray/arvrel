@@ -72,8 +72,6 @@ public partial class AvrWorkspaceControl
         if (voltageIndex < 0)
             return;
 
-        // Immediately follow the voltage slider and its scale row so U and I
-        // read as one coherent manual-injection control group.
         var insertAt = Math.Min(stack.Children.Count, voltageIndex + 2);
 
         var header = new Grid { Margin = new Thickness(0, 2, 0, 0) };
@@ -189,11 +187,8 @@ public partial class AvrWorkspaceControl
 
     private void RefreshLeanInjectionUx()
     {
-        if (!_leanInjectionInstalled)
-            return;
-
-        ApplyWorkspaceFontRecursive(this, new FontFamily("Inter"));
-        SyncCurrentSliderFromModel();
+        if (_leanInjectionInstalled)
+            SyncCurrentSliderFromModel();
     }
 
     private void SyncCurrentSliderFromModel()
@@ -202,14 +197,20 @@ public partial class AvrWorkspaceControl
             return;
 
         var max = Math.Max(2.0, _settings.NominalCurrentA * 2.0);
+        var target = Math.Clamp(_injectionTargetCurrentA, 0, max);
         _syncingCurrentSlider = true;
         try
         {
-            _sourceCurrentSlider.Maximum = max;
-            _sourceCurrentSlider.TickFrequency = Math.Max(0.02, _settings.NominalCurrentA / 20.0);
-            _sourceCurrentSlider.Value = Math.Clamp(_injectionTargetCurrentA, 0, max);
-            if (_currentTargetText is not null)
-                _currentTargetText.Text = $"{_injectionTargetCurrentA:0.000} A";
+            if (Math.Abs(_sourceCurrentSlider.Maximum - max) > 1e-9)
+                _sourceCurrentSlider.Maximum = max;
+            var tick = Math.Max(0.02, _settings.NominalCurrentA / 20.0);
+            if (Math.Abs(_sourceCurrentSlider.TickFrequency - tick) > 1e-9)
+                _sourceCurrentSlider.TickFrequency = tick;
+            if (Math.Abs(_sourceCurrentSlider.Value - target) > 1e-6)
+                _sourceCurrentSlider.Value = target;
+            var text = $"{_injectionTargetCurrentA:0.000} A";
+            if (_currentTargetText is not null && !string.Equals(_currentTargetText.Text, text, StringComparison.Ordinal))
+                _currentTargetText.Text = text;
         }
         finally
         {
