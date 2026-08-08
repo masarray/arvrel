@@ -129,7 +129,11 @@ public sealed class RelayFrontEndRealismTests
 
         Assert.IsNotNull(ideal.Protection.LatchedOperation);
         Assert.IsNotNull(delayed.Protection.LatchedOperation);
-        var shift = delayed.Protection.LatchedOperation!.TripTimestamp - ideal.Protection.LatchedOperation!.TripTimestamp;
+        Assert.IsNotNull(ideal.TestSet.InjectionStartedAt);
+        Assert.IsNotNull(delayed.TestSet.InjectionStartedAt);
+        var idealTripFromStart = ideal.Protection.LatchedOperation!.TripTimestamp - ideal.TestSet.InjectionStartedAt!.Value;
+        var delayedTripFromStart = delayed.Protection.LatchedOperation!.TripTimestamp - delayed.TestSet.InjectionStartedAt!.Value;
+        var shift = delayedTripFromStart - idealTripFromStart;
         Assert.IsTrue(shift >= TimeSpan.FromMilliseconds(2), $"Expected at least 2 ms front-end shift, observed {shift.TotalMilliseconds:0.000} ms.");
     }
 
