@@ -1,65 +1,102 @@
-# P17 — Transformer Differential Virtual Relay Front Panel
+# P17 — Transformer Differential on the Shared OCR Virtual Relay
 
 ## Goal
 
-P17 turns Transformer Differential into a first-class virtual protection relay in the ARVREL main shell. The existing P12–P15 practitioner workspace remains the detailed engineering surface; it is no longer the only visible representation of the IED.
+P17 makes Transformer Differential a first-class virtual protection relay in the ARVREL main shell while reusing the **exact P6/OCR relay hardware component** already shipped by ARVREL.
 
-The front panel deliberately follows ARVREL's existing OCR relay visual language rather than copying a proprietary vendor product.
+This is not a second visual design and not a Transformer-specific hardware clone. The visual authority is:
+
+- `Controls/VirtualRelay/VirtualRelayControl.xaml`
+- `Controls/VirtualRelay/VirtualRelayTokens.xaml`
+- `Controls/VirtualRelay/RelayLampControl.xaml`
+
+The Transformer layer only changes presentation text, maps the existing lamps to 87T functions, and renders authoritative Transformer runtime evidence into the existing LCD host.
+
+## Non-negotiable visual boundary
+
+Transformer Differential instantiates `new VirtualRelayControl()` directly.
+
+P17 must not create a separate Transformer relay chassis, operator rail, LCD bezel, button set, annunciator geometry, material palette, shadow model, lamp optics, or scaling policy. Those remain owned by P6/OCR.
+
+Presentation-only substitutions are permitted, for example:
+
+- `650` → `87T`
+- `PROCESS BUS PROTECTION RELAY` → `TRANSFORMER DIFFERENTIAL RELAY`
+- `PHASE A` → `87T`
+- `PHASE B` → `87T-HS`
+- `PHASE C` → `REF HV`
+- `EARTH` → `REF LV`
+- `SMV BLOCK` → `BLOCK`
+
+`VirtualRelayControl.ApplyTextOverrides(...)` exists specifically so another virtual IED can reuse the same physical hardware without copying its XAML.
 
 ## Operator versus engineer boundary
 
-### Main shell — operator front panel
+### Shared relay hardware — operator surface
 
-Selecting **Transformer Differential · 87T / REF** now shows a physical-style virtual relay with:
+The existing OCR hardware provides unchanged:
 
-- ARVREL 87T / TR-87T identity,
-- LCD navigation,
-- Up / Down / Enter / Next / Cancel / Reset keys,
-- F1–F5 shortcuts,
-- HEALTHY, PICKUP, TRIP, 87T, 87T-HS, REF HV, REF LV and BLOCK annunciation,
-- local event browsing,
-- deterministic public self-test record,
-- paired-SV trust and diagnostic pages.
+- outer enclosure and front face,
+- status/annunciation module,
+- LCD bezel and screen,
+- F1–F5 function keys,
+- RESET key,
+- Home/Menu navigation keys,
+- Up/Down/Enter/Next/Cancel/Back controls,
+- tactile button behavior,
+- relay lamp optics,
+- responsive hardware scaling.
+
+Transformer presentation maps its authoritative runtime state to:
+
+- HEALTHY,
+- PICKUP,
+- TRIP,
+- 87T,
+- 87T-HS,
+- REF HV,
+- REF LV,
+- BLOCK.
 
 ### Practitioner workspace — engineering surface
 
-F4 / ENGINEERING opens the existing TransformerIedWindow. It remains responsible for:
+F4 opens the existing `TransformerIedWindow` non-modally. It remains responsible for:
 
-- HV/LV stream binding,
+- HV/LV SV stream binding,
 - nameplate, CT and vector-group engineering,
-- 87T Is1/K1/Is2/K2 settings,
-- H2/H5 security settings and evidence,
-- REF HV/LV configuration,
+- Is1/K1/Is2/K2,
+- 87T-HS,
+- H2/H5 security,
+- REF HV/LV,
 - P13 CT-saturation / external-fault security,
 - runtime evaluation,
 - evidence export,
-- P15 public self-test details.
-
-P17 opens this window non-modally and reuses one window instance while it remains open so the operator faceplate stays visible.
+- P15 public self-test detail.
 
 ## Runtime authority
 
-P17 does not implement a second protection engine.
+There is no second protection engine in the faceplate.
 
-`TransformerIedWindow` continues to own `TransformerProcessBusProtectionRuntime`. The P17 bridge publishes the already-evaluated `TransformerProtectionRuntimeSnapshot` to the front panel. LED and LCD states are projections of snapshot fields only.
+`TransformerIedWindow` owns `TransformerProcessBusProtectionRuntime`. P17 initializes the existing `InitializeP17FaceplateBridge()` and publishes already-evaluated `TransformerProtectionRuntimeSnapshot` objects to the shared hardware presenter.
 
-The bridge does not calculate:
+The presenter does not calculate:
 
-- Idiff/Ibias thresholds,
-- harmonic blocking/restraint,
+- standard slope thresholds,
+- Idiff/Ibias protection decisions,
+- H2/H5 blocking/restraint decisions,
 - CT-saturation suspicion,
-- external-fault arming/hold,
+- P13 external-fault arming/hold,
 - REF operate quantities,
 - trip decisions.
 
-The virtual relay reset key calls the existing runtime `Reset()` path through the practitioner bridge.
+RESET calls the existing runtime `Reset()` path.
 
 ## LCD pages
 
-The front panel exposes:
+The shared OCR LCD host presents Transformer-specific pages:
 
 1. Home
-2. Measurements
+2. Measurements / Idiff-Ibias
 3. Protection
 4. Harmonics H2/H5
 5. REF HV/LV
@@ -69,7 +106,7 @@ The front panel exposes:
 9. Records / Self-test
 10. Diagnostics
 
-Settings are intentionally read-only on the faceplate in P17. F4 opens the practitioner surface for engineering changes.
+The faceplate settings page is read-only. F4 / Settings Enter opens engineering.
 
 ## Function keys
 
@@ -77,47 +114,30 @@ Settings are intentionally read-only on the faceplate in P17. F4 opens the pract
 - **F2** — Events
 - **F3** — Records / deterministic self-test
 - **F4** — Engineering practitioner workspace
-- **F5** — Reset transformer pickup timers / virtual trip latch through the existing runtime
+- **F5** — reset existing Transformer runtime
 
-On the Records page, Enter runs `TransformerPublicSelfTest.RunAll()` using the same protection core already used by P15.
+On Records, Enter runs `TransformerPublicSelfTest.RunAll()`; no separate test algorithm is implemented in the presenter.
 
-## Annunciation mapping
-
-- **HEALTHY** — authoritative runtime is Ready, Pickup or TripLatched rather than pair/protection blocked.
-- **PICKUP** — any authoritative 87T, 87T-HS or REF element pickup.
-- **TRIP** — transformer runtime trip latch.
-- **87T** — restrained differential pickup/operation.
-- **87T-HS** — high-set differential pickup/operation.
-- **REF HV** — HV restricted-earth-fault pickup/operation.
-- **REF LV** — LV restricted-earth-fault pickup/operation.
-- **BLOCK** — PairBlocked, ProtectionBlocked or authoritative protection blocked state.
-
-No LED state creates or changes a protection decision.
-
-## Source and safety boundary
-
-The front panel can exist in Internal Demo with no SV so a packaged binary can run the deterministic 10-scenario self-test. Live/Replay protection remains guarded by the existing practitioner configuration and requires two distinct HV/LV Sampled Values streams.
+## Safety boundary
 
 All outputs remain virtual evidence only:
 
 - no physical trip,
 - no GOOSE trip,
 - no breaker output,
-- no protection-grade / calibration / IEC type-test claim.
+- no calibration / IEC type-test claim.
 
-## Selector hardening
+Live/Replay Transformer protection still requires two distinct HV/LV Sampled Values streams.
 
-The unified selector continues to set `DisplayMemberPath = DisplayName` and P17 also overrides the choice model's `ToString()` to return `DisplayName`. This prevents a WPF theme/control-template fallback from displaying the raw record representation in the selection box.
+## Regression contracts
 
-## Verification
+P17 tests must assert that:
 
-P17 source-contract tests assert:
-
-- the transformer physical-style front panel is present,
-- all required annunciation and operator keys exist,
-- the faceplate consumes authoritative runtime snapshots,
-- no `TransformerProtectionEngine` is created in the P17 UI,
-- P15 self-test is reused rather than reimplemented,
-- the practitioner window is singleton/non-modal while open,
-- OCR/AVR unified-selector routes remain intact,
-- virtual-only safety wording remains visible.
+- Transformer instantiates the shared `VirtualRelayControl`,
+- the former improvised `TransformerVirtualRelayControl.cs` does not exist,
+- P6/OCR XAML remains the hardware geometry source,
+- Transformer only remaps labels/LCD/lamp state,
+- runtime snapshots come from the existing P17 bridge,
+- no `TransformerProtectionEngine` is created by the presenter,
+- practitioner engineering remains singleton/non-modal,
+- the public deterministic self-test is reused.
