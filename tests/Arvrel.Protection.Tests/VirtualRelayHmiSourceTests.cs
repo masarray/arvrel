@@ -37,12 +37,15 @@ public sealed class VirtualRelayHmiSourceTests
     {
         var hardware = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayControl.xaml.cs");
         var p6 = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+        var resetAuthority = Read("src", "Arvrel.App", "MainWindow.RelayResetSeparation.cs");
 
         StringAssert.Contains(hardware, "public event RoutedEventHandler? ResetRequested");
         StringAssert.Contains(hardware, "case \"RESET\": key = default; return false;");
         StringAssert.Contains(p6, "relay.ResetRequested += P6Relay_ResetRequested");
-        StringAssert.Contains(p6, "Reset_Click(sender, e);");
-        StringAssert.Contains(p6, "NotifyRelayOperatorReset();");
+        StringAssert.Contains(p6, "ExecuteRelayResetCommand();");
+        Assert.IsFalse(p6.Contains("Reset_Click(sender, e);", StringComparison.Ordinal));
+        StringAssert.Contains(resetAuthority, "ClosedLoopRelayResetTransaction.Execute");
+        StringAssert.Contains(resetAuthority, "NotifyRelayOperatorReset();");
     }
 
     private static string Read(params string[] segments)
