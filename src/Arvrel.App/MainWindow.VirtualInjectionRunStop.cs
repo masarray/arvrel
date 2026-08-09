@@ -148,7 +148,10 @@ public partial class MainWindow
             _lastReportedTestSetPickup = null;
             _lastReportedTestSetTrip = null;
             AddEvent("INJ START", $"{_scenario.ActiveProfile.Name} · {_scenario.InjectionFingerprint[..12]}");
-            SetVirtualInjectionStatus("STARTING", WarningBrush, "#FBF2E3", "#E2C58F");
+            if (_scenario.WindowStatus == "rebuilding")
+                SetVirtualInjectionStatus("STARTING", WarningBrush, "#FBF2E3", "#E2C58F");
+            else
+                SetVirtualInjectionStatus("RUNNING", HealthyBrush, "#EAF5EC", "#B9D8BF");
         }
         else if (!string.IsNullOrWhiteSpace(blockReason))
         {
@@ -230,7 +233,22 @@ public partial class MainWindow
             return;
 
         var running = _scenario.IsRunning;
-        SetTextIfChanged(RunButtonText, running ? "Stop injection" : "Start injection");
+        var testSet = _closedLoopBench?.TestSetSnapshot;
+        var rearmBlocked = !running && testSet is not null &&
+                           (testSet.TimerState == Arvrel.Application.Laboratory.VirtualTestSetTimerState.Blocked ||
+                            testSet.PickupInput ||
+                            testSet.TripInput);
+
+        SetTextIfChanged(
+            RunButtonText,
+            running ? "Stop injection" : rearmBlocked ? "Reset relay to re-arm" : "Start injection");
+        RunButton.IsEnabled = running || !rearmBlocked;
+        RunButton.ToolTip = rearmBlocked
+            ? testSet?.ArmBlockReason ?? "TESTSET feedback is still active. Reset the relay before starting a new timed test."
+            : running
+                ? "Stop the virtual secondary injection."
+                : "Start the virtual secondary injection and arm TESTSET timing.";
+
         var desiredIcon = running ? LucideIconKind.CircleStop : LucideIconKind.Play;
         if (RunButtonIcon.Kind != desiredIcon)
             RunButtonIcon.Kind = desiredIcon;
@@ -239,18 +257,21 @@ public partial class MainWindow
 
         var currentStatus = _virtualInjectionStatusText?.Text ?? string.Empty;
         var preserveValidationStatus = currentStatus.StartsWith("INVALID", StringComparison.Ordinal) ||
-                                       currentStatus.StartsWith("EDITING", StringComparison.Ordinal) ||
-                                       currentStatus.StartsWith("NOT ARMED", StringComparison.Ordinal);
+                                       currentStatus.StartsWith("EDITING", StringComparison.Ordinal);
         if (!preserveValidationStatus)
         {
-            var desiredStatus = !running
-                ? "STOPPED"
-                : _scenario.WindowStatus == "rebuilding"
-                    ? "STARTING"
-                    : "RUNNING";
+            var desiredStatus = rearmBlocked
+                ? "NOT ARMED"
+                : !running
+                    ? "STOPPED"
+                    : _scenario.WindowStatus == "rebuilding"
+                        ? "STARTING"
+                        : "RUNNING";
             if (!string.Equals(currentStatus, desiredStatus, StringComparison.Ordinal))
             {
-                if (!running)
+                if (rearmBlocked)
+                    SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
+                else if (!running)
                     SetVirtualInjectionStatus(desiredStatus, VirtualInjectionStoppedBrush, "#F2F5F7", "#CBD3DA");
                 else if (_scenario.WindowStatus == "rebuilding")
                     SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
@@ -276,7 +297,6 @@ public partial class MainWindow
         if (!ReferenceEquals(StreamHealthText.Foreground, streamBrush))
             StreamHealthText.Foreground = streamBrush;
 
-        var testSet = _closedLoopBench?.TestSetSnapshot;
         var timingSuffix = testSet?.TimerState switch
         {
             Arvrel.Application.Laboratory.VirtualTestSetTimerState.Completed when testSet.TripTime is { } trip
@@ -293,6 +313,31 @@ public partial class MainWindow
         };
         SetTextIfChanged(WaveformSubtitleText, _scenario.ActiveProfile.Name + timingSuffix);
 
+        string TimingBudgetDetails()
+        {
+            if (_closedLoopBench is null || testSet is null)
+                return string.Empty;
+
+            var contact = _closedLoopBench.ContactProfile;
+            var expectedPickup = contact.PickupOperateDelay + contact.ContactBounceDuration + contact.TestSetInputDebounce;
+            var expectedTrip = contact.TripOperateDelay + contact.ContactBounceDuration + contact.TestSetInputDebounce;
+            var observedPickup = testSet.PickupDetectedAt is { } pickupAt && testSet.RelayPickupDetectedAt is { } relayPickupAt
+                ? pickupAt - relayPickupAt
+                : (TimeSpan?)null;
+            var observedTrip = testSet.TripDetectedAt is { } tripAt && testSet.RelayTripDetectedAt is { } relayTripAt
+                ? tripAt - relayTripAt
+                : (TimeSpan?)null;
+
+            return $"\nExpected BO2→BI2 {expectedPickup.TotalMilliseconds:0.000} ms" +
+                   (observedPickup is { } pickupPath
+                       ? $" · observed {pickupPath.TotalMilliseconds:0.000} ms"
+                       : string.Empty) +
+                   $"\nExpected BO1→BI1 {expectedTrip.TotalMilliseconds:0.000} ms" +
+                   (observedTrip is { } tripPath
+                       ? $" · observed {tripPath.TotalMilliseconds:0.000} ms"
+                       : string.Empty);
+        }
+
         var tooltip =
             $"Configured profile {_scenario.ActiveProfile.Name}\n" +
             $"Configured fingerprint {_scenario.InjectionFingerprint}\n" +
@@ -307,6 +352,7 @@ public partial class MainWindow
                   $"Timer {_closedLoopBench.TestSetSnapshot.TimerState}\n" +
                   $"TESTSET.BI2 pickup={(_closedLoopBench.TestSetSnapshot.PickupInput ? 1 : 0)}\n" +
                   $"TESTSET.BI1 trip={(_closedLoopBench.TestSetSnapshot.TripInput ? 1 : 0)}" +
+                  TimingBudgetDetails() +
                   (string.IsNullOrWhiteSpace(_closedLoopBench.TestSetSnapshot.ArmBlockReason)
                       ? string.Empty
                       : $"\nArm block: {_closedLoopBench.TestSetSnapshot.ArmBlockReason}"));
