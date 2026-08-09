@@ -170,10 +170,11 @@ public partial class MainWindow
 
     private void P6Relay_ResetRequested(object sender, RoutedEventArgs e)
     {
-        StatusText.ToolTip = null;
-        Reset_Click(sender, e);
-        NotifyRelayOperatorReset();
-        NotifyRelayEvidenceReset();
+        // P6 RESET is the same relay-equipment command as every other reset entry
+        // point. Never fall back to legacy Reset_Click, which also reset the source
+        // scenario and left closed-loop BO/BI state on a separate lifecycle.
+        e.Handled = true;
+        ExecuteRelayResetCommand();
     }
 
     private void P6Relay_HardwareKeyPressed(object? sender, VirtualRelayHardwareKeyEventArgs e)
