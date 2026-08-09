@@ -59,7 +59,12 @@ public sealed class DeterministicLabScenario
             ? ApplyProfile(VirtualInjectionCtStudyScenarios.Create(name, ActiveProfile.FrequencyHz))
             : ApplySourcePresetPreservingCt(name);
 
-    public bool StartInjection() => _runtime.Start();
+    /// <summary>
+    /// Starts the direct virtual secondary source. Unlike a process-bus stream, a
+    /// secondary injector does not own a one-cycle pickup/trip interlock; any
+    /// acquisition/filter latency is modeled inside the relay front end.
+    /// </summary>
+    public bool StartInjection() => _runtime.StartDirectSecondaryInjection();
 
     public bool StopInjection() => _runtime.Stop();
 
