@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using Arvrel.Application.Laboratory;
 using Arvrel.Protection;
 
