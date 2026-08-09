@@ -92,10 +92,20 @@ public partial class MainWindow
             var configuredProfile = _scenario.ActiveProfile;
             var configuredFingerprint = _scenario.InjectionFingerprint;
             var outputFingerprint = _scenario.OutputFingerprint;
+            var heldTripCapture = _closedLoopBench?.TripCapture;
 
             _internalEngine.Reset();
             _snapshot = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
             ClearRelayAnnunciation();
+
+            // With output OFF, let the relay BO release, bounce and TESTSET BI
+            // debounce path settle naturally. This makes the BI lamps fall through
+            // the same modeled path used to assert them; no software-forced BI reset.
+            if (!wasRunning && _closedLoopBench is not null)
+            {
+                var settled = _closedLoopBench.Advance(_closedLoopBench.FeedbackSettleTime);
+                _snapshot = settled.Protection;
+            }
 
             // Re-render the relay against the source that is already present.
             // Do not call scenario.Reset(), Restart(), StopInjection(), or apply
@@ -113,7 +123,9 @@ public partial class MainWindow
                 $"Trip latch and timers cleared; injection {(wasRunning ? "RUNNING" : "STOPPED")} · {configuredProfile.Name}");
             StatusText.Text = wasRunning
                 ? $"Relay reset complete. Virtual injection '{configuredProfile.Name}' remains RUNNING."
-                : $"Relay reset complete. Virtual injection '{configuredProfile.Name}' remains STOPPED.";
+                : heldTripCapture is not null
+                    ? $"Relay reset complete. TESTSET feedback released; trip capture from run {heldTripCapture.TestRunId} remains frozen for inspection."
+                    : $"Relay reset complete. Virtual injection '{configuredProfile.Name}' remains STOPPED.";
 
             // These values are intentionally observed after reset. They are
             // included in the event tooltip/evidence path and make accidental

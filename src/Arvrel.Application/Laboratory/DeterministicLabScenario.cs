@@ -75,6 +75,19 @@ public sealed class DeterministicLabScenario
     {
         var snapshot = _runtime.Advance(delta, SmvDegraded);
         var injection = snapshot.Frame;
+
+        // The one-cycle runtime coherence window is source-side presentation state,
+        // not a permission signal from a physical secondary injector to the relay.
+        // A CMC-style source applies waveform samples immediately at START; any
+        // recognition/filter delay must therefore belong to the relay front end and
+        // protection algorithm. Preserve genuine SMV degradation blocking, but do not
+        // suppress pickup/trip merely because the virtual source UI says STARTING.
+        var measurement = snapshot.IsRunning &&
+                          !SmvDegraded &&
+                          string.Equals(injection.Measurement.SmvTrust.Code, "INJECTION_REBUILD", StringComparison.Ordinal)
+            ? injection.Measurement with { SmvTrust = SmvTrustState.Healthy }
+            : injection.Measurement;
+
         var waveform = new ScenarioWaveform(
             injection.PhaseACurrentSamples,
             injection.PhaseBCurrentSamples,
@@ -83,7 +96,7 @@ public sealed class DeterministicLabScenario
             ActiveProfile.FrequencyHz,
             injection.SamplesPerCycle,
             injection.SampleRateHz);
-        return new ScenarioStep(injection.Measurement, waveform)
+        return new ScenarioStep(measurement, waveform)
         {
             CtSaturation = injection.CtSaturation,
             CurrentTransformerState = snapshot.CurrentTransformerState,
