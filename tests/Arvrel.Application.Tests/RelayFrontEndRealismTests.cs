@@ -95,6 +95,33 @@ public sealed class RelayFrontEndRealismTests
     }
 
     [TestMethod]
+    public void InternalSecondaryInjectorDoesNotBlockRelayPickupDuringSourceUiSettling()
+    {
+        var source = CreateSourceWithPhaseACurrent(8);
+        var relay = new ResearchProtectionEngine(FastPhase50Settings() with
+        {
+            PhaseInstantaneousDelay = TimeSpan.FromMilliseconds(60)
+        });
+        var bench = new ClosedLoopVirtualTestBench(
+            source,
+            relay,
+            frontEndProfile: VirtualRelayFrontEndProfile.Ideal)
+        {
+            AutoStopOnTrip = false
+        };
+
+        Assert.IsTrue(bench.StartInjection());
+        var firstQuantum = bench.Advance(ClosedLoopVirtualTestBench.SimulationQuantum);
+
+        Assert.AreEqual("starting", source.OutputState,
+            "The source may still present its one-cycle UI settling state.");
+        Assert.IsTrue(firstQuantum.MeasurementIsTripPermitted(),
+            "Internal secondary injection must not use source UI coherence as relay pickup/trip permission.");
+        Assert.IsTrue(firstQuantum.Protection.Phase50.Pickup,
+            "The relay must be allowed to recognize the applied current immediately; relay/front-end latency owns recognition delay.");
+    }
+
+    [TestMethod]
     public void MeasurementGroupDelayMovesInternalRelayTripLaterThanIdealFrontEnd()
     {
         var idealSource = CreateSourceWithPhaseACurrent(8);
@@ -138,16 +165,10 @@ public sealed class RelayFrontEndRealismTests
     }
 
     [TestMethod]
-    public void ContactBounceAndInputDebounceAreVisibleOnlyInExternalTestSetTiming()
+    public void ContactBounceAndInputDebounceMatchExactExternalTimingBudget()
     {
         var source = CreateSourceWithPhaseACurrent(8);
-        var contact = new VirtualRelayContactProfile(
-            PickupOperateDelay: TimeSpan.FromMilliseconds(1),
-            TripOperateDelay: TimeSpan.FromMilliseconds(3),
-            ReleaseDelay: TimeSpan.FromMilliseconds(1),
-            ContactBounceDuration: TimeSpan.FromMilliseconds(1),
-            ContactBouncePeriod: TimeSpan.FromMilliseconds(0.25),
-            TestSetInputDebounce: TimeSpan.FromMilliseconds(0.5));
+        var contact = VirtualRelayContactProfile.RealisticNumericalRelay;
         var bench = new ClosedLoopVirtualTestBench(
             source,
             new ResearchProtectionEngine(FastPhase50Settings()),
@@ -162,10 +183,15 @@ public sealed class RelayFrontEndRealismTests
         var internalTrip = result.Protection.LatchedOperation!.TripTimestamp;
         var externalTrip = result.TestSet.TripDetectedAt!.Value;
         var externalPath = externalTrip - internalTrip;
+        var expected = contact.TripOperateDelay +
+                       contact.ContactBounceDuration +
+                       contact.TestSetInputDebounce;
 
-        Assert.IsTrue(
-            externalPath >= TimeSpan.FromMilliseconds(4.5),
-            $"The externally observed trip must include operate delay, bounce settling and BI debounce. Observed {externalPath.TotalMilliseconds:0.000} ms.");
+        Assert.AreEqual(
+            expected.TotalMilliseconds,
+            externalPath.TotalMilliseconds,
+            ClosedLoopVirtualTestBench.SimulationQuantum.TotalMilliseconds,
+            $"BO1 request→contact settle→BI1 acceptance must match the modeled timing budget. Observed {externalPath.TotalMilliseconds:0.000} ms, expected {expected.TotalMilliseconds:0.000} ms.");
         Assert.IsFalse(source.IsRunning, "Auto-stop still belongs to the debounced TESTSET.BI1 edge.");
     }
 
@@ -205,4 +231,12 @@ public sealed class RelayFrontEndRealismTests
             EarthTimeEnabled = false,
             Feeder = new FeederProtectionSettings()
         };
+}
+
+internal static class ClosedLoopVirtualTestBenchStepAssertions
+{
+    public static bool MeasurementIsTripPermitted(this ClosedLoopVirtualTestBenchStep step)
+        => step.RelayMeasurement.SmvTrust.AllowsMeasurement &&
+           step.RelayMeasurement.SmvTrust.AllowsPickup &&
+           step.RelayMeasurement.SmvTrust.AllowsTrip;
 }

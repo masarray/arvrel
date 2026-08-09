@@ -95,7 +95,9 @@ public partial class MainWindow
 
         StatusText.Text = _scenario.IsRunning
             ? "A-G fault injection started. Relay operation follows the wired measurement, active pickup, delay, output contact, and BI feedback."
-            : "A-G fault values were loaded, but injection could not start because the editor contains invalid data.";
+            : _closedLoopBench?.TestSetSnapshot.ArmBlockReason is { } blocked
+                ? $"A-G fault values loaded, but the timed test is NOT ARMED: {blocked}"
+                : "A-G fault values were loaded, but injection could not start because the editor contains invalid data.";
         RefreshVirtualInjectionRunStopPresentation();
     }
 
@@ -136,12 +138,22 @@ public partial class MainWindow
             return false;
         }
 
-        var changed = _closedLoopBench?.StartInjection() ?? _scenario.StartInjection();
+        string? blockReason = null;
+        var changed = _closedLoopBench is not null
+            ? _closedLoopBench.TryStartInjection(out blockReason)
+            : _scenario.StartInjection();
         _internalRunning = _scenario.IsRunning;
         if (changed)
         {
+            _lastReportedTestSetPickup = null;
+            _lastReportedTestSetTrip = null;
             AddEvent("INJ START", $"{_scenario.ActiveProfile.Name} · {_scenario.InjectionFingerprint[..12]}");
             SetVirtualInjectionStatus("STARTING", WarningBrush, "#FBF2E3", "#E2C58F");
+        }
+        else if (!string.IsNullOrWhiteSpace(blockReason))
+        {
+            AddEvent("TEST NOT ARMED", blockReason);
+            SetVirtualInjectionStatus("NOT ARMED", WarningBrush, "#FBF2E3", "#E2C58F");
         }
 
         UpdateRunButton();
@@ -151,7 +163,9 @@ public partial class MainWindow
         {
             StatusText.Text = changed
                 ? "Virtual output energized through the closed-loop backplane. Test-set timing starts at output application."
-                : "Virtual output is already running.";
+                : !string.IsNullOrWhiteSpace(blockReason)
+                    ? $"Timed test NOT ARMED. {blockReason}"
+                    : "Virtual output is already running.";
         }
         return changed;
     }
@@ -216,7 +230,21 @@ public partial class MainWindow
             return;
 
         var running = _scenario.IsRunning;
-        SetTextIfChanged(RunButtonText, running ? "Stop injection" : "Start injection");
+        var testSet = _closedLoopBench?.TestSetSnapshot;
+        var feedbackStillActive = !running && testSet is not null && (testSet.PickupInput || testSet.TripInput);
+
+        SetTextIfChanged(
+            RunButtonText,
+            running
+                ? "Stop injection"
+                : feedbackStillActive
+                    ? "Reset relay to re-arm"
+                    : "Start injection");
+        RunButton.IsEnabled = running || !feedbackStillActive;
+        RunButton.ToolTip = feedbackStillActive
+            ? "Timed injection cannot re-arm while TESTSET.BI1 or BI2 is still active. Reset the relay and wait for the modeled BO/BI path to release."
+            : null;
+
         var desiredIcon = running ? LucideIconKind.CircleStop : LucideIconKind.Play;
         if (RunButtonIcon.Kind != desiredIcon)
             RunButtonIcon.Kind = desiredIcon;
@@ -225,17 +253,22 @@ public partial class MainWindow
 
         var currentStatus = _virtualInjectionStatusText?.Text ?? string.Empty;
         var preserveValidationStatus = currentStatus.StartsWith("INVALID", StringComparison.Ordinal) ||
-                                       currentStatus.StartsWith("EDITING", StringComparison.Ordinal);
+                                       currentStatus.StartsWith("EDITING", StringComparison.Ordinal) ||
+                                       currentStatus.StartsWith("NOT ARMED", StringComparison.Ordinal);
         if (!preserveValidationStatus)
         {
-            var desiredStatus = !running
-                ? "STOPPED"
-                : _scenario.WindowStatus == "rebuilding"
-                    ? "STARTING"
-                    : "RUNNING";
+            var desiredStatus = feedbackStillActive
+                ? "RESET REQUIRED"
+                : !running
+                    ? "STOPPED"
+                    : _scenario.WindowStatus == "rebuilding"
+                        ? "STARTING"
+                        : "RUNNING";
             if (!string.Equals(currentStatus, desiredStatus, StringComparison.Ordinal))
             {
-                if (!running)
+                if (feedbackStillActive)
+                    SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
+                else if (!running)
                     SetVirtualInjectionStatus(desiredStatus, VirtualInjectionStoppedBrush, "#F2F5F7", "#CBD3DA");
                 else if (_scenario.WindowStatus == "rebuilding")
                     SetVirtualInjectionStatus(desiredStatus, WarningBrush, "#FBF2E3", "#E2C58F");
@@ -261,14 +294,20 @@ public partial class MainWindow
         if (!ReferenceEquals(StreamHealthText.Foreground, streamBrush))
             StreamHealthText.Foreground = streamBrush;
 
-        var testSet = _closedLoopBench?.TestSetSnapshot;
-        var timingSuffix = testSet?.TripTime is { } trip
-            ? $" · BI1 TRIP {trip.TotalMilliseconds:0.000} ms"
-            : testSet?.PickupTime is { } pickup
-                ? $" · BI2 PICKUP {pickup.TotalMilliseconds:0.000} ms"
-                : _closedLoopBench is not null
-                    ? " · CLOSED LOOP"
-                    : string.Empty;
+        var timingSuffix = testSet?.TimerState switch
+        {
+            Arvrel.Application.Laboratory.VirtualTestSetTimerState.Completed when testSet.TripTime is { } trip
+                => $" · BI1 TRIP {trip.TotalMilliseconds:0.000} ms",
+            Arvrel.Application.Laboratory.VirtualTestSetTimerState.Armed when testSet.ElapsedTime is { } elapsed
+                => $" · TIMER {elapsed.TotalMilliseconds:0.000} ms",
+            Arvrel.Application.Laboratory.VirtualTestSetTimerState.Blocked
+                => " · TIMER NOT ARMED",
+            _ when testSet?.PickupTime is { } pickup
+                => $" · BI2 PICKUP {pickup.TotalMilliseconds:0.000} ms",
+            _ when _closedLoopBench is not null
+                => " · CLOSED LOOP",
+            _ => string.Empty
+        };
         SetTextIfChanged(WaveformSubtitleText, _scenario.ActiveProfile.Name + timingSuffix);
 
         var tooltip =
@@ -282,8 +321,12 @@ public partial class MainWindow
             (_closedLoopBench is null
                 ? string.Empty
                 : $"\nTopology {_closedLoopBench.Topology.Fingerprint()}\n" +
+                  $"Timer {_closedLoopBench.TestSetSnapshot.TimerState}\n" +
                   $"TESTSET.BI2 pickup={(_closedLoopBench.TestSetSnapshot.PickupInput ? 1 : 0)}\n" +
-                  $"TESTSET.BI1 trip={(_closedLoopBench.TestSetSnapshot.TripInput ? 1 : 0)}");
+                  $"TESTSET.BI1 trip={(_closedLoopBench.TestSetSnapshot.TripInput ? 1 : 0)}" +
+                  (string.IsNullOrWhiteSpace(_closedLoopBench.TestSetSnapshot.ArmBlockReason)
+                      ? string.Empty
+                      : $"\nArm block: {_closedLoopBench.TestSetSnapshot.ArmBlockReason}"));
         if (!Equals(WaveformSubtitleText.ToolTip, tooltip))
             WaveformSubtitleText.ToolTip = tooltip;
 

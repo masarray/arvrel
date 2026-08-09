@@ -36,6 +36,11 @@ public partial class MainWindow
 
     private void StableTimer_Tick(object? sender, EventArgs e)
     {
+        // Defense in depth: even if bootstrap ordering ever leaves this handler
+        // subscribed, the closed-loop bench is the sole source/protection clock.
+        if (_closedLoopBench is not null)
+            return;
+
         var sourceIndex = SourceCombo.SelectedIndex;
         if (_lastStableSourceIndex != sourceIndex)
         {
