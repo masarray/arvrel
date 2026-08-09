@@ -16,6 +16,7 @@
 
 [Product site](https://masarray.github.io/arvrel/) ·
 [Documentation](https://masarray.github.io/arvrel/documentation.html) ·
+[Engineering FAQ](https://masarray.github.io/arvrel/faq.html) ·
 [Current shipped status](docs/CURRENT_STATUS.md) ·
 [Quick start](https://masarray.github.io/arvrel/quick-start.html) ·
 [Download](https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.6)
@@ -222,6 +223,7 @@ dotnet test .\ARVREL.sln -c Release --no-build
 
 - [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) — canonical shipped-state authority;
 - [Public documentation hub](https://masarray.github.io/arvrel/documentation.html);
+- [Engineering FAQ](https://masarray.github.io/arvrel/faq.html);
 - [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — operating and evaluation workflow;
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime authority and data flow;
 - [`docs/P0_METROLOGY_GRADE_TIMING_ENGINE.md`](docs/P0_METROLOGY_GRADE_TIMING_ENGINE.md) — metrology engine implementation detail;
