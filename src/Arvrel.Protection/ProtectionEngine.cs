@@ -9,6 +9,10 @@ public sealed class ProtectionEngine
     private TimeSpan _earth50Elapsed;
     private double _phase51Progress;
     private double _earth51Progress;
+    private bool _phase50PickupPrevious;
+    private bool _earth50PickupPrevious;
+    private bool _phase51PickupPrevious;
+    private bool _earth51PickupPrevious;
     private DateTimeOffset? _previousTimestamp;
     private bool _tripLatched;
     private ProtectionOperationEvidence? _latchedOperation;
@@ -57,16 +61,26 @@ public sealed class ProtectionEngine
                             frame.SmvTrust.AllowsPickup &&
                             residual >= _settings.EarthTimePickupA;
 
+        // A protection timer starts at the observed pickup edge. The interval between
+        // the preceding non-pickup frame and the first pickup frame must not be counted
+        // retroactively. This keeps definite/inverse timing causal and makes settings
+        // that are exactly representable on the processing grid operate exactly from
+        // the recorded pickup timestamp.
+        var phase50TimingDelta = TimingDelta(delta, phase50Pickup, _phase50PickupPrevious);
+        var earth50TimingDelta = TimingDelta(delta, earth50Pickup, _earth50PickupPrevious);
+        var phase51TimingDelta = TimingDelta(delta, phase51Pickup, _phase51PickupPrevious);
+        var earth51TimingDelta = TimingDelta(delta, earth51Pickup, _earth51PickupPrevious);
+
         _phase50Elapsed = AccumulateDefiniteTime(
             _phase50Elapsed,
             phase50Pickup,
-            delta,
+            phase50TimingDelta,
             !_settings.PhaseInstantaneousEnabled ||
             maxPhase < _settings.PhaseInstantaneousPickupA * _settings.PhaseInstantaneousDropoutRatio);
         _earth50Elapsed = AccumulateDefiniteTime(
             _earth50Elapsed,
             earth50Pickup,
-            delta,
+            earth50TimingDelta,
             !_settings.EarthInstantaneousEnabled ||
             residual < _settings.EarthInstantaneousPickupA * _settings.EarthInstantaneousDropoutRatio);
 
@@ -83,7 +97,7 @@ public sealed class ProtectionEngine
             _settings.PhaseTimeUserK,
             _settings.PhaseTimeUserAlpha,
             _settings.PhaseTimeUserC,
-            delta,
+            phase51TimingDelta,
             phase51Pickup,
             !_settings.PhaseTimeEnabled || maxPhase < _settings.PhaseTimePickupA * _settings.PhaseTimeDropoutRatio);
         _earth51Progress = AccumulateTimeCharacteristic(
@@ -99,9 +113,14 @@ public sealed class ProtectionEngine
             _settings.EarthTimeUserK,
             _settings.EarthTimeUserAlpha,
             _settings.EarthTimeUserC,
-            delta,
+            earth51TimingDelta,
             earth51Pickup,
             !_settings.EarthTimeEnabled || residual < _settings.EarthTimePickupA * _settings.EarthTimeDropoutRatio);
+
+        _phase50PickupPrevious = phase50Pickup;
+        _earth50PickupPrevious = earth50Pickup;
+        _phase51PickupPrevious = phase51Pickup;
+        _earth51PickupPrevious = earth51Pickup;
 
         var phase50Operate = _settings.PhaseInstantaneousEnabled && _phase50Elapsed >= _settings.PhaseInstantaneousDelay;
         var earth50Operate = _settings.EarthInstantaneousEnabled && _earth50Elapsed >= _settings.EarthInstantaneousDelay;
@@ -296,6 +315,10 @@ public sealed class ProtectionEngine
         _earth50Elapsed = TimeSpan.Zero;
         _phase51Progress = 0;
         _earth51Progress = 0;
+        _phase50PickupPrevious = false;
+        _earth50PickupPrevious = false;
+        _phase51PickupPrevious = false;
+        _earth51PickupPrevious = false;
         _feederEngine.Reset();
         _pickupEvidence.Clear();
         if (!keepTripLatch)
@@ -523,6 +546,9 @@ public sealed class ProtectionEngine
             return ProtectionStageState.Timing;
         return ProtectionStageState.Ready;
     }
+
+    private static TimeSpan TimingDelta(TimeSpan delta, bool pickup, bool previousPickup)
+        => pickup && !previousPickup ? TimeSpan.Zero : delta;
 
     private static TimeSpan AccumulateDefiniteTime(TimeSpan current, bool pickup, TimeSpan delta, bool droppedOut)
     {

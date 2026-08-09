@@ -27,6 +27,44 @@ public sealed class ProtectionEngineTests
     }
 
     [TestMethod]
+    public void PhaseInstantaneous_DefiniteTimerStartsAtObservedPickupEdge()
+    {
+        var settings = new ProtectionSettings
+        {
+            PhaseInstantaneousEnabled = true,
+            PhaseInstantaneousPickupA = 4,
+            PhaseInstantaneousDelay = TimeSpan.FromMilliseconds(60),
+            PhaseTimeEnabled = false,
+            EarthInstantaneousEnabled = false,
+            EarthTimeEnabled = false,
+            Feeder = new FeederProtectionSettings()
+        };
+        var engine = new ProtectionEngine(settings);
+        var start = DateTimeOffset.UtcNow;
+
+        engine.Evaluate(new MeasurementFrame(start, 1, 1, 1, 0, SmvTrustState.Healthy));
+        ProtectionSnapshot snapshot = ProtectionSnapshot.Ready(start);
+        for (var elapsed = 5; elapsed <= 70; elapsed += 5)
+        {
+            snapshot = engine.Evaluate(new MeasurementFrame(
+                start.AddMilliseconds(elapsed),
+                8,
+                1,
+                1,
+                0,
+                SmvTrustState.Healthy));
+            if (snapshot.TripLatched)
+                break;
+        }
+
+        Assert.IsNotNull(snapshot.LatchedOperation);
+        Assert.AreEqual(60d,
+            (snapshot.LatchedOperation!.TripTimestamp - snapshot.LatchedOperation.PickupTimestamp).TotalMilliseconds,
+            1e-9,
+            "The interval before the first observed pickup frame must not be retroactively counted into the definite timer.");
+    }
+
+    [TestMethod]
     public void SmvTrustGate_BlocksOperationWithoutHidingPickup()
     {
         var engine = new ProtectionEngine(new ProtectionSettings());

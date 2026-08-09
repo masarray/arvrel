@@ -95,7 +95,13 @@ public sealed class DeterministicLabScenario
             injection.ResidualCurrentSamples,
             ActiveProfile.FrequencyHz,
             injection.SamplesPerCycle,
-            injection.SampleRateHz);
+            injection.SampleRateHz)
+        {
+            PhaseAVoltage = injection.PhaseAVoltageSamples,
+            PhaseBVoltage = injection.PhaseBVoltageSamples,
+            PhaseCVoltage = injection.PhaseCVoltageSamples,
+            ResidualVoltage = injection.ResidualVoltageSamples
+        };
         return new ScenarioStep(measurement, waveform)
         {
             CtSaturation = injection.CtSaturation,
@@ -132,7 +138,13 @@ public sealed record ScenarioWaveform(
     double[] Residual,
     double FrequencyHz,
     int SamplesPerCycle,
-    double SampleRateHz);
+    double SampleRateHz)
+{
+    public double[] PhaseAVoltage { get; init; } = Array.Empty<double>();
+    public double[] PhaseBVoltage { get; init; } = Array.Empty<double>();
+    public double[] PhaseCVoltage { get; init; } = Array.Empty<double>();
+    public double[] ResidualVoltage { get; init; } = Array.Empty<double>();
+}
 
 public sealed record ScenarioStep(
     MeasurementFrame Measurement,
