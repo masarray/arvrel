@@ -9,12 +9,15 @@ authors:
 repository-code: "https://github.com/masarray/arvrel"
 url: "https://github.com/masarray/arvrel"
 license: "GPL-3.0-or-later"
-version: "0.1.0-beta.5"
-date-released: 2026-08-08
+version: "0.1.0-beta.6"
+date-released: 2026-08-10
 keywords:
   - IEC 61850
   - Sampled Values
   - protection relay
+  - virtual relay test set
+  - closed-loop secondary injection
+  - metrology timing
   - automatic voltage regulator
   - OLTC
   - transformer differential
@@ -25,6 +28,7 @@ keywords:
   - virtual laboratory
 abstract: >-
   ARVREL is a vendor-neutral Windows virtual protection and control IED laboratory for
-  IEC 61850 engineering, Sampled Values analysis, virtual feeder and transformer
-  protection, AVR/OLTC simulation, synchronized two-sided transformer secondary injection,
-  laboratory MMS interoperability, education, and reviewable engineering evidence.
+  IEC 61850 engineering, Sampled Values analysis, closed-loop feeder secondary injection
+  with external virtual-I/O timing, virtual feeder and transformer protection, AVR/OLTC
+  simulation, synchronized two-sided transformer secondary injection, laboratory MMS
+  interoperability, education, and reviewable engineering evidence.
