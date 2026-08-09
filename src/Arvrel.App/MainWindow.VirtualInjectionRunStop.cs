@@ -94,7 +94,7 @@ public partial class MainWindow
             StartVirtualInjectionSource(announce: false);
 
         StatusText.Text = _scenario.IsRunning
-            ? "A-G fault injection started. Relay operation follows the measured current, active pickup, delay, and trust state."
+            ? "A-G fault injection started. Relay operation follows the wired measurement, active pickup, delay, output contact, and BI feedback."
             : "A-G fault values were loaded, but injection could not start because the editor contains invalid data.";
         RefreshVirtualInjectionRunStopPresentation();
     }
@@ -104,7 +104,12 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
         {
             if (_scenario.IsRunning)
-                _scenario.StopInjection();
+            {
+                if (_closedLoopBench is not null)
+                    _closedLoopBench.StopInjection();
+                else
+                    _scenario.StopInjection();
+            }
             _internalRunning = false;
 
             if (SourceCombo.SelectedIndex == 0)
@@ -131,7 +136,7 @@ public partial class MainWindow
             return false;
         }
 
-        var changed = _scenario.StartInjection();
+        var changed = _closedLoopBench?.StartInjection() ?? _scenario.StartInjection();
         _internalRunning = _scenario.IsRunning;
         if (changed)
         {
@@ -145,7 +150,7 @@ public partial class MainWindow
         if (announce)
         {
             StatusText.Text = changed
-                ? "Virtual output energized. Pickup and trip are enabled after one coherent nominal cycle."
+                ? "Virtual output energized through the closed-loop backplane. Test-set timing starts at output application."
                 : "Virtual output is already running.";
         }
         return changed;
@@ -156,7 +161,7 @@ public partial class MainWindow
         if (SourceCombo.SelectedIndex != 0)
             return false;
 
-        var changed = _scenario.StopInjection();
+        var changed = _closedLoopBench?.StopInjection() ?? _scenario.StopInjection();
         _internalRunning = false;
         RenderStoppedVirtualOutput();
         if (changed)
@@ -168,7 +173,7 @@ public partial class MainWindow
         if (announce)
         {
             StatusText.Text = changed
-                ? "Virtual output stopped at 0 V / 0 A. Configured values remain armed."
+                ? "Virtual output stopped at 0 V / 0 A. Configured values and closed-loop wiring remain armed."
                 : "Virtual output is already stopped.";
         }
         return changed;
@@ -176,17 +181,31 @@ public partial class MainWindow
 
     private void RenderStoppedVirtualOutput()
     {
-        ScenarioStep? last = null;
+        if (_closedLoopBench is not null)
+        {
+            var result = _closedLoopBench.Advance(TimeSpan.FromMilliseconds(40));
+            _snapshot = result.Protection;
+            ObserveTransitions(_snapshot);
+            var last = _scenario.Project(result.Source, _pickupPosition, _tripPosition) with
+            {
+                Measurement = result.RelayMeasurement
+            };
+            RenderInternal(last, _snapshot);
+            RefreshVirtualInjectionRunStopPresentation();
+            return;
+        }
+
+        ScenarioStep? legacy = null;
         for (var index = 0; index < 8; index++)
         {
-            last = _scenario.Advance(TimeSpan.FromMilliseconds(5), _pickupPosition, _tripPosition);
-            _snapshot = _internalEngine.Evaluate(last.Measurement);
+            legacy = _scenario.Advance(TimeSpan.FromMilliseconds(5), _pickupPosition, _tripPosition);
+            _snapshot = _internalEngine.Evaluate(legacy.Measurement);
             ObserveTransitions(_snapshot);
         }
 
-        if (last is not null)
+        if (legacy is not null)
         {
-            RenderInternal(last, _snapshot);
+            RenderInternal(legacy, _snapshot);
             RefreshVirtualInjectionRunStopPresentation();
         }
     }
@@ -225,8 +244,6 @@ public partial class MainWindow
             }
         }
 
-        // One compact lifecycle state in the analysis title is enough. Avoid the
-        // previous repeated RUNNING/STOPPED wording in both title and subtitle.
         var streamText = _scenario.SmvDegraded
             ? "WARN"
             : !running
@@ -244,7 +261,15 @@ public partial class MainWindow
         if (!ReferenceEquals(StreamHealthText.Foreground, streamBrush))
             StreamHealthText.Foreground = streamBrush;
 
-        SetTextIfChanged(WaveformSubtitleText, _scenario.ActiveProfile.Name);
+        var testSet = _closedLoopBench?.TestSetSnapshot;
+        var timingSuffix = testSet?.TripTime is { } trip
+            ? $" · BI1 TRIP {trip.TotalMilliseconds:0.000} ms"
+            : testSet?.PickupTime is { } pickup
+                ? $" · BI2 PICKUP {pickup.TotalMilliseconds:0.000} ms"
+                : _closedLoopBench is not null
+                    ? " · CLOSED LOOP"
+                    : string.Empty;
+        SetTextIfChanged(WaveformSubtitleText, _scenario.ActiveProfile.Name + timingSuffix);
 
         var tooltip =
             $"Configured profile {_scenario.ActiveProfile.Name}\n" +
@@ -253,7 +278,12 @@ public partial class MainWindow
             $"Effective output fingerprint {_scenario.OutputFingerprint}\n" +
             $"Injected frequency {_scenario.ActiveProfile.FrequencyHz:0.###} Hz\n" +
             $"IN {_scenario.NeutralCurrentProvenance}\n" +
-            $"VN {_scenario.NeutralVoltageProvenance}";
+            $"VN {_scenario.NeutralVoltageProvenance}" +
+            (_closedLoopBench is null
+                ? string.Empty
+                : $"\nTopology {_closedLoopBench.Topology.Fingerprint()}\n" +
+                  $"TESTSET.BI2 pickup={(_closedLoopBench.TestSetSnapshot.PickupInput ? 1 : 0)}\n" +
+                  $"TESTSET.BI1 trip={(_closedLoopBench.TestSetSnapshot.TripInput ? 1 : 0)}");
         if (!Equals(WaveformSubtitleText.ToolTip, tooltip))
             WaveformSubtitleText.ToolTip = tooltip;
 
@@ -264,11 +294,14 @@ public partial class MainWindow
         SetTextIfChanged(SamplesPerCycleText, "  ·  80 samples/cycle");
         SetTextIfChanged(SampleCounterText, "  ·  4 kHz");
         SetTextIfChanged(SyncText, "  ·  VIRTUAL");
-        SetTextIfChanged(FpsText, string.Empty);
+        SetTextIfChanged(FpsText, _closedLoopBench is null ? string.Empty : "  ·  Δt 0.25 ms");
         if (!ReferenceEquals(SyncText.Foreground, HealthyBrush))
             SyncText.Foreground = HealthyBrush;
 
-        SetTextIfChanged(RelayFooterText, $"{_settings.GroupName} · REV {_settings.Revision}");
+        var topologySuffix = _closedLoopBench is null
+            ? string.Empty
+            : $" · CLOSED LOOP · {_closedLoopBench.Topology.Fingerprint()[..8]}";
+        SetTextIfChanged(RelayFooterText, $"{_settings.GroupName} · REV {_settings.Revision}{topologySuffix}");
     }
 
     private static void SetTextIfChanged(TextBlock? textBlock, string text)

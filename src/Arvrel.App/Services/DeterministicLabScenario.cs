@@ -1,6 +1,7 @@
 using Arvrel.App.Controls;
 using Arvrel.Protection;
 using CoreScenario = Arvrel.Application.Laboratory.DeterministicLabScenario;
+using CoreScenarioStep = Arvrel.Application.Laboratory.ScenarioStep;
 
 namespace Arvrel.App.Services;
 
@@ -18,6 +19,8 @@ public sealed class DeterministicLabScenario
     public const double SampleRateHz = CoreScenario.SampleRateHz;
 
     private readonly CoreScenario _inner = new();
+
+    internal CoreScenario CoreScenario => _inner;
 
     public bool FaultActive
     {
@@ -65,8 +68,10 @@ public sealed class DeterministicLabScenario
         => _inner.DemagnetizeCurrentTransformer();
 
     public ScenarioStep Advance(TimeSpan delta, double pickupPosition, double tripPosition)
+        => Project(_inner.Advance(delta), pickupPosition, tripPosition);
+
+    internal ScenarioStep Project(CoreScenarioStep step, double pickupPosition, double tripPosition)
     {
-        var step = _inner.Advance(delta);
         var waveform = new WaveformFrame(
             step.Waveform.PhaseA,
             step.Waveform.PhaseB,
