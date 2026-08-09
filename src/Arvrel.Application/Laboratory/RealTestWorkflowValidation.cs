@@ -22,8 +22,11 @@ internal static class RealTestWorkflowValidation
 
     internal static void ValidateDwell(TimeSpan value, string name, TimeSpan? maximum = null)
     {
+        var quantum = ClosedLoopVirtualTestBench.SimulationQuantum;
         var max = maximum ?? TimeSpan.FromSeconds(5);
-        if (value < ClosedLoopVirtualTestBench.SimulationQuantum || value > max)
-            throw new ArgumentOutOfRangeException(name, $"Duration must be between {ClosedLoopVirtualTestBench.SimulationQuantum.TotalMilliseconds:0.###} ms and {max.TotalSeconds:0.###} s.");
+        if (value < quantum || value > max)
+            throw new ArgumentOutOfRangeException(name, $"Duration must be between {quantum.TotalMilliseconds:0.###} ms and {max.TotalSeconds:0.###} s.");
+        if (value.Ticks % quantum.Ticks != 0)
+            throw new ArgumentOutOfRangeException(name, $"Duration must align to the {quantum.TotalMilliseconds:0.###} ms deterministic simulation quantum.");
     }
 }
