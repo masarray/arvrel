@@ -43,6 +43,41 @@ public sealed class P0TimingBudgetRegressionTests
     }
 
     [TestMethod]
+    public void DefaultDesktopFaultKeepsPhase50AndExternalTripTimingCorrelated()
+    {
+        var source = new DeterministicLabScenario();
+        source.ApplyPreset("A-G fault");
+        var settings = new ProtectionSettings();
+        var contact = VirtualRelayContactProfile.RealisticNumericalRelay;
+        var bench = new ClosedLoopVirtualTestBench(
+            source,
+            new ResearchProtectionEngine(settings),
+            contactProfile: contact,
+            frontEndProfile: VirtualRelayFrontEndProfile.NumericalRelayDefault);
+
+        Assert.IsTrue(bench.StartInjection());
+        var result = bench.Advance(TimeSpan.FromMilliseconds(250));
+
+        Assert.AreEqual(VirtualTestSetTimerState.Completed, result.TestSet.TimerState);
+        Assert.AreEqual("50P-1", result.Protection.LatchedOperation?.Element,
+            "The default A-G desktop scenario should still be reported as the faster 50P-1 operation.");
+        Assert.IsNotNull(result.TestSet.RelayPickupToTrip);
+        Assert.AreEqual(settings.PhaseInstantaneousDelay.TotalMilliseconds,
+            result.TestSet.RelayPickupToTrip!.Value.TotalMilliseconds,
+            ClosedLoopVirtualTestBench.SimulationQuantum.TotalMilliseconds,
+            $"Default desktop relay P->T observed {result.TestSet.RelayPickupToTrip.Value.TotalMilliseconds:0.000} ms.");
+
+        Assert.IsNotNull(result.TestSet.RelayTripDetectedAt);
+        Assert.IsNotNull(result.TestSet.TripDetectedAt);
+        var externalTripPath = result.TestSet.TripDetectedAt!.Value - result.TestSet.RelayTripDetectedAt!.Value;
+        var expectedTripPath = contact.TripOperateDelay + contact.ContactBounceDuration + contact.TestSetInputDebounce;
+        Assert.AreEqual(expectedTripPath.TotalMilliseconds,
+            externalTripPath.TotalMilliseconds,
+            ClosedLoopVirtualTestBench.SimulationQuantum.TotalMilliseconds,
+            $"Default desktop relay trip -> TESTSET.BI1 observed {externalTripPath.TotalMilliseconds:0.000} ms.");
+    }
+
+    [TestMethod]
     public void Phase50PickupToTripMatchesConfiguredDefiniteTimeOnDeterministicGrid()
     {
         var source = new DeterministicLabScenario();
