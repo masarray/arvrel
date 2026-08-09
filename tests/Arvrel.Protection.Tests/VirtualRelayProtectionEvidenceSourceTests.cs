@@ -59,11 +59,14 @@ public sealed class VirtualRelayProtectionEvidenceSourceTests
     {
         var evidence = Read("src", "Arvrel.App", "MainWindow.RelayProtectionEvidence.cs");
         var p6 = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+        var resetAuthority = Read("src", "Arvrel.App", "MainWindow.RelayResetSeparation.cs");
 
         StringAssert.Contains(p6, "InitializeRelayProtectionEvidence();");
         StringAssert.Contains(p6, "HandleRelayEvidenceHardwareKey(e.Key)");
         StringAssert.Contains(p6, "RouteRelayEvidenceHostPage();");
-        StringAssert.Contains(p6, "NotifyRelayEvidenceReset();");
+        StringAssert.Contains(p6, "ExecuteRelayResetCommand();");
+        StringAssert.Contains(resetAuthority, "NotifyRelayEvidenceReset();");
+        StringAssert.Contains(resetAuthority, "heldTripCapture");
         StringAssert.Contains(evidence, "Protection RESET clears the latch, not the stored fault/event history.");
         StringAssert.Contains(evidence, "_relayTripEvidenceLog");
 
