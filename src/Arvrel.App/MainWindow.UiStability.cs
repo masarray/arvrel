@@ -20,7 +20,9 @@ public partial class MainWindow
 
         _globalUiStabilityInitialized = true;
         _timer.Tick -= Timer_Tick;
-        _timer.Tick += StableTimer_Tick;
+        _timer.Tick -= StableTimer_Tick;
+        if (_closedLoopBench is null)
+            _timer.Tick += StableTimer_Tick;
         _lastInternalPresentationSignature = null;
     }
 
