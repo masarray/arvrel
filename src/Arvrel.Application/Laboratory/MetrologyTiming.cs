@@ -16,10 +16,15 @@ public sealed record MetrologyTimingProfile(
 
     public void Validate()
     {
-        if (ClockResolutionMicroseconds <= 0 || ClockResolutionMicroseconds > 1_000)
-            throw new ArgumentOutOfRangeException(nameof(ClockResolutionMicroseconds));
-        if (1_000_000 % ClockResolutionMicroseconds != 0)
-            throw new ArgumentOutOfRangeException(nameof(ClockResolutionMicroseconds), "Clock resolution must divide one second exactly.");
+        // The current metrology implementation is intentionally a 1 us clock domain.
+        // Do not advertise coarser resolutions until every producer (relay edges,
+        // contacts, BI sampler and evidence timeline) is quantized to that domain.
+        if (ClockResolutionMicroseconds != 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ClockResolutionMicroseconds),
+                "The current metrology engine supports exactly 1 us clock resolution.");
+        }
         if (BinaryInputSampleRateHz <= 0 || BinaryInputSampleRateHz > 1_000_000 || 1_000_000 % BinaryInputSampleRateHz != 0)
             throw new ArgumentOutOfRangeException(nameof(BinaryInputSampleRateHz), "BI sample rate must divide one second exactly.");
         ValidateWindow(BinaryInputDeglitch, nameof(BinaryInputDeglitch));
