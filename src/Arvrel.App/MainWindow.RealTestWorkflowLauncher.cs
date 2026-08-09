@@ -47,9 +47,13 @@ public partial class MainWindow
         if (_closedLoopBench is null || _realTestWorkflowWindow is not null)
             return;
 
-        // P1 owns the closed-loop clock exclusively while the workflow console is open.
-        // Stop normal injection, close the mutable wiring editor, and disable its launcher
-        // before entering the modal workflow surface.
+        // P1 owns every mutable source path while the modal workflow console is open.
+        // Cancel any pending editor debounce first; otherwise its DispatcherTimer can
+        // fire while ShowDialog pumps the WPF dispatcher and mutate the source under
+        // the background workflow. Re-syncing discards the unapplied edit explicitly.
+        _virtualInjectionApplyTimer?.Stop();
+        SyncVirtualInjectionEditorFromProfile(_scenario.ActiveProfile);
+
         _internalRunning = false;
         if (_scenario.IsRunning)
             _scenario.StopInjection();
