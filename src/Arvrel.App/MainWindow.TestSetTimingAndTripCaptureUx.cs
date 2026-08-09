@@ -57,8 +57,27 @@ public partial class MainWindow
         if (_virtualInjectionView.RowDefinitions.Count >= 3)
             _virtualInjectionView.RowDefinitions[2].Height = new GridLength(52);
 
+        // The existing footer uses column 0 for provenance/CT observability and
+        // column 1 for action buttons. Insert a dedicated middle timing column and
+        // shift existing right-side children so the BI strip never overlays the CT
+        // control regardless of bootstrap order.
+        if (footer.ColumnDefinitions.Count >= 2)
+        {
+            footer.ColumnDefinitions[0].Width = GridLength.Auto;
+            footer.ColumnDefinitions.Insert(1, new ColumnDefinition
+            {
+                Width = new GridLength(1, GridUnitType.Star)
+            });
+            foreach (UIElement child in footer.Children.Cast<UIElement>().ToArray())
+            {
+                var column = Grid.GetColumn(child);
+                if (column >= 1)
+                    Grid.SetColumn(child, column + 1);
+            }
+        }
+
         _testSetTimingPanel = BuildTestSetTimingPanel();
-        Grid.SetColumn(_testSetTimingPanel, 0);
+        Grid.SetColumn(_testSetTimingPanel, footer.ColumnDefinitions.Count >= 3 ? 1 : 0);
         footer.Children.Add(_testSetTimingPanel);
 
         _testSetTimingUxTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -96,7 +115,7 @@ public partial class MainWindow
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(8, 5, 8, 5),
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(8, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             ToolTip = "Virtual test-set binary inputs. Times are latched from injection START to the accepted BI rising edge."
