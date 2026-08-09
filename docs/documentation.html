@@ -3,105 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ARVREL Documentation — User, Engineering, Research, and Release Guides</title>
-  <meta name="description" content="Find the right ARVREL guide for installation, first evaluation, IEC 61850 Sampled Values workflows, protection engineering, virtual injection, research validation, release integrity, and project governance.">
+  <title>ARVREL Documentation — v0.1.0-beta.6 User, Engineering, Research, and Release Guides</title>
+  <meta name="description" content="Find current ARVREL v0.1.0-beta.6 documentation for closed-loop relay testing, IEC 61850 Sampled Values, protection engineering, Transformer Differential, AVR/OLTC, release integrity, research, and historical milestones.">
   <meta name="author" content="Ari Sulistiono / masarray">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://masarray.github.io/arvrel/documentation.html">
   <link rel="stylesheet" href="assets/site.css">
   <link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="assets/icon/favicon.ico" sizes="any">
-  <link rel="apple-touch-icon" href="assets/icon/apple-touch-icon.png">
-  <link rel="manifest" href="assets/icon/site.webmanifest">
-  <meta name="theme-color" content="#10232f">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ARVREL">
-  <meta property="og:title" content="ARVREL Documentation">
-  <meta property="og:description" content="Task-oriented user, engineering, research, trust, release, and governance documentation for ARVREL.">
+  <meta property="og:title" content="ARVREL v0.1.0-beta.6 Documentation">
+  <meta property="og:description" content="Current-status, user, architecture, timing, transformer, AVR/MMS, trust, research, release, and historical milestone documentation.">
   <meta property="og:url" content="https://masarray.github.io/arvrel/documentation.html">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "ARVREL Documentation",
-    "description": "Task-oriented documentation for evaluating, operating, reviewing, researching, and contributing to ARVREL.",
-    "url": "https://masarray.github.io/arvrel/documentation.html",
-    "isPartOf": {
-      "@type": "WebSite",
-      "name": "ARVREL",
-      "url": "https://masarray.github.io/arvrel/"
-    },
-    "breadcrumb": {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "ARVREL",
-          "item": "https://masarray.github.io/arvrel/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Documentation",
-          "item": "https://masarray.github.io/arvrel/documentation.html"
-        }
-      ]
-    }
-  }
-  </script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"ARVREL Documentation","description":"Task-oriented documentation for evaluating, operating, reviewing, researching, and contributing to ARVREL v0.1.0-beta.6.","url":"https://masarray.github.io/arvrel/documentation.html","isPartOf":{"@type":"WebSite","name":"ARVREL","url":"https://masarray.github.io/arvrel/"}}</script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header"><div class="wrap nav"><a class="brand" href="index.html"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="research/index.html">Research</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
-
-<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">ARVREL</a> / Documentation</div><p class="eyebrow">Task-oriented documentation</p><h1>Find the guide that matches your engineering task.</h1><p class="lede">Start with a packaged evaluation, inspect an IEC 61850 Sampled Values workflow, understand the protection and trust architecture, reproduce public research, or review release and governance controls.</p></div></section>
-
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">ARVREL</a> / Documentation</div><p class="eyebrow">v0.1.0-beta.6 documentation map</p><h1>Start from the current shipped state, then go deeper.</h1><p class="lede">The selected GitHub Release, VERSION, release notes, and current-status document define shipped behavior. Historical P* documents are preserved as milestone records and may describe superseded designs.</p></div></section>
 <main id="main-content">
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Start here</p><h2>First evaluation and daily use.</h2><p>These routes are written for users who need a reliable path from download to evidence without reading the repository architecture first.</p></div><div class="grid-4">
-<a class="card card-link" href="quick-start.html"><span class="label">Five minutes</span><h3>Quick start</h3><p>Download, verify, run the internal scenario, and inspect the resulting evidence.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/USER_GUIDE.md"><span class="label">Complete workflow</span><h3>User guide</h3><p>Choose a source, configure context, evaluate trust and protection, export evidence, and troubleshoot.</p></a>
-<a class="card card-link" href="download.html"><span class="label">Release integrity</span><h3>Download and verify</h3><p>Choose installer or portable package and validate SHA-256 before evaluation.</p></a>
-<a class="card card-link" href="faq.html"><span class="label">Common questions</span><h3>Engineering FAQ</h3><p>Scope, Npcap, replay, internal injection, protection coverage, privacy, licensing, and limitations.</p></a>
-</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Documentation authority</p><h2>Know which document wins when older design notes disagree.</h2></div><div class="grid-3"><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/CURRENT_STATUS.md"><span class="label">Canonical status</span><h3>Current shipped status</h3><p>Beta.6 product surface, closed-loop authority, timing profile, reset semantics, Transformer/AVR status, validation, and safety boundary.</p></a><a class="card card-link" href="release-status.html"><span class="label">Published release</span><h3>Release status and integrity</h3><p>Version, package assets, pinned engine, SHA-256, SBOM/provenance, and public claim boundaries.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/RELEASE-NOTES.md"><span class="label">Release notes</span><h3>Beta.6 release notes</h3><p>Release-specific changes and retained capabilities for the selected public package.</p></a></div><div class="callout warn" style="margin-top:20px"><strong>Historical-document rule:</strong> files named <code>P0_*</code>, <code>P1_*</code>, and other milestone <code>P*</code> documents record engineering progression. They are useful history, not the current product-status authority.</div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Work from the task</p><h2>Engineering workflow guides.</h2></div><div class="grid-4">
-<a class="card card-link" href="workflows/protection-engineering.html"><span class="label">Protection</span><h3>Protection engineering</h3><p>Move from measured quantities and settings to pickup, timing, operation, restraint, and evidence.</p></a>
-<a class="card card-link" href="workflows/process-bus.html"><span class="label">IEC 61850</span><h3>Process-bus investigation</h3><p>Review stream identity, continuity, quality, SCL binding, mapping, scaling, and trust.</p></a>
-<a class="card card-link" href="workflows/fat-sat.html"><span class="label">Preparation</span><h3>FAT and SAT workflow</h3><p>Prepare repeatable laboratory evidence while preserving the boundary from formal acceptance.</p></a>
-<a class="card card-link" href="workflows/education-research.html"><span class="label">Learning</span><h3>Education and research</h3><p>Use the public scenarios, application notes, source anchors, and laboratory exercises.</p></a>
-</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Start here</p><h2>First evaluation and daily operation.</h2></div><div class="grid-4"><a class="card card-link" href="quick-start.html"><span class="label">Five minutes</span><h3>Closed-loop quick start</h3><p>Run a feeder fault through TESTSET T0, relay acquisition, BO contacts, BI timing, auto-stop, frozen capture, and one-click re-arm.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/USER_GUIDE.md"><span class="label">Complete workflow</span><h3>User guide</h3><p>Feeder, process bus, Transformer Differential, AVR/MMS, evidence, troubleshooting, and safety.</p></a><a class="card card-link" href="download.html"><span class="label">Release integrity</span><h3>Download and verify</h3><p>Select an official beta.6 package and validate SHA-256 before evaluation.</p></a><a class="card card-link" href="faq.html"><span class="label">Common questions</span><h3>Engineering FAQ</h3><p>Timing authority, BI semantics, reset/re-arm, transformer injection, MMS, Npcap, and limitations.</p></a></div></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Understand the product</p><h2>Capabilities, architecture, protection, and trust.</h2></div><div class="grid-3">
-<a class="card card-link" href="capabilities.html"><span class="label">Product scope</span><h3>Capability map</h3><p>Implemented process-bus, measurement, protection, settings, evidence, and research functions.</p></a>
-<a class="card card-link" href="architecture.html"><span class="label">Runtime design</span><h3>Public architecture</h3><p>Signal flow, repository boundaries, state ownership, threading, protection evaluation, and evidence.</p></a>
-<a class="card card-link" href="evidence-and-trust.html"><span class="label">Authority</span><h3>Evidence and trust</h3><p>Why measurement visibility, pickup authority, and virtual-trip authority are separate permissions.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/P2_MULTIFUNCTION_FEEDER.md"><span class="label">Protection detail</span><h3>Multifunction feeder protection</h3><p>Implementation notes for current and voltage elements, settings, evidence, and boundaries.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/P4_VIRTUAL_INJECTION.md"><span class="label">Internal source</span><h3>Virtual Injection Laboratory</h3><p>4I+4V profiles, coherent apply, run/stop authority, presets, evidence, and safety limits.</p></a>
-<a class="card card-link" href="safety-and-limitations.html"><span class="label">Responsible use</span><h3>Safety and limitations</h3><p>Virtual-output scope, known beta constraints, data handling, reporting, and non-claims.</p></a>
-</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Closed-loop timing</p><h2>Understand what beta.6 changed.</h2></div><div class="grid-3"><a class="card card-link" href="architecture.html"><span class="label">Public architecture</span><h3>Authority and data flow</h3><p>Separate TESTSET, virtual wiring, relay front end, protection, contacts, BI inputs, process-bus, transformer, and AVR paths.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/P0_METROLOGY_GRADE_TIMING_ENGINE.md"><span class="label">Implementation detail</span><h3>Metrology-grade timing engine</h3><p>1 µs clock, 10 kHz BI, causal acquisition, timing correlation, and behavioral profile details.</p></a><a class="card card-link" href="evidence-and-trust.html"><span class="label">Evidence semantics</span><h3>External timing and trust</h3><p>Why generic BI2, operated-element pickup, relay trip request, BI1 measured trip, and process-bus trust are distinct authorities.</p></a></div></div></section>
 
-<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Research and validation</p><h2>Trace public statements to source and tests.</h2></div><div class="grid-3">
-<a class="card card-link" href="research/index.html"><span class="label">Research hub</span><h3>Application notes and positioning</h3><p>Signal estimation, continuity, directional protection, related work, and maturity gates.</p></a>
-<a class="card card-link" href="research/validation.html"><span class="label">Reproducibility</span><h3>Deterministic validation matrix</h3><p>Stable scenario IDs mapped to exact source files, test files, and named test methods.</p></a>
-<a class="card card-link" href="laboratory-exercises.html"><span class="label">Teaching</span><h3>Laboratory exercises</h3><p>Repeatable exercises for measurements, protection, trust behavior, and evidence review.</p></a>
-<a class="card card-link" href="research/signal-processing.html"><span class="label">AN-01</span><h3>Fundamental signal estimation</h3><p>The exact single-bin DFT method, scaling, sequence quantities, tests, and limitations.</p></a>
-<a class="card card-link" href="research/smv-continuity.html"><span class="label">AN-02</span><h3>SMV continuity and trust</h3><p>Duplicate, out-of-order, restart, freshness, coherent-window, and authority behavior.</p></a>
-<a class="card card-link" href="research/directional-protection.html"><span class="label">AN-03</span><h3>Directional 67P and 67N</h3><p>Polarizing and operating quantities, characteristic angle, torque, tests, and boundaries.</p></a>
-</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">IED-specific guides</p><h2>Feeder, transformer, and AVR workflows.</h2></div><div class="grid-3"><a class="card card-link" href="workflows/protection-engineering.html"><span class="label">Feeder</span><h3>Protection engineering</h3><p>Measured quantities, settings, pickup/timing, closed-loop TESTSET evidence, restraint, and re-arm.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/TRANSFORMER_PUBLIC_TEST.md"><span class="label">Transformer</span><h3>Transformer public test</h3><p>10-scenario self-test, synchronized two-sided injection, REF neutral requirements, and paired-SV evaluation.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/AVR-IEC61850-SAS-TEST.md"><span class="label">AVR / MMS</span><h3>AVR IEC 61850 test guide</h3><p>Virtual plant, OLTC authority, reports, controls, and the simulator-only process boundary.</p></a></div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Release, support, and governance</p><h2>Review the controls around the code.</h2></div><div class="grid-3">
-<a class="card card-link" href="release-status.html"><span class="label">Release proof</span><h3>Public release status</h3><p>Version, required assets, pinned engine, checksums, signing, SBOM, and output authority.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/SECURITY.md"><span class="label">Security</span><h3>Security policy</h3><p>Supported versions, vulnerability reporting, data handling, and responsible disclosure.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/SUPPORT.md"><span class="label">Support</span><h3>Support policy</h3><p>How to report defects, request help, and separate public support from commercial services.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/CONTRIBUTING.md"><span class="label">Contribution</span><h3>Contributing</h3><p>Development prerequisites, scope, tests, documentation, safety, and pull-request expectations.</p></a>
-<a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/PUBLIC_SITE.md"><span class="label">Maintainers</span><h3>Public-site and SEO maintenance</h3><p>Canonical URLs, sitemap, metadata, structured data, social previews, CI gates, and Search Console steps.</p></a>
-<a class="card card-link" href="roadmap.html"><span class="label">Maturity</span><h3>Evidence-gated roadmap</h3><p>Entry and exit criteria for estimator robustness, 87T, timing benchmarks, HIL, and deployment research.</p></a>
-</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Process bus and research</p><h2>Investigate external data and reproduce engineering claims.</h2></div><div class="grid-4"><a class="card card-link" href="workflows/process-bus.html"><h3>Process-bus workflow</h3><p>Identity, mapping, scaling, continuity, quality, SCL binding, and trust.</p></a><a class="card card-link" href="research/index.html"><h3>Research hub</h3><p>Signal processing, continuity, directional protection, related work, and validation.</p></a><a class="card card-link" href="research/validation.html"><h3>Validation matrix</h3><p>Stable public scenarios mapped to source and deterministic tests.</p></a><a class="card card-link" href="laboratory-exercises.html"><h3>Laboratory exercises</h3><p>Repeatable learning exercises for measurement, protection, trust, and evidence.</p></a></div></div></section>
 
-<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Documentation boundary</p><h2>Documentation explains the current evidence; it does not expand product authority.</h2><p>ARVREL remains virtual-output laboratory software. Documentation, tests, and public research do not constitute IEC 61850 conformance certification, IEC 60255 type-test evidence, calibration, commissioning acceptance, or switching authority.</p></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Release, governance, and safety</p><h2>Review the controls around the product.</h2></div><div class="grid-3"><a class="card card-link" href="safety-and-limitations.html"><h3>Safety and fidelity boundaries</h3><p>Virtual-only authority, behavioral timing, calibration/certification non-claims, live-network constraints, and data handling.</p></a><a class="card card-link" href="https://github.com/masarray/arvrel/blob/main/docs/PUBLIC_SITE.md"><h3>Public-site maintenance</h3><p>Canonical URLs, metadata, structured data, sitemap, version synchronization, and CI gates.</p></a><a class="card card-link" href="roadmap.html"><h3>Evidence-gated roadmap</h3><p>Future device-specific fidelity and research gates without turning aspirations into shipped claims.</p></a></div></div></section>
+
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Documentation boundary</p><h2>Documentation cannot expand equipment authority.</h2><p>ARVREL remains virtual-output laboratory software. Documentation, timing models, tests, reports, and research do not constitute calibration, IEC 61850 conformance, IEC 60255 type-test evidence, commissioning acceptance, or switching authority.</p></div></div></section>
 </main>
-
-<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Documentation for a reviewable virtual protection laboratory.</div></div><div class="small"><a href="index.html">Product</a> · <a href="quick-start.html">Quick start</a> · <a href="faq.html">FAQ</a> · <a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="https://github.com/masarray/arvrel">Source</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Current documentation for v0.1.0-beta.6.</div></div><div class="small"><a href="index.html">Product</a> · <a href="quick-start.html">Quick start</a> · <a href="faq.html">FAQ</a> · <a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
 </body>
 </html>

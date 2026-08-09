@@ -1,296 +1,286 @@
 # ARVREL User Guide
 
-ARVREL is a Windows virtual protection relay laboratory for observing IEC 61850 Sampled Values or internally generated signals, evaluating protection behavior, and preserving reviewable engineering evidence.
+ARVREL is a Windows virtual protection and control IED laboratory for deterministic secondary injection, closed-loop virtual TESTSET↔relay testing, IEC 61850 Sampled Values analysis, Transformer Differential evaluation, AVR/OLTC simulation, and reviewable engineering evidence.
 
-This guide is for first-time users, protection engineers, process-bus engineers, FAT/SAT preparation teams, educators, and researchers.
+This guide describes the public **v0.1.0-beta.6** product. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for the canonical shipped-state summary.
 
 ## 1. Choose the evaluation path
 
 | Path | Use it when | Additional requirement |
 |---|---|---|
-| Internal laboratory | You want a deterministic first evaluation without external equipment | None |
-| Transformer deterministic self-test | You want to verify the packaged 87T/REF/P13 protection core before connecting process-bus data | None |
-| PCAP replay | You have an authorized capture and want repeatable offline analysis | PCAP or PCAPNG file |
-| Live Sampled Values | You are connected to an isolated, authorized laboratory network | Npcap and a suitable adapter |
-| Source development | You need to inspect, build, test, or modify the application | .NET 8 SDK, Git, sibling ARIEC61850 repository |
+| Feeder closed-loop internal laboratory | You want a deterministic virtual secondary-injection/test-set workflow with measured pickup/trip timing | None |
+| Transformer deterministic self-test | You want to verify packaged 87T/REF behavior | None |
+| Transformer two-sided internal injection | You want synchronized HV/LV/neutral software injection without external SV equipment | None |
+| AVR / OLTC internal plant | You want to evaluate voltage regulation, tap authority, reports, and virtual MMS controls | None |
+| PCAP replay | You want repeatable offline process-bus analysis | Authorized PCAP/PCAPNG file |
+| Live Sampled Values | You are on an isolated, authorized laboratory network | Npcap and a suitable adapter |
+| Source development | You need to inspect/build/modify ARVREL | .NET 8 SDK, Git, sibling ARIEC61850 repository |
 
-Start with deterministic internal testing. Move to replay only after the internal workflow is understood. Use live capture last.
+Start with deterministic internal workflows. Use replay before live capture whenever possible.
 
 ## 2. Install and verify
 
-1. Open the [download and verification page](https://masarray.github.io/arvrel/download.html).
-2. Download the Windows installer or portable ZIP from GitHub Releases.
-3. Download `SHA256SUMS.txt`.
-4. Calculate SHA-256 locally and compare the result with the published checksum.
-5. Review the [public release status](https://masarray.github.io/arvrel/release-status.html) for version, required assets, pinned engine, signing status, SBOM status, and output authority.
+1. Open the [download page](https://masarray.github.io/arvrel/download.html).
+2. Download the beta.6 Windows installer or portable package from the official GitHub Release.
+3. Download `SHA256SUMS.txt` from the same release.
+4. Calculate SHA-256 locally and compare the full value.
+5. Review the [release status](https://masarray.github.io/arvrel/release-status.html) and [current shipped status](CURRENT_STATUS.md).
 
-Unsigned community binaries may trigger Windows reputation warnings. Verification confirms file integrity; it does not make the package certified or signed.
+Unsigned community binaries may trigger Windows reputation warnings. Integrity verification does not turn an unsigned package into a signed or certified product.
 
-## 3. First run: internal laboratory
+## 3. Feeder closed-loop secondary injection
 
-1. Launch ARVREL.
-2. Select **Internal demo**.
-3. Review the source and stream-health status.
-4. Open **Relay settings** and confirm which protection elements are enabled.
-5. Review the CT/VT context and displayed units.
-6. Use the available internal injection workflow to establish a known software baseline.
-
-### What to inspect
-
-- source mode and run state;
-- active setting group and fingerprint;
-- waveform and phasor coherence;
-- phase, residual, and sequence quantities;
-- `AllowsMeasurement`, `AllowsPickup`, and `AllowsTrip`;
-- pickup indication and timer progression;
-- operated element and phase or earth cause;
-- virtual trip latch;
-- event trace and operation evidence.
-
-Do not judge a scenario only from the trip lamp. Review the evidence chain that permitted or blocked the operation.
-
-## 4. Virtual Injection Laboratory
-
-The source workspace models an internal software secondary-injection source.
-
-### Configured versus effective values
-
-Configured 4I+4V values remain armed while the source is stopped. Effective output is zero until **START** is applied.
-
-- **START** energizes the configured profile.
-- **STOP** returns effective output to zero.
-- Editing while stopped changes armed values only.
-- Editing while running applies a valid profile after validation.
-- Invalid partial edits leave the last valid profile active.
-- A newly accepted profile is visible immediately, while pickup and trip remain restrained until a complete coherent nominal cycle is rebuilt.
-
-The source is not calibrated relay-test equipment.
-
-## 5. PCAP replay
-
-Use replay for repeatable investigation of an authorized capture.
-
-1. Select the replay source.
-2. Open a PCAP or PCAPNG file.
-3. Select the intended stream.
-4. Review APPID, destination MAC, VLAN, `svID`, dataset, `confRev`, mapping, scaling, quality, and continuity.
-5. Confirm the measurement window becomes coherent.
-6. Review waveform, phasors, sequence quantities, protection state, and trust permissions.
-7. Record the replay file identity and ARVREL version with exported evidence.
-
-A capture can contain customer or station-sensitive information. Use only files you are authorized to inspect and share.
-
-## 6. Live Sampled Values capture
-
-Live capture requires Npcap and an authorized, isolated laboratory network.
-
-1. Install Npcap separately.
-2. Confirm the selected adapter and Windows permissions.
-3. Connect only to an approved laboratory segment.
-4. Select the live source and intended adapter.
-5. Bind the intended stream and, when available, its SCL context.
-6. Confirm identity, mapping, scaling, quality, freshness, and continuity before interpreting protection behavior.
-7. Stop capture before changing network topology or adapter configuration.
-
-ARVREL does not provide switching authority. Never use it as the sole basis for operational decisions.
-
-## 7. Understand trust before trip
-
-ARVREL separates three permissions:
+The feeder internal laboratory models separate virtual equipment authorities:
 
 ```text
-AllowsMeasurement  → quantities may enter the measurement and display pipeline
-AllowsPickup       → protection pickup and timing may be evaluated
-AllowsTrip         → an operated element may assert the virtual trip latch
+TESTSET source → virtual analog wiring → relay front end → protection
+    ↑                                                   ↓
+    └── timing / optional auto-stop ← TESTSET BI ← wire ← relay BO
 ```
 
-A stream can remain diagnostically visible while trust evidence blocks pickup or trip.
+### 3.1 Configured setpoints versus effective output
 
-Typical trust inputs include:
+Configured source values remain available while the output is stopped. Effective output is zero until START.
 
-- complete coherent measurement windows;
-- payload decode health;
-- live freshness;
-- `smpCnt` continuity;
-- quality words;
-- mapping and scaling provenance;
-- SCL binding;
-- address identity;
-- `svID`, dataset, and `confRev` consistency.
+- **START** energizes the configured source and establishes TESTSET T0.
+- **STOP** drives effective output to zero without erasing configured setpoints.
+- After a BI1 auto-stop, setpoints remain visible for repeatability while the authoritative state is **OUTPUT OFF · FROZEN CAPTURE**.
+- WPF refresh does not define protection or TESTSET timing.
 
-Duplicate and out-of-order frames remain visible in telemetry but their samples are discarded before measurement and protection ingestion.
+### 3.2 What owns measured timing
 
-## 8. Configure protection responsibly
+The TESTSET owns the external result through its wired binary inputs:
 
-Public-beta protection includes feeder 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N plus the two-winding Transformer Differential IED workspace for 87T, 87T-HS, 87N-HV and 87N-LV evaluation.
+- `RELAY ANY PU [source]` — first generic protection pickup requesting BO2;
+- `TESTSET BI2 ACCEPT` — accepted generic ANY-PICKUP edge;
+- operated-element pickup — pickup of the element that ultimately trips;
+- operated-element P→T — that element's own pickup-to-trip interval;
+- relay trip request — live trip-latch edge requesting BO1;
+- `TESTSET BI1 ACCEPT` — authoritative external trip time and optional auto-stop trigger.
 
-Before enabling an element:
+`ProtectionSnapshot.TripLatched` is not a TESTSET measurement shortcut. It can drive BO1, but the test set records trip only after the external virtual wiring and BI acceptance path completes.
 
-1. verify current and voltage scaling;
-2. verify phase order and residual-channel provenance;
-3. confirm the intended setting group;
-4. record the settings fingerprint;
-5. understand the operating quantity and timing mode;
-6. confirm trust permissions;
-7. define the expected operate and restrain outcomes.
+BI2 is **ANY PICKUP**. It may legitimately occur before the pickup of the element that eventually operates. Do not interpret T0→BI2 as the operated element's pickup time unless the evidence says they are the same event.
 
-Feeder and transformer protection elements default to disabled until explicitly configured.
+### 3.3 Default beta.6 timing model
 
-## 9. Transformer Differential IED public test
+- TESTSET clock resolution: 1 µs;
+- TESTSET BI sampling: 10 kHz / 100 µs;
+- BI deglitch: 0.5 ms;
+- BI debounce holdoff: 0 ms;
+- relay acquisition/processing: 4 kHz / 250 µs;
+- behavioral relay front-end delay: 1.5 ms;
+- one nominal 50 Hz causal rolling measurement cycle.
 
-The Transformer Differential IED has a deterministic first-test path that does not require Sampled Values hardware or a PCAP.
+These are behavioral laboratory parameters, not calibrated CMC/relay specifications.
 
-### 9.1 Run the packaged-core self-test first
+### 3.4 First closed-loop test
 
-1. Open **Transformer differential IED · 87T / REF** from the main toolbar. It can be opened while the main source remains **Internal Demo**.
-2. Find **Public test / deterministic self-test**.
-3. Press **RUN 10-SCENARIO SELF-TEST**.
-4. The expected result is `PASS · 10/10 · transformer-public-beta-v1`.
-5. Press **VIEW RESULT** to review all ten cases.
-6. Press **COPY EVIDENCE** and retain the report if you are participating in public testing.
+1. Launch ARVREL and select the feeder **Internal demo** path.
+2. Review the enabled feeder settings and CT/VT context.
+3. Apply a known internal fault preset or editable 4I+4V source.
+4. Start output.
+5. Observe source T0, relay ANY PICKUP, TESTSET BI2 acceptance, operated-element pickup/trip, relay trip request, and TESTSET BI1 acceptance.
+6. Confirm auto-stop occurs only after accepted BI1 when that option is enabled.
+7. Review the frozen waveform/phasor/evidence after output turns off.
+8. Press relay RESET once and wait for **READY TO RE-ARM**.
+9. Start the next run only after the re-arm postcondition is complete.
 
-The suite exercises the same `TransformerProtectionEngine` used by the application and covers:
+### 3.5 One-click RESET behavior
 
-- compensated through-current stability;
-- restrained internal 87T operation;
-- 87T-HS;
-- H2 and H5 harmonic security;
-- external-fault security with delayed CT distortion;
-- distorted internal-fault dependability so P13 cannot be validated by overblocking alone;
-- HV and LV REF;
-- the independent neutral-CT requirement for REF.
+After auto-stop, fault-window samples may remain in the causal relay measurement history even though source output is already zero. Beta.6 RESET handles this deterministically:
 
-A failed deterministic self-test is a package/software regression signal. Do not change transformer settings to make the deterministic suite pass.
+1. advance the modeled relay acquisition in 250 µs steps until stale pickup releases;
+2. clear latch/timers once;
+3. continue the feedback path until no pickup remains, BO1/BO2 are LOW, and TESTSET BI1/BI2 are LOW;
+4. show **READY TO RE-ARM** only after the postcondition is satisfied.
 
-### 9.2 Continue to paired-SV evaluation
+Completed timing, trip capture, and event evidence are preserved. RESET does not restart or alter the source. If the source remains energized, a valid fault may reassert protection after reset.
 
-The no-SV path applies only to the deterministic self-test. The actual transformer runtime still requires two distinct HV/LV Sampled Values streams.
+### 3.6 Wiring-invariant check
 
-For PCAP replay or Live Npcap:
+For a strong closed-loop sanity test, disconnect virtual `RELAY.BO1.TRIP → TESTSET.BI1.TRIP` and apply a fault expected to trip internally.
 
-1. acquire or replay two intended transformer-side SV streams;
-2. select HV and LV streams explicitly;
-3. enter transformer MVA, HV/LV voltage, vector group and phase CT ratios;
-4. provide independent neutral CT inputs before expecting REF authority;
-5. review engineering compensation evidence;
-6. verify `smpCnt`, `smpSynch`, frequency, stream identity and trust;
-7. configure generic Is1/K1/Is2/K2 slope settings, harmonic security and optional P13 external-fault security;
-8. apply the runtime;
-9. interpret operate/block decisions from the authoritative runtime evidence rather than from a plotted characteristic alone;
-10. export evidence when a result is being reviewed.
+Expected behavior:
 
-P13 intentionally distinguishes waveform distortion from a protection block. `CT DISTORTION · NO BLOCK` is evidence, not a trip/security decision. A restraint-leading external-fault context must arm before CT distortion can create a security hold.
+- relay internal trip/latch may assert;
+- no accepted TESTSET BI1 trip edge exists;
+- no external measured trip time exists;
+- optional TESTSET trip auto-stop does not occur.
 
-See [Transformer public test guide](TRANSFORMER_PUBLIC_TEST.md) and [P15 engineering notes](P15_TRANSFORMER_PUBLIC_BETA_HARDENING.md).
+If the TESTSET still reports trip with the wire open, that is a regression.
+
+## 4. Process-bus replay
+
+Use replay for repeatable analysis of authorized PCAP/PCAPNG captures:
+
+1. select replay;
+2. open the capture;
+3. select the intended stream(s);
+4. review APPID, destination MAC, VLAN, `svID`, dataset, `confRev`, mapping, scaling, quality, and continuity;
+5. confirm coherent measurement windows;
+6. review trust permissions, waveform/phasors, protection state, and evidence;
+7. retain capture identity and ARVREL version with exported evidence.
+
+## 5. Live Sampled Values
+
+Live capture requires Npcap installed separately and an isolated, authorized laboratory network.
+
+1. select the approved adapter;
+2. bind the intended stream and SCL context where available;
+3. confirm identity, mapping, scaling, quality, freshness, and continuity;
+4. verify trust permissions before interpreting pickup/trip;
+5. stop capture before changing laboratory network topology.
+
+## 6. Trust before trip
+
+ARVREL separates permissions:
+
+```text
+AllowsMeasurement  → quantities may enter measurement/display
+AllowsPickup       → protection pickup/timing may be evaluated
+AllowsTrip         → an operated element may assert the virtual relay trip latch
+TESTSET BI1        → owns the external closed-loop trip result
+```
+
+A stream can remain diagnostically visible while trust blocks new protection authority. Duplicate/out-of-order frames may remain visible in telemetry but are rejected before measurement/protection ingestion.
+
+## 7. Feeder protection scope
+
+Public feeder protection includes 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N.
+
+Before evaluating an element:
+
+1. verify current/voltage scaling and units;
+2. verify phase order and residual provenance;
+3. confirm the active setting group and fingerprint;
+4. understand pickup/dropout and timing mode;
+5. confirm trust permissions;
+6. define the expected operate and restrain outcomes;
+7. in closed-loop testing, distinguish internal relay timing from the external TESTSET BI path.
+
+## 8. Transformer Differential IED
+
+The Transformer workspace has two no-hardware entry points: deterministic self-test and synchronized two-sided internal injection.
+
+### 8.1 Packaged-core self-test
+
+1. select **Transformer Differential · 87T / REF**;
+2. run the 10-scenario self-test;
+3. expect `PASS · 10/10 · transformer-public-beta-v1`;
+4. review/copy the case evidence before changing settings.
+
+The suite covers through-current stability, internal 87T, 87T-HS, H2/H5 security, external-fault/CT-distortion context, internal-fault dependability, REF HV/LV, and independent neutral-current requirements.
+
+### 8.2 Two-sided internal injection
+
+The internal transformer source can generate synchronized:
+
+- HV IA/IB/IC/IN;
+- LV IA/IB/IC/IN;
+- explicit independent neutral/NGR current per side.
+
+Use Balanced through load, Internal fault, REF HV/NGR, and REF LV/NGR baselines before moving to external process-bus data. Stable through-load generation uses the active transformer engineering configuration so compensated currents cancel appropriately.
+
+### 8.3 Paired-SV live/replay evaluation
+
+When using external PCAP or live Sampled Values, the transformer runtime requires two distinct intended HV/LV streams. Configure transformer MVA, HV/LV voltage, vector group, CT ratios/polarity, and neutral inputs, then verify stream identity, `smpCnt`, `smpSynch`, frequency, mapping, scaling, and trust.
+
+Calculated phase residual is not silently promoted to independent neutral-CT evidence for REF.
+
+## 9. AVR / OLTC Controller and MMS
+
+The AVR workspace models a transformer plant, 17-position OLTC, voltage-regulation logic, authority/interlocks, reports, and virtual IEC 61850 controls.
+
+Laboratory MMS behavior includes browse/read, DataSets, GI/integrity/event reporting, modeled SBO/SBOw controls, and virtual AVR settings.
+
+**Important:** MMS control exists, but it terminates inside the simulator. It does not provide a physical OLTC motor command, switching authority, or permission to operate primary equipment.
+
+Recommended first evaluation:
+
+1. select **AVR · OLTC Controller**;
+2. inspect transformer/tap state and LOCAL/REMOTE + AUTO/MANUAL authority;
+3. observe voltage-regulation behavior using the internal plant;
+4. enable the MMS server only when testing an authorized laboratory client;
+5. browse/read first, then reports, then modeled controls;
+6. verify every accepted command changes only virtual state and is preserved in evidence.
 
 ## 10. Review and export evidence
 
-A useful evidence package should identify:
+A useful evidence package identifies:
 
 - ARVREL version and source commit when applicable;
-- source mode and source identity;
-- capture or injection profile identity;
-- active settings group and fingerprint;
-- CT/VT or transformer/CT engineering context;
-- trust state and permission decisions;
+- source mode and source/run identity;
+- injection profile or capture identity;
+- virtual wiring/topology when closed-loop timing is relevant;
+- active settings and fingerprint;
+- CT/VT or transformer engineering context;
+- trust state and permissions;
 - measured quantities;
-- pickup and trip timestamps;
-- operated element and phase or earth cause;
-- event trace;
-- known limitations and any manual interpretation.
+- first-any pickup, operated-element pickup/trip, TESTSET BI timing, and timing resolution where applicable;
+- event trace and operation cause;
+- known limitations and manual interpretation.
 
-For a transformer public-test issue, include the copied deterministic self-test report before adding any non-sensitive Live/Replay evidence.
-
-Software evidence supports review and reproducibility. It is not calibration, conformance, type-test, or commissioning-acceptance evidence.
+Closed-loop evidence schema 9 is designed to keep generic pickup, operated-element timing, relay trip request, TESTSET BI acceptance, and frozen capture causally distinct.
 
 ## 11. Troubleshooting
 
-### Transformer self-test fails
+### Relay trips but TESTSET shows no trip
 
-- copy the complete self-test evidence;
-- record the exact ARVREL package/version and Windows build;
-- state whether the installer or portable package was used;
-- do not tune settings to compensate for a deterministic failure;
-- file a reproducible issue using only non-sensitive attachments.
+Check the virtual BO1→BI1 wire, relay BO1 contact state, TESTSET BI1 raw/accepted state, deglitch configuration, and timeline. This result is correct when the trip wire is intentionally disconnected.
 
-### Transformer runtime says two streams are required
+### BI2 is earlier than the operated element pickup
 
-That is expected for Live/Replay evaluation. The deterministic public self-test can run without SV, but the process-bus runtime requires distinct HV and LV streams.
+This can be correct. BI2 is generic ANY PICKUP; another enabled element may assert BO2 before the element that eventually trips.
 
-### No live adapters or no packets
+### RESET appears not ready
 
-- confirm Npcap is installed;
-- restart ARVREL after installing Npcap;
-- verify adapter permissions;
-- confirm the correct physical or virtual adapter;
-- check that the laboratory publisher and VLAN path are active;
-- use replay to separate capture issues from parser or protection behavior.
-
-### Measurements are visible but pickup or trip is blocked
-
-Review `AllowsMeasurement`, `AllowsPickup`, and `AllowsTrip`. Check continuity, quality, identity, SCL binding, mapping, scaling, freshness, and complete-window status.
-
-### Values look incorrectly scaled
-
-Verify CT/VT context, SCL scaling, channel mapping, units, and phase/residual provenance. For transformer differential, also verify transformer rating, HV/LV voltage, vector group, CT ratios, polarity and engineering compensation. Do not compensate by changing protection settings until the measurement source is understood.
+Allow the one-click reset transaction to reach **READY TO RE-ARM**. If it reports a bounded settle failure, capture the diagnostic state; do not repeatedly click RESET to hide the condition.
 
 ### Internal injection does not operate
 
-Confirm the source is running, the intended profile is active, a complete coherent cycle has rebuilt, the protection element is enabled, thresholds and delays are appropriate, and trust permits pickup and trip.
+Confirm output is running, the intended profile is active, the element is enabled, thresholds/delays are appropriate, and the causal relay measurement has crossed pickup.
+
+### Transformer self-test fails
+
+Copy the full deterministic evidence, record exact package/version and Windows build, and file a reproducible issue. Do not tune settings simply to force a pass.
+
+### Transformer live/replay says two streams are required
+
+That is expected for the external paired-SV path. Internal two-sided injection is a separate no-external-stream path.
+
+### No live adapters or packets
+
+Confirm Npcap, adapter permissions, publisher/VLAN path, and approved laboratory topology. Use replay to separate capture issues from parser/protection behavior.
+
+### Measurements are visible but pickup/trip is blocked
+
+Review `AllowsMeasurement`, `AllowsPickup`, `AllowsTrip`, continuity, quality, identity, SCL binding, mapping, scaling, freshness, and complete-window status.
 
 ### Windows blocks the package
 
-Verify the SHA-256 checksum and review the release status. Unsigned community packages may trigger Windows reputation warnings.
-
-### Source build cannot find ARIEC61850
-
-Place the repositories side by side:
-
-```text
-C:\Git\
-├── ARIEC61850\
-└── arvrel\
-```
-
-Then run:
-
-```powershell
-.\scripts\verify-sibling.cmd
-.\scripts\build.cmd
-```
+Verify SHA-256 and release provenance, then follow local IT policy. Community packages are not claimed as Authenticode-signed.
 
 ## 12. Data handling
 
 ARVREL stores local preferences and diagnostics under `%LOCALAPPDATA%\ARVREL`.
 
-Do not publish:
-
-- customer packet captures;
-- proprietary SCL files;
-- credentials or IP plans;
-- employer-confidential logs;
-- evidence containing protected infrastructure information;
-- files you are not authorized to redistribute.
-
-Use synthetic or contributor-owned fixtures for public bug reports.
+Do not publish customer captures, proprietary SCL files, credentials, IP plans, protected infrastructure information, employer-confidential evidence, or files you are not authorized to redistribute.
 
 ## 13. Safety boundary
 
-ARVREL provides no physical relay contacts, operational GOOSE trip, MMS control, autonomous switching, switching authority, IEC 61850 conformance certification, IEC 60255 type-test evidence, calibrated output, or deterministic hard-real-time guarantee.
+ARVREL provides no physical relay contacts, operational GOOSE trip, physical OLTC motor authority, autonomous switching, IEC 61850 conformance certification, IEC 60255 type-test/calibration evidence, commissioning acceptance, calibrated secondary injection, or deterministic protection-grade hard-real-time guarantee.
 
-The transformer deterministic self-test verifies packaged software behavior only. It does not prove a real CT, merging unit, network, relay output or substation protection scheme.
-
-Use ARVREL for education, controlled laboratory evaluation, source review, research, and FAT/SAT preparation. Do not use it as the sole basis for operational settings, commissioning acceptance, or switching decisions.
+Modeled MMS control is limited to the virtual AVR/OLTC process. Closed-loop TESTSET timing is a behavioral software model, not calibrated test-equipment timing.
 
 ## Related documentation
 
+- [Current shipped status](CURRENT_STATUS.md)
 - [Documentation hub](https://masarray.github.io/arvrel/documentation.html)
 - [Five-minute quick start](https://masarray.github.io/arvrel/quick-start.html)
-- [Capabilities](https://masarray.github.io/arvrel/capabilities.html)
-- [Evidence and trust](https://masarray.github.io/arvrel/evidence-and-trust.html)
-- [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html)
+- [Architecture](ARCHITECTURE.md)
+- [P0 metrology-grade timing engine](P0_METROLOGY_GRADE_TIMING_ENGINE.md)
 - [Transformer public test](TRANSFORMER_PUBLIC_TEST.md)
-- [P15 Transformer Public Beta Hardening](P15_TRANSFORMER_PUBLIC_BETA_HARDENING.md)
-- [Virtual Injection Laboratory](P4_VIRTUAL_INJECTION.md)
-- [Windows setup](WINDOWS_SETUP.md)
+- [AVR IEC 61850 SAS test](AVR-IEC61850-SAS-TEST.md)
+- [Safety and limitations](https://masarray.github.io/arvrel/safety-and-limitations.html)
 - [Engineering FAQ](https://masarray.github.io/arvrel/faq.html)

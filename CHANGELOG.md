@@ -1,51 +1,78 @@
 # Changelog
 
-All notable public changes to ARVREL are documented here. The project uses semantic-style version labels while the public API and evidence formats remain subject to change during beta.
+All notable public changes to ARVREL are documented here. The project uses semantic-style beta version labels while public APIs and evidence formats remain subject to change.
+
+For the exact current shipped-state contract, see [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md). Historical `P*` documents remain milestone records rather than current release authority.
 
 ## [Unreleased]
 
+No public capability is currently declared here. Features become public product claims only after they are included in an official GitHub Release.
+
+## [0.1.0-beta.6] — 2026-08-10
+
 ### Added
 
-- Internal demo **Virtual Injection Laboratory** with editable 4I+4V RMS magnitude, angle, common frequency, enable state, and neutral-channel provenance;
-- validated debounced auto apply with last-valid retention and an explicit coherent-window rebuild state;
-- fixed 4 kHz nominal sampling grid feeding the existing mean-removed 50 Hz single-bin DFT, so off-nominal injection exposes the estimator response instead of changing the measurement grid;
-- normal, phase/ground-fault, voltage, and directional protection presets that populate the same editable table;
-- deterministic CT saturation study model using the CT equivalent circuit, burden voltage, integrated flux linkage, piecewise excitation curve, signed remanence, and decaying DC fault asymmetry;
-- built-in `CT saturation - A-G asymmetrical` severe study preset and per-channel saturation, flux, excitation, voltage-demand, ratio-error, and waveform-error diagnostics;
-- IN/VN explicit virtual channels with calculated `IA+IB+IC` and `VA+VB+VC` residual fallback;
-- interlocked **START** and **STOP** controls aligned with the ARSVIN publisher operating pattern;
-- configured-versus-effective output identity, state timestamps, and internal evidence schema version 4;
-- deterministic virtual-injection tests covering phasor reconstruction, off-nominal behavior, residual provenance, stopped-zero output, protection operation/restraint, exact pickup threshold, configured delay, and trip-latch retention;
-- deterministic CT tests covering pass-through operation, below-knee accuracy, high-burden saturation, remanence, asymmetrical fault current, burden sensitivity, fingerprints, and relay-current integration;
-- modeless P4.2 **Advanced Injection Laboratory** foundation with single-window editor authority, an active Direct view, and clearly reserved future Symmetrical, Impedance, Ramp, Sequencer, and advanced Waveform stages.
+- metrology-grade closed-loop feeder TESTSET↔relay timing model with monotonic integer-microsecond clock;
+- independent 10 kHz TESTSET binary-input sampling with distinct deglitch and debounce behavior;
+- causal relay front end driven by instantaneous signed terminal samples, clipping, ADC quantization, configured input delay, and one-cycle rolling DFT;
+- settled pre-fault measurement history at T0 to avoid an artificial empty-window blackout;
+- explicit virtual relay contact timing/bounce path and arbitrary-time TESTSET BI sampling;
+- operator timing rail separating relay ANY PICKUP, TESTSET BI2 acceptance, operated-element pickup/P→T, relay trip request, and TESTSET BI1 acceptance;
+- evidence schema 9 with first-any-pickup source, metrology timeline, operated-element timing correlation, BI1-vs-frozen-capture relationship, and closed-loop topology/run identity;
+- deterministic one-click relay RESET transaction with READY TO RE-ARM postcondition.
 
 ### Changed
 
-- Internal demo is no longer limited to a fixed A-G scenario;
-- virtual current channels can include a fingerprinted decaying DC component before CT transformation;
-- calculated residual current is now formed from relay-side phase currents after any enabled CT saturation stage;
-- the Internal analysis workspace defaults to **DUAL** while Injection, Waveform, and Phasor-only views remain available;
-- configured injection values remain armed while stopped and energize only after START;
-- STOP forces all effective virtual voltage and current outputs to zero without erasing the configured table or armed CT study parameters;
-- the top-right toolbar is the single Start injection / Stop injection authority; duplicate editor-footer controls were removed;
-- changing or clearing injection does not erase a latched operation; relay reset and complete laboratory reset remain separate actions;
-- relay pickup and trip remain governed by measured quantities, active settings, configured delay, and trust permission;
-- opening Advanced Injection transfers the existing Direct editor out of Main Window, hides the Main `INJECT` tab, and leaves Main Window in DUAL monitoring mode;
-- the Advanced launcher now belongs inside the simple INJECT workspace instead of occupying the main analysis-tab row;
-- closing Advanced Injection restores the same editor and `INJECT` tab without replacing the configured source, output state, or trip latch;
-- leaving Internal demo closes the Advanced Injection Window safely so Live Npcap and PCAP replay retain exclusive source context;
-- steady-state injection status and phasor presentation now update only when their underlying state or vectors change, reducing redundant WPF redraws and visible text churn;
-- Internal injection keeps the 40 ms protection-execution cadence but renders waveform, relay LCD, LEDs, measurements, status, and footer only when operator-visible state changes;
-- the Internal source strip now presents stable `frequency · samples/cycle · 4 kHz · VIRTUAL · output state` facts instead of a continuously moving synthetic `smpCnt`;
-- high-density injection fingerprints and provenance are retained in tooltips/evidence while the primary header and relay footer use shorter operator-facing text.
+- TESTSET measured trip and optional auto-stop are now authoritative only from the accepted wired `TESTSET.BI1` edge;
+- `ProtectionSnapshot.TripLatched` can request BO1 but is never read directly as the external TESTSET result;
+- BI2 is explicitly generic ANY PICKUP and is no longer semantically conflated with the pickup of the element that ultimately operates;
+- definite/inverse timer integration begins at the first observed pickup frame instead of retroactively counting the preceding non-pickup interval;
+- desktop closed-loop observation advances in 250 µs relay quanta while WPF remains presentation cadence only;
+- post-trip source state is explicitly presented as `OUTPUT OFF · FROZEN CAPTURE`;
+- relay RESET preserves completed TESTSET timing and frozen evidence and does not restart or mutate the source.
 
 ### Fixed
 
-- **Inject A-G fault** now consistently loads the A-G profile and immediately starts the virtual source when stopped, rather than only arming or toggling the preset;
-- clipped `INJECT` and Advanced controls in the 1520×900 analysis header;
-- competing periodic renderers that alternated `INTERNAL · GOOD` with `STOPPED`, `STARTING`, or `RUNNING`;
-- steady-state flicker in the injection subtitle, virtual-relay lower-left footer, LCD measurements, LEDs, and waveform caused by unconditional 40 ms WPF tree updates;
-- repeated status-brush allocation and unconditional phasor-frame assignment that could make steady text and vector labels appear to flicker.
+- closed-loop timing gaps caused by the earlier phasor/timestamp boundary model;
+- source-side phasor values being used as if they were relay terminal ADC samples;
+- empty rolling-measurement startup latency at T0;
+- generic pickup timing being paired incorrectly with the later operated element;
+- multi-click RESET behavior caused by stale fault-window samples remaining in the causal acquisition path after auto-stop;
+- P6 RESET using a legacy path instead of the unified equipment-authority reset transaction.
+
+### Validation
+
+- final beta.6 feature baseline: **403/403 deterministic tests passed**;
+- .NET CI, CodeQL, Windows/macOS/Ubuntu protection-core checks, Windows installer/portable packaging, no-admin/single-file contract, dependency audit, release asset verification, provenance, and SBOM attestation passed before publication.
+
+## [0.1.0-beta.5] — 2026-08-08
+
+### Added
+
+- integrated synchronized two-sided Transformer Differential internal secondary injection;
+- HV IA/IB/IC/IN and LV IA/IB/IC/IN source channels with independent neutral/NGR availability;
+- CT-ratio and vector-group-aware stable through-load baseline generation;
+- editable Balanced through load, Internal fault, REF HV/NGR, and REF LV/NGR presets;
+- transformer operator evidence for 87T, 87T-HS, REF HV, and REF LV.
+
+### Retained
+
+- restrained 87T, 87T-HS, REF HV/LV, H2/H5 security, context-gated external-fault/CT-saturation security, paired-HV/LV SV engineering, and deterministic 10-scenario Transformer Self-Test;
+- multi-IED OCR / Transformer / AVR shell introduced in beta.4.
+
+## [0.1.0-beta.4] — 2026-08-07
+
+### Added
+
+- AVR / OLTC Controller as a first-class virtual IED workspace;
+- simulated transformer plant and 17-position OLTC;
+- LOCAL/REMOTE and AUTO/MANUAL virtual authority;
+- IEC 61850 MMS browse/read, DataSets, event/integrity reporting, modeled SBO/SBOw controls, and virtual AVR settings;
+- multi-IED desktop product shell for feeder OCR, Transformer Differential, and AVR/OLTC workflows.
+
+### Boundary
+
+MMS controls terminate inside the virtual AVR/OLTC process. They provide no physical OLTC motor, switching, or primary-equipment authority.
 
 ## [0.1.0-beta.1] — 2026-08-03
 
@@ -56,49 +83,13 @@ All notable public changes to ARVREL are documented here. The project uses seman
 - GPL-3.0-or-later and alternative commercial-licensing documentation;
 - security, support, contribution, CLA, conduct, citation, third-party, release-checklist, and soak-test documentation;
 - structured issue and pull-request templates;
-- professional README and SEO-ready static landing page;
-- explicit engine-owned protection operation evidence;
-- culture-invariant settings identities and malformed-enum validation;
-- rejected-SMV continuity telemetry without sample admission.
-
-### Protection and process-bus baseline
-
+- public static landing page and documentation site;
 - live Npcap Sampled Values capture and PCAP/PCAPNG replay;
 - SCL-assisted profile binding, mapping, scaling, quality, freshness, and `smpCnt` trust gates;
 - IA/IB/IC/IN and VA/VB/VC/VN measurement, RMS phasors, sequence quantities, waveform and phasor instruments;
-- 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N;
-- practitioner setting groups, IEC curves, familiar TMS notation, CT/VT context, presets, and fingerprints;
-- research mode with read-only active source and deterministic shadow staging;
-- numerical-relay LCD, event trace, annunciation, virtual trip latch, and evidence export.
+- feeder 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N;
+- practitioner setting groups, IEC curves, CT/VT context, presets, fingerprints, event trace, virtual trip latch, and evidence export.
 
-### Changed
+## Release-history note
 
-- trip attribution prioritizes operated elements across legacy and feeder functions;
-- pickup/trip timing is tracked per element;
-- relay annunciation consumes causes captured at the protection evaluation that latched the trip;
-- 67P produces deterministic phase-cause evidence;
-- 67N uses explicit decoded IN/3I0 and VN/3V0 channels when present, with calculated fallback;
-- research shadow artifacts are immutable by settings fingerprint and source hash;
-- relay LED animation state is guarded against synchronous WPF reentrancy;
-- SCL file and Npcap adapter preferences are restored locally on startup;
-- coherent waveform/phasor presentation is held during SMV trust recovery.
-
-### Fixed
-
-- potential relay-lamp UI stack overflow;
-- cross-element pickup/trip evidence mixing;
-- short-fault evidence loss between UI polling intervals;
-- feeder trip records attributed to an earlier legacy pickup;
-- completed trip evidence overwritten by a subsequent pickup;
-- duplicate/out-of-order frames missing from exported continuity telemetry;
-- culture-dependent SHA-256 settings fingerprints;
-- malformed enum values terminating settings workflows;
-- explicit residual phasors being discarded in directional earth-fault logic;
-- waveform and phasor instability during local publisher focus changes;
-- startup crash caused by premature XAML selection handling;
-- relay phase operated lenses showing a blue core beneath a red glow;
-- avoidable text clipping in common 1600-pixel layouts.
-
-### Known limitations
-
-See [`RELEASE-NOTES.md`](RELEASE-NOTES.md) and the README safety boundary. The release remains a public beta and virtual-output-only laboratory build.
+Early beta.2/beta.3 development was iterative and is preserved in Git history and the GitHub Releases/tags. This changelog intentionally avoids reconstructing unsupported release claims where the authoritative release notes were superseded. Current public behavior is defined by the selected release and [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md).

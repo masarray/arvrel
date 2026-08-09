@@ -1,119 +1,57 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ARVREL FAQ — IEC 61850 Sampled Values and Virtual Protection Laboratory</title>
-  <meta name="description" content="Answers to common ARVREL questions about IEC 61850 Sampled Values, internal injection, Npcap, PCAP replay, supported protection functions, evidence, safety, privacy, source builds, and licensing.">
-  <meta name="author" content="Ari Sulistiono / masarray">
-  <meta name="robots" content="index,follow,max-image-preview:large">
-  <link rel="canonical" href="https://masarray.github.io/arvrel/faq.html">
-  <link rel="stylesheet" href="assets/site.css">
-  <link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="assets/icon/favicon.ico" sizes="any">
-  <link rel="apple-touch-icon" href="assets/icon/apple-touch-icon.png">
-  <link rel="manifest" href="assets/icon/site.webmanifest">
-  <meta name="theme-color" content="#10232f">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="ARVREL">
-  <meta property="og:title" content="ARVREL Engineering FAQ">
-  <meta property="og:description" content="Scope, signal sources, protection coverage, evidence, safety, privacy, builds, and licensing.">
-  <meta property="og:url" content="https://masarray.github.io/arvrel/faq.html">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "name": "ARVREL Engineering FAQ",
-    "url": "https://masarray.github.io/arvrel/faq.html",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What is ARVREL?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "ARVREL is a vendor-neutral Windows laboratory that turns IEC 61850 Sampled Values or internally generated signals into measurements, virtual protection decisions, and reviewable engineering evidence."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is ARVREL a real protection relay or calibrated relay test set?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "No. ARVREL is virtual-output laboratory software. It is not a certified protection IED, calibrated relay test set, IEC 61850 conformance result, IEC 60255 type-test result, or hard-real-time trip platform."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can ARVREL be evaluated without an external Sampled Values publisher?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. The public beta provides an internal deterministic scenario, and the current development line adds an editable 4I+4V Virtual Injection Laboratory. Packaged availability depends on the release tag."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does live Sampled Values capture require Npcap?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Npcap is required separately for authorized live capture. It is not required for the internal laboratory or PCAP replay."
-        }
-      }
-    ]
-  }
-  </script>
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Engineering FAQ — ARVREL v0.1.0-beta.6</title><meta name="description" content="Answers about ARVREL beta.6 closed-loop TESTSET timing, BI1/BI2 authority, one-click reset, Transformer Differential injection, AVR/OLTC MMS, Npcap, safety, and release integrity."><link rel="canonical" href="https://masarray.github.io/arvrel/faq.html"><link rel="stylesheet" href="assets/site.css"><link rel="icon" href="assets/icon/favicon.svg" type="image/svg+xml"></head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header"><div class="wrap nav"><a class="brand" href="index.html"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="research/index.html">Research</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
-
-<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">ARVREL</a> / FAQ</div><p class="eyebrow">Engineering FAQ</p><h1>What to know before evaluating ARVREL.</h1><p class="lede">Clear answers about product scope, signal sources, protection coverage, trust and evidence, safety, privacy, source development, and licensing.</p></div></section>
-
+<section class="page-hero"><div class="wrap"><div class="breadcrumbs"><a href="index.html">Home</a> / FAQ</div><p class="eyebrow">Engineering FAQ · beta.6</p><h1>What does the current ARVREL release actually measure and control?</h1><p class="lede">These answers distinguish the shipped behavioral model from calibration, certification, manufacturer-specific hardware, and operational authority.</p></div></section>
 <main id="main-content">
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Product scope</p><h2>What ARVREL is—and is not.</h2></div><div class="grid-2">
-<article class="card"><h3>What is ARVREL?</h3><p>ARVREL is a vendor-neutral Windows laboratory that turns IEC 61850 Sampled Values or internally generated signals into measurements, virtual protection decisions, and reviewable engineering evidence.</p></article>
-<article class="card"><h3>Is ARVREL a real protection relay?</h3><p>No. It provides a virtual relay model and virtual trip latch for laboratory evaluation. It has no physical relay contacts, operational GOOSE trip, MMS control, autonomous switching, or switching authority.</p></article>
-<article class="card"><h3>Is it a calibrated relay test set?</h3><p>No. Internal virtual injection is intended for software laboratory scenarios. It is not calibrated test equipment and does not produce IEC 60255 type-test or commissioning-acceptance evidence.</p></article>
-<article class="card"><h3>Is it hard real time?</h3><p>No. ARVREL runs on Windows and does not claim deterministic hard-real-time scheduling, deployment-grade virtual-IED availability, or guaranteed operational trip timing.</p></article>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Current release</p><h2>Release and authority</h2></div><div class="grid-2">
+<article class="card"><h3>What is the current public version?</h3><p><strong>v0.1.0-beta.6</strong> for Windows 10/11 x64. GitHub Releases is the package source of truth.</p></article>
+<article class="card"><h3>What is the canonical current-status document?</h3><p><a href="https://github.com/masarray/arvrel/blob/main/docs/CURRENT_STATUS.md">CURRENT_STATUS.md</a>. Historical P* files are retained as milestone records and may describe older behavior.</p></article>
+<article class="card"><h3>Does ARVREL control field equipment?</h3><p>No. Relay outputs, OLTC actions, and process controls are virtual only. There is no physical trip, operational GOOSE, OLTC motor, switching, or primary-equipment authority.</p></article>
+<article class="card"><h3>Does ARVREL support MMS control?</h3><p>Yes, as a laboratory model for the virtual AVR/OLTC process. Browse/read, reports, and modeled SBO/SBOw controls exist, but accepted commands terminate inside the simulator.</p></article>
 </div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Signal sources</p><h2>Internal, replay, and live evaluation.</h2></div><div class="grid-2">
-<article class="card"><h3>Can I evaluate ARVREL without an SV publisher?</h3><p>Yes. `v0.1.0-beta.1` includes a deterministic internal A-G scenario. The current development line adds an editable 4I+4V Virtual Injection Laboratory; it becomes an official packaged capability only after a release tag includes it.</p></article>
-<article class="card"><h3>Can ARVREL replay captures?</h3><p>Yes. ARVREL supports controlled PCAP and PCAPNG replay so stream behavior can be reviewed without connecting to a live process-bus network.</p></article>
-<article class="card"><h3>What is required for live capture?</h3><p>Npcap must be installed separately, and the selected Windows network adapter must support the authorized laboratory capture. Live capture should be performed only on isolated networks with explicit permission.</p></article>
-<article class="card"><h3>Does ARVREL use SCL?</h3><p>Yes. SCL context can support stream identity, APPID, address, dataset, <code>svID</code>, <code>confRev</code>, channel mapping, and scaling review. Trust depends on the available evidence and configured context.</p></article>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Closed-loop feeder testing</p><h2>TESTSET timing questions</h2></div><div class="grid-2">
+<article class="card"><h3>What owns the measured trip time?</h3><p>The accepted wired <strong>TESTSET BI1</strong> edge. Internal relay <code>TripLatched</code> may request BO1 but is never read directly as the TESTSET result or trip auto-stop authority.</p></article>
+<article class="card"><h3>What happens if BO1→BI1 is disconnected?</h3><p>The relay may still trip internally, but the TESTSET must report no external trip time and must not trip-auto-stop. This is a deliberate regression invariant.</p></article>
+<article class="card"><h3>What is TESTSET BI2?</h3><p>BI2 is the wired generic <strong>ANY PICKUP</strong> input. It does not necessarily represent the pickup of the element that ultimately trips.</p></article>
+<article class="card"><h3>Why can BI2 be earlier than 50P pickup?</h3><p>Another enabled element—such as an earth/time-overcurrent function—may pick up first and drive generic BO2. Operated-element P→T is correlated separately.</p></article>
+<article class="card"><h3>What is the beta.6 timing resolution?</h3><p>The TESTSET metrology clock is integer microseconds with 1 µs resolution. BI samples at 10 kHz / 100 µs. Relay acquisition/protection advances at 4 kHz / 250 µs.</p></article>
+<article class="card"><h3>Is a 10 kHz BI sampler a claim of CMC equivalence?</h3><p>No. The CMC-style profile is a behavioral modeling choice informed by relay-test-set concepts. ARVREL is not calibrated commercial test equipment and does not claim manufacturer equivalence.</p></article>
+<article class="card"><h3>What does the relay front end receive?</h3><p>Instantaneous signed terminal samples, then modeled clipping, 16-bit-equivalent quantization, 1.5 ms input/filter delay, and a causal one-cycle rolling DFT. Source-side phasors are not substituted for relay ADC input in the closed-loop path.</p></article>
+<article class="card"><h3>Why does a 60 ms 50P delay show 60.000 ms P→T?</h3><p>Definite timing starts at the first observed pickup frame. When 60 ms is exactly representable on the 250 µs relay grid, the operated-element record is exactly 60.000 ms.</p></article>
 </div></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Protection and measurement</p><h2>What is currently implemented.</h2></div><div class="grid-2">
-<article class="card"><h3>Which protection functions are available?</h3><p>The public implementation covers virtual 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N. Individual feeder elements default to disabled until explicitly configured.</p></article>
-<article class="card"><h3>Does ARVREL implement transformer differential 87T?</h3><p>No. 87T is a research track with explicit entry criteria for multi-stream alignment, transformer and CT compensation, biased differential logic, inrush and CT-saturation security, trust behavior, and paired operate/secure validation.</p></article>
-<article class="card"><h3>How are phasors estimated?</h3><p>The current fundamental estimator uses a complete one-cycle, arithmetic-mean-removed, nominal-frequency single-bin DFT scaled to a complex RMS phasor. It is not a full harmonic-spectrum FFT or adaptive frequency tracker.</p></article>
-<article class="card"><h3>What happens to duplicate or out-of-order frames?</h3><p>They remain visible in telemetry, but their payload samples are rejected before entering RMS, waveform, phasor, or protection buffers. Trust state determines whether measurement, pickup, and virtual-trip authority remain available.</p></article>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Auto-stop, capture, and reset</p><h2>Post-trip questions</h2></div><div class="grid-2">
+<article class="card"><h3>Why do setpoints remain visible after auto-stop?</h3><p>Configured setpoints are retained for repeatability. The actual output state is explicitly <strong>OUTPUT OFF · FROZEN CAPTURE</strong>.</p></article>
+<article class="card"><h3>Is the frozen waveform timestamp identical to BI1 trip time?</h3><p>Not necessarily. The capture can belong to a later causal relay-processing frame. Evidence schema 9 records the relationship instead of conflating the two instants.</p></article>
+<article class="card"><h3>How many times should I press RESET?</h3><p>Once. Beta.6 uses one deterministic reset transaction that drains stale causal acquisition, clears relay state once, releases contacts/BI inputs, and shows READY TO RE-ARM only after the full postcondition.</p></article>
+<article class="card"><h3>Does RESET erase completed timing evidence?</h3><p>No. Completed TESTSET timing and frozen trip/event evidence are intentionally preserved.</p></article>
+<article class="card"><h3>Does relay RESET stop or restart the source?</h3><p>No. Source and relay are separate equipment authorities. If the source remains energized, protection may legitimately reassert after reset.</p></article>
+<article class="card"><h3>What if reset cannot settle?</h3><p>The transaction is bounded by a modeled 100 ms settle timeout and should expose diagnostic state. Repeated clicking should not be used to hide the underlying condition.</p></article>
 </div></div></section>
 
-<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Trust and evidence</p><h2>How ARVREL explains a decision.</h2></div><div class="grid-2">
-<article class="card"><h3>What does “trust before trip” mean?</h3><p>ARVREL separates <code>AllowsMeasurement</code>, <code>AllowsPickup</code>, and <code>AllowsTrip</code>. A stream may remain diagnostically visible while communication, identity, mapping, scaling, quality, or continuity evidence blocks new protection authority.</p></article>
-<article class="card"><h3>What evidence can be reviewed?</h3><p>Evidence can include source identity, trust state, active settings and fingerprints, measured quantities, pickup and trip timestamps, operated element, phase or earth cause, event trace, and export metadata.</p></article>
-<article class="card"><h3>Are research claims reproducible?</h3><p>Public scenarios use stable IDs mapped to exact source files, test files, and named automated test methods. The validation page publishes expected measurement, operate, restrain, and trust-blocked outcomes.</p></article>
-<article class="card"><h3>Does a passing software test prove field suitability?</h3><p>No. Software tests support code behavior and reproducibility. They are not calibration, conformance, type-test, commissioning-acceptance, or operational-availability evidence.</p></article>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Transformer Differential</p><h2>87T / REF questions</h2></div><div class="grid-2">
+<article class="card"><h3>Can I test Transformer Differential without live SV?</h3><p>Yes. Run the deterministic 10-scenario self-test and synchronized internal HV/LV/neutral secondary injection first.</p></article>
+<article class="card"><h3>What is the expected self-test result?</h3><p><code>PASS · 10/10 · transformer-public-beta-v1</code>.</p></article>
+<article class="card"><h3>Does the internal transformer injector use a second 87T algorithm?</h3><p>No. It drives the existing transformer protection runtime so the UI does not duplicate 87T/REF logic.</p></article>
+<article class="card"><h3>Can phase residual substitute for neutral CT in REF?</h3><p>No. Independent neutral/NGR current evidence is explicit. Calculated phase residual is not silently promoted to a neutral-CT input for REF authority.</p></article>
+<article class="card"><h3>When are two SV streams required?</h3><p>For the external paired-SV live/replay transformer path. Internal two-sided injection is a separate no-external-stream workflow.</p></article>
+<article class="card"><h3>What transformer security is modeled?</h3><p>H2/H5 security plus context-gated external-fault/CT-saturation behavior within the documented generic model.</p></article>
 </div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Installation and development</p><h2>Packages, dependencies, and support.</h2></div><div class="grid-2">
-<article class="card"><h3>Should I use the installer or portable package?</h3><p>Use the installer for normal Windows evaluation and the portable ZIP when installation is restricted. In both cases, download from GitHub Releases and verify the published SHA-256 checksum.</p></article>
-<article class="card"><h3>What is required to build from source?</h3><p>Windows 10/11 x64, .NET 8 SDK, Git, and the sibling ARIEC61850 repository at the commit pinned by the release workflow. Npcap is needed only for live capture.</p></article>
-<article class="card"><h3>Where should issues be reported?</h3><p>Use the GitHub issue templates and include the ARVREL version, operating mode, reproduction steps, expected and actual behavior, relevant logs, and only non-confidential fixtures.</p></article>
-<article class="card"><h3>Can I request commercial support?</h3><p>Yes. Public support and GPL use remain available, while separate commercial terms may be negotiated for proprietary redistribution, OEM deployment, closed-source integration, or contractual support.</p></article>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">IEC 61850 and live capture</p><h2>Process-bus questions</h2></div><div class="grid-2">
+<article class="card"><h3>Is Npcap required?</h3><p>Only for live Sampled Values capture. Internal workflows and PCAP/PCAPNG replay do not require Npcap.</p></article>
+<article class="card"><h3>What does trust gating evaluate?</h3><p>Complete windows, decode health, mapping/scaling provenance, freshness, <code>smpCnt</code> continuity, quality, SCL identity, <code>svID</code>, dataset, <code>confRev</code>, and source context.</p></article>
+<article class="card"><h3>Can degraded data remain visible?</h3><p>Yes. Diagnostic visibility is separate from <code>AllowsMeasurement</code>, <code>AllowsPickup</code>, and <code>AllowsTrip</code>.</p></article>
+<article class="card"><h3>Can I use live capture on an operational process bus?</h3><p>Not without explicit authorization and an approved test method. The public guidance is to use an isolated laboratory network.</p></article>
 </div></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Privacy and licensing</p><h2>Use engineering data responsibly.</h2></div><div class="grid-2">
-<article class="card"><h3>Where does ARVREL store local data?</h3><p>Local preferences and diagnostics are stored under <code>%LOCALAPPDATA%\ARVREL</code>. Review logs and exported evidence before sharing them.</p></article>
-<article class="card"><h3>What data should never be published?</h3><p>Do not publish customer captures, proprietary station SCL files, credentials, IP plans, employer-confidential information, or data that you are not authorized to disclose.</p></article>
-<article class="card"><h3>What license applies?</h3><p>The source is licensed under GPL-3.0-or-later. Third-party components retain their own licenses. See the repository license and third-party notices for obligations.</p></article>
-<article class="card"><h3>Where can I find the complete documentation?</h3><p>Use the <a href="documentation.html">documentation hub</a> for user, workflow, architecture, protection, research, release, security, contribution, and public-site maintenance guides.</p></article>
-</div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Fidelity and certification</p><h2>What ARVREL does not claim</h2></div><div class="grid-2"><article class="card"><h3>Is it a calibrated relay test set?</h3><p>No. Timing and source behavior are deterministic software models without traceable calibration or instrument uncertainty claims.</p></article><article class="card"><h3>Is it a clone of a specific relay?</h3><p>No. The default relay profile is generic. Exact anti-alias filters, ADC topology, burdens, channel skew, electrical BI thresholds, proprietary fast paths, and manufacturer uncertainty are not claimed.</p></article><article class="card"><h3>Is it IEC 61850 certified?</h3><p>No formal conformance certification is claimed.</p></article><article class="card"><h3>Is it IEC 60255 type-tested?</h3><p>No. Deterministic regression tests validate software behavior only.</p></article></div></div></section>
 
-<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Responsible evaluation</p><h2>Start internally, then move outward deliberately.</h2><p>Begin with a deterministic internal scenario, continue with controlled replay, and use live capture only on an isolated, authorized laboratory network. Do not use ARVREL as the sole basis for operational settings, commissioning acceptance, or switching decisions.</p></div><div class="actions"><a class="button light" href="quick-start.html">Open quick start</a><a class="button light" href="documentation.html">Browse documentation</a><a class="button light" href="safety-and-limitations.html">Review safety and limitations</a></div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Responsible use</p><h2>Use synthetic or authorized evidence and preserve the boundary.</h2><p>Do not publish proprietary captures, SCL files, credentials, IP plans, protected infrastructure information, or employer-confidential material. Do not use ARVREL as the sole basis for operational protection settings, commissioning acceptance, or switching decisions.</p></div><div class="pager"><a href="documentation.html"><span>Related</span>Documentation</a><a href="download.html" style="text-align:right"><span>Next</span>Download beta.6</a></div></div></section>
 </main>
-
-<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Engineering answers with explicit evidence boundaries.</div></div><div class="small"><a href="index.html">Product</a> · <a href="documentation.html">Documentation</a> · <a href="quick-start.html">Quick start</a> · <a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="https://github.com/masarray/arvrel">Source</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
-</body>
-</html>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">Engineering FAQ for v0.1.0-beta.6.</div></div><div class="small"><a href="documentation.html">Documentation</a> · <a href="release-status.html">Release status</a> · <a href="safety-and-limitations.html">Safety</a> · <a href="https://github.com/masarray/arvrel/issues">Issues</a></div></div></footer>
+</body></html>

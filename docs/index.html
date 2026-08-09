@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ARVREL — IEC 61850 Virtual Protection & Control IED Laboratory</title>
-  <meta name="description" content="ARVREL is a vendor-neutral Windows laboratory for IEC 61850 Sampled Values, virtual feeder and transformer protection, AVR/OLTC control simulation, laboratory MMS interoperability, and reviewable engineering evidence.">
+  <meta name="description" content="ARVREL v0.1.0-beta.6 is a Windows virtual protection and control IED laboratory with closed-loop secondary injection, metrology-grade behavioral timing, IEC 61850 Sampled Values, Transformer Differential, AVR/OLTC, MMS interoperability, and reviewable engineering evidence.">
   <meta name="author" content="Ari Sulistiono / masarray">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://masarray.github.io/arvrel/">
@@ -19,17 +19,17 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ARVREL">
   <meta property="og:title" content="ARVREL — IEC 61850 Virtual Protection & Control IED Laboratory">
-  <meta property="og:description" content="Observe process-bus evidence, evaluate virtual protection and AVR/OLTC behavior, test laboratory MMS interoperability, and preserve the reason behind every operation.">
+  <meta property="og:description" content="Exercise a closed-loop virtual TESTSET↔relay chain, analyze IEC 61850 process-bus evidence, evaluate 87T/REF and AVR/OLTC behavior, and preserve causally reviewable timing evidence.">
   <meta property="og:url" content="https://masarray.github.io/arvrel/">
   <meta property="og:image" content="https://masarray.github.io/arvrel/assets/arvrel-main.webp">
-  <meta property="og:image:width" content="2258">
-  <meta property="og:image:height" content="1339">
-  <meta property="og:image:alt" content="ARVREL engineering workspace with Sampled Values waveform, phasors, virtual IED faceplate, protection state, and evidence">
+  <meta property="og:image:width" content="1920">
+  <meta property="og:image:height" content="1032">
+  <meta property="og:image:alt" content="ARVREL engineering workspace with waveform, phasors, virtual relay faceplate, protection timing, and evidence">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ARVREL — Virtual Protection & Control IED Laboratory">
-  <meta name="twitter:description" content="Vendor-neutral IEC 61850 Sampled Values analysis, virtual protection, AVR/OLTC simulation, laboratory MMS interoperability, trust gating, and reviewable engineering evidence on Windows.">
+  <meta name="twitter:description" content="Closed-loop feeder secondary injection, IEC 61850 Sampled Values, transformer protection, AVR/OLTC, MMS, trust gating, and reviewable evidence on Windows.">
   <meta name="twitter:image" content="https://masarray.github.io/arvrel/assets/arvrel-main.webp">
-  <meta name="twitter:image:alt" content="ARVREL engineering workspace with Sampled Values waveform, phasor analysis, virtual IED faceplate, protection state, and evidence">
+  <meta name="twitter:image:alt" content="ARVREL engineering workspace with waveform, phasors, virtual relay faceplate, protection timing, and evidence">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -42,11 +42,7 @@
         "url": "https://masarray.github.io/arvrel/",
         "description": "Public product, documentation, research, and validation site for the ARVREL virtual protection and control IED laboratory.",
         "inLanguage": "en",
-        "publisher": {
-          "@type": "Person",
-          "name": "Ari Sulistiono",
-          "url": "https://github.com/masarray"
-        }
+        "publisher": {"@type": "Person", "name": "Ari Sulistiono", "url": "https://github.com/masarray"}
       },
       {
         "@type": "SoftwareApplication",
@@ -54,44 +50,34 @@
         "name": "ARVREL",
         "alternateName": "ARVREL Virtual Protection Relay Laboratory",
         "applicationCategory": "EducationalApplication",
-        "applicationSubCategory": "Power-system protection, AVR/OLTC control, and IEC 61850 engineering",
+        "applicationSubCategory": "Power-system protection, relay testing, AVR/OLTC control, and IEC 61850 engineering",
         "operatingSystem": "Windows 10, Windows 11",
-        "softwareVersion": "0.1.0-beta.5",
-        "description": "Vendor-neutral Windows software that turns IEC 61850 evidence and controlled internal signals into trusted measurements, virtual protection decisions, AVR/OLTC simulation, laboratory MMS interactions, and reviewable engineering evidence.",
+        "softwareVersion": "0.1.0-beta.6",
+        "description": "Vendor-neutral Windows laboratory for closed-loop virtual secondary injection, IEC 61850 Sampled Values analysis, feeder and transformer protection, AVR/OLTC simulation, laboratory MMS interactions, and reviewable engineering evidence.",
         "url": "https://masarray.github.io/arvrel/",
         "downloadUrl": "https://github.com/masarray/arvrel/releases",
         "softwareHelp": "https://masarray.github.io/arvrel/documentation.html",
         "releaseNotes": "https://masarray.github.io/arvrel/release-status.html",
         "screenshot": "https://masarray.github.io/arvrel/assets/arvrel-main.webp",
         "featureList": [
+          "Closed-loop virtual TESTSET to relay secondary injection with external binary-input timing",
+          "1 microsecond behavioral metrology clock and 10 kHz TESTSET binary-input sampling",
+          "Causal relay front end using instantaneous terminal samples",
           "IEC 61850 Sampled Values live capture and PCAP replay",
-          "SCL-assisted stream identity, mapping, and scaling review",
-          "4I+4V RMS phasors, sequence quantities, and waveform evidence",
+          "SCL-assisted stream identity, mapping, scaling, continuity, and trust review",
           "Virtual 50, 51, 67, 27, 59, and 59N feeder protection",
-          "Two-winding 87T, 87T-HS, 87N-HV, and 87N-LV transformer protection",
+          "Two-winding 87T, 87T-HS, REF HV, and REF LV transformer protection",
+          "Synchronized two-sided transformer internal secondary injection",
           "AVR and 17-position OLTC virtual controller with simulated transformer plant",
-          "IEC 61850 MMS browse, reporting, SBO control, and virtual AVR settings",
-          "Trust-gated measurement, pickup, virtual trip and virtual control authority",
-          "Deterministic scenarios and exportable engineering evidence"
+          "IEC 61850 MMS browse, reporting, modeled SBO controls, and virtual AVR settings",
+          "Evidence schema 9 with external TESTSET timing and operated-element correlation"
         ],
         "softwareRequirements": "Windows 10 or Windows 11 x64; Npcap is required separately only for live Sampled Values capture.",
         "license": "https://www.gnu.org/licenses/gpl-3.0.html",
         "isAccessibleForFree": true,
-        "offers": {
-          "@type": "Offer",
-          "price": 0,
-          "priceCurrency": "USD",
-          "availability": "https://schema.org/InStock",
-          "url": "https://github.com/masarray/arvrel/releases"
-        },
-        "author": {
-          "@type": "Person",
-          "name": "Ari Sulistiono",
-          "url": "https://github.com/masarray"
-        },
-        "isPartOf": {
-          "@id": "https://masarray.github.io/arvrel/#website"
-        }
+        "offers": {"@type": "Offer", "price": 0, "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": "https://github.com/masarray/arvrel/releases"},
+        "author": {"@type": "Person", "name": "Ari Sulistiono", "url": "https://github.com/masarray"},
+        "isPartOf": {"@id": "https://masarray.github.io/arvrel/#website"}
       }
     ]
   }
@@ -101,53 +87,28 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header"><div class="wrap nav"><a class="brand" href="index.html" aria-current="page"><img src="assets/icon/favicon.svg" alt=""><span>ARVREL</span></a><nav class="nav-links" aria-label="Primary navigation"><a href="capabilities.html">Capabilities</a><a href="workflows/index.html">Workflows</a><a href="research/index.html">Research</a><a href="architecture.html">Architecture</a><a href="evidence-and-trust.html">Trust</a><a href="safety-and-limitations.html">Safety</a><a href="quick-start.html">Quick start</a><a class="nav-cta" href="download.html">Download</a></nav></div></header>
 
-<section class="hero"><div class="wrap hero-grid"><div><p class="eyebrow">IEC 61850 · Virtual protection · AVR / OLTC control · Engineering evidence</p><h1>Make every virtual IED decision explainable.</h1><p class="hero-copy">ARVREL is a vendor-neutral Windows laboratory for observing live, replayed, or internally generated signals; evaluating multifunction feeder and transformer protection; simulating AVR/OLTC behavior; and testing laboratory IEC 61850 MMS interactions without physical switching authority.</p><div class="actions"><a class="button primary" href="download.html">Download Windows beta</a><a class="button secondary" href="quick-start.html">Evaluate in five minutes</a></div><div class="status-line" aria-label="Product status"><span><i class="status-dot"></i>v0.1.0-beta.5</span><span><i class="status-dot"></i>Windows 10/11 x64</span><span><i class="status-dot safe"></i>Open source</span><span><i class="status-dot warn"></i>Virtual output only</span></div></div><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-main.webp" width="2258" height="1339" fetchpriority="high" decoding="async" alt="ARVREL workspace showing Sampled Values waveform, phasor analysis, virtual relay faceplate, protection state, and event evidence"></div><figcaption>One engineering laboratory from signal identity and trust to virtual protection, AVR/OLTC control, and reviewable evidence.</figcaption></figure></div></section>
+<section class="hero"><div class="wrap hero-grid"><div><p class="eyebrow">IEC 61850 · Closed-loop relay testing · 87T/REF · AVR/OLTC · Engineering evidence</p><h1>Make the complete virtual protection loop observable.</h1><p class="hero-copy">ARVREL v0.1.0-beta.6 separates the virtual test set, wiring, numerical relay front end, protection logic, relay contacts, and TESTSET binary inputs so measured timing follows the external virtual-I/O path instead of an internal trip shortcut.</p><div class="actions"><a class="button primary" href="download.html">Download beta.6</a><a class="button secondary" href="quick-start.html">Run the closed-loop quick start</a></div><div class="status-line" aria-label="Product status"><span><i class="status-dot"></i>v0.1.0-beta.6</span><span><i class="status-dot"></i>Windows 10/11 x64</span><span><i class="status-dot safe"></i>Open source</span><span><i class="status-dot warn"></i>Virtual output only</span></div></div><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-main.webp" width="1920" height="1032" fetchpriority="high" decoding="async" alt="ARVREL workspace showing waveform, phasors, virtual relay faceplate, protection state, and event evidence"></div><figcaption>One Windows laboratory from signal source and virtual wiring to relay operation, external TESTSET timing, virtual control, and evidence.</figcaption></figure></div></section>
 
-<div class="proof-strip"><div class="wrap proof-grid"><div class="proof-item"><strong>Live Npcap</strong>Sampled Values</div><div class="proof-item"><strong>PCAP replay</strong>PCAP / PCAPNG</div><div class="proof-item"><strong>SCL binding</strong>Identity and mapping</div><div class="proof-item"><strong>4I + 4V</strong>RMS and phasors</div><div class="proof-item"><strong>50 / 51 / 67</strong>Feeder current protection</div><div class="proof-item"><strong>87T / REF</strong>Transformer protection</div><div class="proof-item"><strong>AVR / OLTC</strong>Virtual voltage control</div><div class="proof-item"><strong>MMS reports</strong>Virtual interoperability</div><div class="proof-item"><strong>Evidence export</strong>Reviewable records</div></div></div>
-<div class="release-proof" aria-label="Public release identity"><div class="wrap release-proof-grid"><div class="release-proof-item"><span>Public version</span><strong>v0.1.0-beta.5</strong></div><div class="release-proof-item"><span>Integrity file</span><strong>SHA256SUMS.txt</strong></div><div class="release-proof-item"><span>Pinned ARIEC61850 engine</span><strong class="mono">0d0aa4e31c17…</strong></div><div class="release-proof-item"><span>Output authority</span><strong>Virtual only</strong></div><a class="release-proof-link" href="release-status.html">Review release status →</a></div></div>
+<div class="proof-strip"><div class="wrap proof-grid"><div class="proof-item"><strong>1 µs clock</strong>TESTSET metrology</div><div class="proof-item"><strong>10 kHz BI</strong>100 µs sampling</div><div class="proof-item"><strong>4 kHz relay</strong>250 µs processing</div><div class="proof-item"><strong>BI1 authority</strong>External trip timing</div><div class="proof-item"><strong>50 / 51 / 67</strong>Feeder protection</div><div class="proof-item"><strong>87T / REF</strong>Transformer protection</div><div class="proof-item"><strong>AVR / OLTC</strong>Virtual control</div><div class="proof-item"><strong>MMS</strong>Virtual interoperability</div><div class="proof-item"><strong>Schema 9</strong>Timing evidence</div></div></div>
+<div class="release-proof" aria-label="Public release identity"><div class="wrap release-proof-grid"><div class="release-proof-item"><span>Public version</span><strong>v0.1.0-beta.6</strong></div><div class="release-proof-item"><span>Integrity</span><strong>SHA256SUMS.txt</strong></div><div class="release-proof-item"><span>Pinned ARIEC61850</span><strong class="mono">0d0aa4e31c17…</strong></div><div class="release-proof-item"><span>Output authority</span><strong>Virtual only</strong></div><a class="release-proof-link" href="release-status.html">Review release status →</a></div></div>
 
 <main id="main-content">
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Engineering outcome</p><h2>Observe. Evaluate. Prove.</h2><p>ARVREL keeps the complete cause-and-effect chain visible instead of reducing engineering analysis to a final lamp or control result.</p></div><div class="value-grid"><article class="value-item"><span class="value-number">01</span><h3>Observe</h3><p>Inspect stream identity, continuity, quality, mapping, scaling, waveform, phasors, residual channels, sequence quantities, AVR measurements and OLTC state.</p></article><article class="value-item"><span class="value-number">02</span><h3>Evaluate</h3><p>Apply settings and review pickup, timing, directional decisions, transformer security, AVR deadband, blocking, tap travel, reports and virtual controls.</p></article><article class="value-item"><span class="value-number">03</span><h3>Prove</h3><p>Preserve settings identity, trust state, timestamps, operating quantity, trip/control cause, event trace, and exportable evidence.</p></article></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Latest desktop views</p><h2>The public site now uses the current beta.6 screenshots.</h2><p>These views are sourced directly from the repository's latest <code>Asset/screenshot/</code> captures.</p></div><div class="grid-2"><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-screen-1.webp" width="1920" height="1032" loading="lazy" decoding="async" alt="Latest ARVREL desktop workspace view 1"></div><figcaption>Current ARVREL desktop workspace view.</figcaption></figure><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-screen-2.webp" width="1920" height="1032" loading="lazy" decoding="async" alt="Latest ARVREL desktop workspace view 2"></div><figcaption>Current ARVREL desktop workspace view.</figcaption></figure><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-screen-3.webp" width="1920" height="1032" loading="lazy" decoding="async" alt="Latest ARVREL desktop workspace view 3"></div><figcaption>Current ARVREL desktop workspace view.</figcaption></figure><figure class="hero-visual"><div class="hero-visual-media"><img src="assets/arvrel-screen-4.webp" width="1920" height="1032" loading="lazy" decoding="async" alt="Latest ARVREL desktop workspace view 4"></div><figcaption>Current ARVREL desktop workspace view.</figcaption></figure></div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Built for engineering work</p><h2>One laboratory, several professional workflows.</h2></div><div class="grid-3">
-<article class="card"><span class="label">Protection engineering</span><h3>Explain operate and restrain behavior</h3><p>Review quantities, settings, timers, directional decisions, transformer differential security, trust permissions, and the exact virtual trip cause.</p></article>
-<article class="card"><span class="label">Substation automation</span><h3>Evaluate a virtual AVR as an IEC 61850 IED</h3><p>Browse the online model, enable reports, test virtual SBO controls, inspect tap feedback and verify that every accepted command remains inside the simulator.</p></article>
-<article class="card"><span class="label">FAT and SAT preparation</span><h3>Prepare repeatable laboratory evidence</h3><p>Use deterministic internal scenarios and controlled replay before authorized site-network work.</p></article>
-<article class="card"><span class="label">Education</span><h3>Teach the complete protection and voltage-control chain</h3><p>Connect measurements, settings, protection logic, AVR deadband, OLTC actuation, IEC 61850 reporting, and evidence in one workspace.</p></article>
-<article class="card"><span class="label">Research</span><h3>Trace claims to source and tests</h3><p>Use stable scenario IDs, exact test methods, source anchors, limitations, and evidence-gated roadmap criteria.</p></article>
-<article class="card"><span class="label">Open-source review</span><h3>Inspect boundaries instead of trusting claims</h3><p>Review architecture, algorithms, trust gates, automated tests, release metadata, and known limitations.</p></article>
-</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Closed-loop authority</p><h2>The TESTSET measures the wire, not the relay's private state.</h2><p>Internal relay trip may request BO1. The authoritative TESTSET trip exists only after BO1 behavior, the virtual trip wire, independent 10 kHz BI sampling, and BI1 acceptance.</p></div><div class="chain"><div class="chain-step"><span>01</span><strong>TESTSET T0 and waveform</strong></div><div class="chain-step"><span>02</span><strong>Virtual analog wiring</strong></div><div class="chain-step"><span>03</span><strong>Causal relay front end</strong></div><div class="chain-step"><span>04</span><strong>Protection pickup and trip request</strong></div><div class="chain-step"><span>05</span><strong>Relay BO contact behavior</strong></div><div class="chain-step"><span>06</span><strong>TESTSET BI sampling</strong></div><div class="chain-step"><span>07</span><strong>Measured timing and auto-stop</strong></div></div><div class="callout safe" style="margin-top:20px"><strong>Open-wire invariant:</strong> disconnect BO1→BI1 and the relay may trip internally, but the TESTSET must record no external trip and must not trip-auto-stop.</div></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Engineering flow</p><h2>From signal source to an operation record.</h2></div><div class="chain"><div class="chain-step"><span>01</span><strong>Internal, live, or replay source</strong></div><div class="chain-step"><span>02</span><strong>Identity and engineering context</strong></div><div class="chain-step"><span>03</span><strong>Continuity, quality, mapping, scaling</strong></div><div class="chain-step"><span>04</span><strong>Measurements and process state</strong></div><div class="chain-step"><span>05</span><strong>Protection or AVR/OLTC logic</strong></div><div class="chain-step"><span>06</span><strong>Virtual trip/control permission</strong></div><div class="chain-step"><span>07</span><strong>Reviewable evidence</strong></div></div></div></section>
+<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Operator timing semantics</p><h2>Generic pickup and operated-element timing are intentionally separate.</h2></div><div class="grid-3"><article class="card"><span class="label">ANY PICKUP</span><h3>RELAY ANY PU → TESTSET BI2</h3><p>BO2 is generic ANY PICKUP. Another enabled element may assert it before the element that ultimately trips.</p></article><article class="card"><span class="label">Operated element</span><h3>Element pickup → element trip</h3><p>The operated element owns its own P→T. A 60 ms representable 50P definite delay remains exactly 60.000 ms in the reference engine.</p></article><article class="card"><span class="label">External trip</span><h3>Relay trip request → TESTSET BI1</h3><p>BI1 owns the measured external trip time and optional auto-stop. Evidence keeps the contact/input path visible.</p></article></div></div></section>
 
-<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Why ARVREL is different</p><h2>Visibility, authority, and evidence stay separate.</h2></div><div class="grid-3">
-<article class="card"><span class="label">Trust architecture</span><h3>Visible does not automatically mean trippable or controllable</h3><p>Measurement, protection and virtual-control paths expose degraded communication and configuration evidence instead of hiding it.</p></article>
-<article class="card"><span class="label">Reproducibility</span><h3>Public claims map to deterministic tests</h3><p>Stable scenario identifiers connect engineering statements to exact source files, test files, and named test methods. The transformer workspace also exposes a 10-scenario packaged-core self-test.</p></article>
-<article class="card"><span class="label">Bounded claims</span><h3>Laboratory capability without operational overclaim</h3><p>ARVREL states what is implemented, what remains deferred, and what is not certification, calibration, conformance, or hard-real-time evidence.</p></article>
-</div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Reset and evidence</p><h2>One reset transaction, one clear re-arm condition.</h2><p>After BI1 auto-stop, ARVREL shows <strong>OUTPUT OFF · FROZEN CAPTURE</strong>. One relay RESET drains stale fault-window acquisition, clears relay state once, releases BO1/BO2 and TESTSET BI1/BI2, and reports <strong>READY TO RE-ARM</strong> only after the modeled postcondition is satisfied. Completed TESTSET timing and trip evidence remain available.</p></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Explore the product</p><h2>Start from your question.</h2></div><div class="grid-3">
-<a class="card card-link" href="capabilities.html"><span class="label">Capability map</span><h3>What does ARVREL implement?</h3><p>Process bus, measurement, feeder/transformer protection, AVR/OLTC simulation, settings, trust, research, and evidence.</p></a>
-<a class="card card-link" href="workflows/index.html"><span class="label">Workflow router</span><h3>How should I evaluate it?</h3><p>Protection, process bus, FAT/SAT preparation, education, research, and controlled virtual-IOD workflows.</p></a>
-<a class="card card-link" href="documentation.html"><span class="label">Documentation hub</span><h3>Where is the right guide?</h3><p>Quick start, user guide, engineering references, release integrity, governance, and troubleshooting.</p></a>
-<a class="card card-link" href="research/index.html"><span class="label">Research and validation</span><h3>What supports the claims?</h3><p>Application notes, deterministic scenarios, related work, laboratories, and an evidence-gated roadmap.</p></a>
-<a class="card card-link" href="evidence-and-trust.html"><span class="label">Evidence and trust</span><h3>Why was operation allowed or blocked?</h3><p>Measurement, pickup, virtual-trip and virtual-control permissions with explicit failure handling.</p></a>
-<a class="card card-link" href="faq.html"><span class="label">Engineering FAQ</span><h3>What should I know before testing?</h3><p>Scope, Npcap, replay, internal injection, supported functions, evidence, privacy, and licensing.</p></a>
-</div></div></section>
+<section class="surface"><div class="wrap"><div class="section-heading"><p class="section-kicker">Multi-IED laboratory</p><h2>Feeder, transformer, and voltage-control workflows stay in one product line.</h2></div><div class="grid-3"><article class="card"><span class="label">Protection Relay · OCR</span><h3>Feeder protection and closed-loop testing</h3><p>4I+4V internal injection, live/replay SV, 50/51/67/27/59/59N, external virtual-I/O timing, operation records, and evidence schema 9.</p></article><article class="card"><span class="label">Transformer Differential</span><h3>87T / 87T-HS / REF</h3><p>10-scenario self-test, synchronized HV/LV/neutral internal injection, CT/vector compensation, security logic, and paired-SV live/replay evaluation.</p></article><article class="card"><span class="label">AVR · OLTC</span><h3>Virtual transformer control and MMS</h3><p>Simulated transformer plant, 17-position OLTC, authority/interlocks, MMS browse/read, DataSets, reports, and modeled controls that terminate inside the simulator.</p></article></div></div></section>
 
-<section class="soft"><div class="wrap"><div class="section-heading"><p class="section-kicker">Trust before trip or tap</p><h2>Diagnostic visibility remains separate from virtual authority.</h2><p>ARVREL evaluates data quality and engineering context before permitting virtual protection or control outcomes. AVR MMS controls are validated against authority, operating mode, blocking, tap travel and modeled interlocks before they are queued to the virtual process.</p></div><div class="permission-list"><div class="permission"><code>AllowsMeasurement</code><p>Quantities may enter the measurement and display pipeline.</p></div><div class="permission"><code>AllowsPickup</code><p>Protection pickup and timing may be evaluated.</p></div><div class="permission"><code>Virtual control</code><p>Modeled IEC 61850 commands may alter only the virtual AVR/OLTC process when its interlocks permit.</p></div></div><div class="actions"><a class="button light" href="evidence-and-trust.html">Read evidence and trust</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Process bus and trust</p><h2>Visibility, protection authority, and control authority remain distinct.</h2></div><div class="grid-3"><article class="card"><h3>Live and replay</h3><p>Npcap live Sampled Values plus PCAP/PCAPNG replay with SCL-assisted identity, mapping, scaling, quality, continuity, and freshness evidence.</p></article><article class="card"><h3>Three trust permissions</h3><p><code>AllowsMeasurement</code>, <code>AllowsPickup</code>, and <code>AllowsTrip</code> expose why a stream can remain visible while new protection authority is blocked.</p></article><article class="card"><h3>Reviewable evidence</h3><p>Settings fingerprints, source/run identity, timing events, operated-element cause, trust state, topology, frozen capture, and virtual-control outcomes are retained for review.</p></article></div></div></section>
 
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Research authority</p><h2>Source-to-test traceability for public engineering claims.</h2><p>The research layer documents signal estimation, SMV continuity and trust behavior, directional quantities, deterministic operate/restraint scenarios, related work, and explicit maturity gates.</p></div><div class="grid-3">
-<a class="card card-link" href="research/signal-processing.html"><span class="label">AN-01</span><h3>Fundamental signal estimation</h3><p>Exact method, RMS scaling, sequence quantities, tests, and current limitations.</p></a>
-<a class="card card-link" href="research/validation.html"><span class="label">Validation</span><h3>Stable scenario identifiers</h3><p>Measurement, operate, restrain, and trust-blocked cases tied to exact automated tests.</p></a>
-<a class="card card-link" href="roadmap.html"><span class="label">Roadmap</span><h3>Evidence before claim expansion</h3><p>Gate-based criteria for estimator robustness, transformer protection, CPU isolation, timing benchmarks, and HIL work.</p></a>
-</div><div class="actions"><a class="button light" href="research/index.html">Open research and validation</a><a class="button light" href="laboratory-exercises.html">Open laboratory exercises</a></div></div></section>
+<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Bounded claims</p><h2>Behavioral fidelity is not calibration or certification.</h2><p>The 1 µs clock, 10 kHz BI sampler, contact behavior, ADC model, and relay delays define a deterministic behavioral laboratory profile. ARVREL does not claim a calibrated commercial test set, a manufacturer-specific relay clone, IEC 61850 conformance, IEC 60255 type testing, commissioning acceptance, or protection-grade hard-real-time performance.</p></div><div class="actions"><a class="button light" href="safety-and-limitations.html">Read safety and fidelity boundaries</a><a class="button light" href="documentation.html">Open documentation hub</a></div></div></section>
 
-<section class="warning"><div class="wrap"><div class="section-heading"><p class="section-kicker">Clear engineering boundary</p><h2>Virtual-output laboratory software.</h2><p><strong>ARVREL is not a certified protection or control IED or calibrated relay test set.</strong> Modeled IEC 61850 MMS controls terminate inside the virtual AVR/OLTC process. ARVREL provides no physical contact, physical OLTC motor authority, operational GOOSE trip authority, autonomous switching, IEC 61850 conformance certification, IEC 60255 type-test evidence, or hard-real-time guarantee.</p></div><div class="actions"><a class="button light" href="safety-and-limitations.html">Review safety and limitations</a><a class="button light" href="https://github.com/masarray/arvrel/blob/main/SECURITY.md">Security policy</a></div></div></section>
-
-<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Public engineering beta</p><h2>Begin with deterministic software baselines.</h2><p>Use the official Windows package, validate the internal feeder workflow, run the transformer self-test, then evaluate the simulated AVR before moving to controlled replay or authorized laboratory Ethernet testing.</p></div><div class="actions"><a class="button light" href="download.html">Download and verify</a><a class="button light" href="quick-start.html">Open quick start</a><a class="button light" href="documentation.html">Browse documentation</a><a class="button light" href="faq.html">Read FAQ</a><a class="button light" href="release-status.html">Review release status</a></div></div></section>
+<section><div class="wrap"><div class="section-heading"><p class="section-kicker">Start from your task</p><h2>Evaluate the current release without guessing which document is authoritative.</h2></div><div class="grid-3"><a class="card card-link" href="quick-start.html"><span class="label">First run</span><h3>Closed-loop quick start</h3><p>Exercise a feeder fault, read the timing rail, auto-stop, frozen capture, and one-click re-arm.</p></a><a class="card card-link" href="capabilities.html"><span class="label">Scope</span><h3>Current capabilities</h3><p>Review feeder, transformer, AVR/MMS, process-bus, timing, and evidence capabilities.</p></a><a class="card card-link" href="documentation.html"><span class="label">Authority</span><h3>Documentation map</h3><p>Find current status, architecture, user workflows, research notes, historical milestones, and release integrity.</p></a></div></div></section>
 </main>
-
-<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">IEC 61850 Virtual Protection & Control IED Laboratory</div></div><div class="small"><a href="documentation.html">Documentation</a> · <a href="faq.html">FAQ</a> · <a href="download.html">Download</a> · <a href="research/index.html">Research</a> · <a href="roadmap.html">Roadmap</a> · <a href="release-status.html">Release status</a> · <a href="trust-manifest.json">Trust manifest</a> · <a href="https://github.com/masarray/arvrel">Source</a><br>Copyright © 2026 Ari Sulistiono. GPL-3.0-or-later; separate commercial terms available.</div></div></footer>
+<footer class="site-footer"><div class="wrap footer-grid"><div><div class="footer-title">ARVREL</div><div class="small">IEC 61850 Virtual Protection & Control IED Laboratory</div></div><div class="small"><a href="release-status.html">Release status</a> · <a href="trust-manifest.json">Trust manifest</a> · <a href="https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.6">Release</a> · <a href="https://github.com/masarray/arvrel">Source</a></div></div></footer>
 </body>
 </html>
