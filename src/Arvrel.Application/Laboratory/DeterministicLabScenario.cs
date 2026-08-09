@@ -51,6 +51,9 @@ public sealed class DeterministicLabScenario
     public bool ApplyProfile(VirtualInjectionProfile profile)
         => _runtime.Apply(profile);
 
+    public bool ApplyContinuousProfile(VirtualInjectionProfile profile)
+        => _runtime.ApplyContinuous(profile);
+
     public bool ApplyPreset(string name)
         => VirtualInjectionCtStudyScenarios.Contains(name)
             ? ApplyProfile(VirtualInjectionCtStudyScenarios.Create(name, ActiveProfile.FrequencyHz))

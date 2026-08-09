@@ -17,7 +17,7 @@ public sealed record VirtualInjectionRuntimeSnapshot(
     public string OutputState => IsRunning ? (IsCoherent ? "running" : "starting") : "stopped";
 }
 
-public sealed class VirtualInjectionRuntime
+public sealed partial class VirtualInjectionRuntime
 {
     private const int StateAdvanceChunkSamples = 4_096;
 
