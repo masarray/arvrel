@@ -170,6 +170,7 @@ public partial class MainWindow
 
     private void P6Relay_ResetRequested(object sender, RoutedEventArgs e)
     {
+        StatusText.ToolTip = null;
         Reset_Click(sender, e);
         NotifyRelayOperatorReset();
         NotifyRelayEvidenceReset();
