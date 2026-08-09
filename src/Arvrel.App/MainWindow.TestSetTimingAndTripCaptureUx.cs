@@ -22,6 +22,7 @@ public partial class MainWindow
     private TextBlock? _testSetBi2Edge;
     private TextBlock? _testSetBi1Edge;
     private TextBlock? _testSetTimerValue;
+    private TextBlock? _testSetTimingRail;
     private long _tripCaptureDisplayRunId = -1;
     private WaveformFrame? _tripCaptureWaveform;
     private PhasorDisplayFrame? _tripCapturePhasor;
@@ -55,7 +56,7 @@ public partial class MainWindow
 
         _testSetTimingUxInitialized = true;
         if (_virtualInjectionView.RowDefinitions.Count >= 3)
-            _virtualInjectionView.RowDefinitions[2].Height = new GridLength(52);
+            _virtualInjectionView.RowDefinitions[2].Height = new GridLength(58);
 
         // The existing footer uses column 0 for provenance/CT observability and
         // column 1 for action buttons. Insert a dedicated middle timing column and
@@ -114,7 +115,7 @@ public partial class MainWindow
             BorderBrush = TestSetBrush("#D7E1E8"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(8, 5, 8, 5),
+            Padding = new Thickness(8, 4, 8, 4),
             Margin = new Thickness(8, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -122,6 +123,8 @@ public partial class MainWindow
         };
 
         var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -139,13 +142,16 @@ public partial class MainWindow
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 4, 0)
         };
+        Grid.SetRow(label, 0);
         root.Children.Add(label);
 
         var bi2 = BuildBinaryInputCluster("BI2", "PICKUP", out _testSetBi2Lamp, out _testSetBi2State, out _testSetBi2Edge);
+        Grid.SetRow(bi2, 0);
         Grid.SetColumn(bi2, 2);
         root.Children.Add(bi2);
 
         var bi1 = BuildBinaryInputCluster("BI1", "TRIP", out _testSetBi1Lamp, out _testSetBi1State, out _testSetBi1Edge);
+        Grid.SetRow(bi1, 0);
         Grid.SetColumn(bi1, 4);
         root.Children.Add(bi1);
 
@@ -161,8 +167,24 @@ public partial class MainWindow
             Margin = new Thickness(14, 0, 0, 0),
             TextTrimming = TextTrimming.CharacterEllipsis
         };
+        Grid.SetRow(_testSetTimerValue, 0);
         Grid.SetColumn(_testSetTimerValue, 5);
         root.Children.Add(_testSetTimerValue);
+
+        _testSetTimingRail = new TextBlock
+        {
+            Text = "T0 · waiting for timed injection",
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 8.3,
+            Foreground = TestSetBrush("#607383"),
+            Margin = new Thickness(0, 3, 0, 0),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = "Chronological timing rail. BI2 is generic ANY PICKUP; operated-element pickup and trip are shown separately."
+        };
+        Grid.SetRow(_testSetTimingRail, 1);
+        Grid.SetColumn(_testSetTimingRail, 0);
+        Grid.SetColumnSpan(_testSetTimingRail, 6);
+        root.Children.Add(_testSetTimingRail);
 
         return border;
     }
@@ -237,7 +259,8 @@ public partial class MainWindow
             _testSetBi1State is null ||
             _testSetBi2Edge is null ||
             _testSetBi1Edge is null ||
-            _testSetTimerValue is null)
+            _testSetTimerValue is null ||
+            _testSetTimingRail is null)
             return;
 
         var testSet = _closedLoopBench?.TestSetSnapshot;
@@ -248,6 +271,9 @@ public partial class MainWindow
             _testSetBi2Edge.Text = "↑ —";
             _testSetBi1Edge.Text = "↑ —";
             _testSetTimerValue.Text = "TIMER IDLE";
+            _testSetTimingRail.Text = "T0 · waiting for timed injection";
+            _testSetTimingPanel.Background = TestSetBrush("#F7FAFC");
+            _testSetTimingPanel.BorderBrush = TestSetBrush("#D7E1E8");
             return;
         }
 
@@ -265,7 +291,7 @@ public partial class MainWindow
             VirtualTestSetTimerState.Armed when testSet.ElapsedTime is { } elapsed
                 => $"TIMER {elapsed.TotalMilliseconds:0.000} ms · ARMED",
             VirtualTestSetTimerState.Completed when testSet.TripTime is { } measured
-                => $"MEASURED TRIP {measured.TotalMilliseconds:0.000} ms",
+                => $"OUTPUT OFF · FROZEN CAPTURE · BI1 {measured.TotalMilliseconds:0.000} ms",
             VirtualTestSetTimerState.Blocked
                 => "NOT ARMED · BI ACTIVE",
             _ => "TIMER IDLE"
@@ -273,16 +299,42 @@ public partial class MainWindow
 
         _testSetTimerValue.Foreground = testSet.TimerState switch
         {
-            VirtualTestSetTimerState.Completed => TestSetBrush("#A73333"),
+            VirtualTestSetTimerState.Completed => TestSetBrush("#8B3A3A"),
             VirtualTestSetTimerState.Blocked => TestSetBrush("#A56B16"),
             VirtualTestSetTimerState.Armed => TestSetBrush("#1E6A45"),
             _ => TestSetBrush("#607383")
         };
+
+        _testSetTimingPanel.Background = testSet.TimerState switch
+        {
+            VirtualTestSetTimerState.Completed => TestSetBrush("#EEF4F7"),
+            VirtualTestSetTimerState.Blocked => TestSetBrush("#FFF8E8"),
+            _ => TestSetBrush("#F7FAFC")
+        };
+        _testSetTimingPanel.BorderBrush = testSet.TimerState switch
+        {
+            VirtualTestSetTimerState.Completed => TestSetBrush("#9DB2C0"),
+            VirtualTestSetTimerState.Blocked => TestSetBrush("#D5B56D"),
+            _ => TestSetBrush("#D7E1E8")
+        };
+
+        _testSetTimingRail.Text = BuildClosedLoopTimingRail(testSet, _snapshot);
+        _testSetTimingRail.Foreground = testSet.TimerState == VirtualTestSetTimerState.Completed
+            ? TestSetBrush("#344F60")
+            : TestSetBrush("#607383");
+
+        var detail = BuildClosedLoopTimingDetail(testSet, _snapshot);
+        var captureSemantics = TryGetTripCaptureFrameOffsetMicroseconds(_closedLoopBench?.TripCapture, out var captureOffsetUs)
+            ? $"\nBI1 accepted edge is timer authority. Frozen display frame is +{captureOffsetUs} µs after BI1 on the relay processing grid."
+            : string.Empty;
         _testSetTimingPanel.ToolTip =
             $"Timer state: {testSet.TimerState}\n" +
             $"Run: {testSet.TestRunId}\n" +
+            $"First ANY-pickup source: {FirstAnyPickupSourceFor(testSet)}\n" +
             $"BI2 accepted: {(testSet.PickupInput ? "ON" : "OFF")} · raw BO2: {(testSet.PickupContactRaw ? "ON" : "OFF")}\n" +
-            $"BI1 accepted: {(testSet.TripInput ? "ON" : "OFF")} · raw BO1: {(testSet.TripContactRaw ? "ON" : "OFF")}" +
+            $"BI1 accepted: {(testSet.TripInput ? "ON" : "OFF")} · raw BO1: {(testSet.TripContactRaw ? "ON" : "OFF")}\n" +
+            detail +
+            captureSemantics +
             (string.IsNullOrWhiteSpace(testSet.ArmBlockReason)
                 ? string.Empty
                 : $"\n{testSet.ArmBlockReason}");
