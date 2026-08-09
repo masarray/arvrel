@@ -90,7 +90,15 @@ public partial class MainWindow
             : "unresolved";
 
     private static bool HasAnyProtectionPickup(ProtectionSnapshot snapshot)
-        => ActivePickupSources(snapshot).Count > 0;
+        => snapshot.Phase50.Pickup ||
+           snapshot.Phase51.Pickup ||
+           snapshot.Earth50.Pickup ||
+           snapshot.Earth51.Pickup ||
+           snapshot.Feeder.DirectionalPhase67.Pickup ||
+           snapshot.Feeder.DirectionalEarth67N.Pickup ||
+           snapshot.Feeder.Undervoltage27.Pickup ||
+           snapshot.Feeder.Overvoltage59.Pickup ||
+           snapshot.Feeder.ResidualOvervoltage59N.Pickup;
 
     private static string DescribeActivePickupSources(ProtectionSnapshot snapshot)
     {
