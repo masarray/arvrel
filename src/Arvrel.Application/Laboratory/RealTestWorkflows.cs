@@ -446,12 +446,15 @@ public sealed class RealTestWorkflowEngine
         ClosedLoopVirtualTestBenchStep? last = null;
         while (elapsed < duration)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            cancellationToken.ThrowIfCancellationRequested();
             var quantum = Min(ClosedLoopVirtualTestBench.SimulationQuantum, duration - elapsed);
             last = _bench.Advance(quantum);
             elapsed += quantum;
         }
+
+        // Cancellation can arrive during the final Advance call. Re-check before
+        // returning so a partial/final dwell can never be reported as completed.
+        cancellationToken.ThrowIfCancellationRequested();
         return last ?? _bench.Advance(TimeSpan.Zero);
     }
 
