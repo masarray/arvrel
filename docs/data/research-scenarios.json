@@ -1,119 +1,24 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "ARVREL",
-  "version": "0.1.0-beta.5",
+  "version": "0.1.0-beta.6",
   "evidenceClass": "deterministic-software-tests",
-  "boundary": "These scenarios demonstrate repeatable behavior for the referenced source and fixtures. They are not calibration, IEC 60255 type-test, IEC 61850 conformance, hard-real-time, commissioning, or operational-trip evidence.",
+  "boundary": "These scenarios demonstrate repeatable behavior for the referenced source and fixtures. Closed-loop timing is a deterministic behavioral software model, not calibrated test-equipment metrology. The scenarios are not IEC 60255 type-test, IEC 61850 conformance, hard-real-time, commissioning, or operational-trip evidence.",
   "scenarios": [
-    {
-      "id": "SIG-001",
-      "title": "Balanced fundamental RMS and positive sequence",
-      "category": "measurement",
-      "input": "80 samples per cycle; balanced 2 A RMS current and 63.5 V RMS voltage at nominal frequency",
-      "expected": "Phase RMS and positive-sequence magnitudes match the synthetic inputs; negative sequence remains near zero",
-      "outcome": "measure",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "FundamentalEstimator_ReturnsRmsMagnitudeAndBalancedPositiveSequence"
-    },
-    {
-      "id": "P50-001",
-      "title": "Normal load remains secure",
-      "category": "protection-security",
-      "input": "Balanced 1 A phase current and 0.02 A residual current under healthy SMV trust",
-      "expected": "No phase or earth pickup and no virtual trip latch",
-      "outcome": "restrain",
-      "sourceFile": "src/Arvrel.Protection/ProtectionEngine.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs",
-      "testMethod": "NormalLoad_RemainsSecure"
-    },
-    {
-      "id": "P50-002",
-      "title": "Phase instantaneous overcurrent operates after definite delay",
-      "category": "protection-operate",
-      "input": "Phase A above 50P pickup under healthy SMV trust",
-      "expected": "Phase pickup, configured delay completion, and virtual trip latch",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/ProtectionEngine.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs",
-      "testMethod": "PhaseInstantaneous_TripsAfterDefiniteDelay"
-    },
-    {
-      "id": "TRUST-001",
-      "title": "SMV trust gate blocks trip without hiding pickup",
-      "category": "trust-restraint",
-      "input": "Phase current above pickup with trip-blocked SMV trust reason SMPCNT_GAP",
-      "expected": "Pickup remains visible, blocked state is asserted, and no new virtual trip is latched",
-      "outcome": "block-trip",
-      "sourceFile": "src/Arvrel.Protection/ProtectionEngine.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs",
-      "testMethod": "SmvTrustGate_BlocksOperationWithoutHidingPickup"
-    },
-    {
-      "id": "V27-001",
-      "title": "Undervoltage 27 operates after configured delay",
-      "category": "protection-operate",
-      "input": "Balanced 70 V phase-neutral phasors with 90 V pickup and two-of-three logic",
-      "expected": "27 operates after the configured delay and latches a virtual trip",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "Undervoltage27_OperatesAfterConfiguredDelay"
-    },
-    {
-      "id": "V59-001",
-      "title": "Overvoltage 59 operates after configured delay",
-      "category": "protection-operate",
-      "input": "Balanced 125 V phase-neutral phasors with 110 V pickup and one-of-three logic",
-      "expected": "59 operates after the configured delay and latches a virtual trip",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "Overvoltage59_OperatesAfterConfiguredDelay"
-    },
-    {
-      "id": "V59N-001",
-      "title": "Residual overvoltage 59N operates from 3V0",
-      "category": "protection-operate",
-      "input": "Residual voltage magnitude above 59N pickup",
-      "expected": "59N operates from the residual quantity and latches a virtual trip",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "ResidualOvervoltage59N_OperatesFromThreeVZero"
-    },
-    {
-      "id": "DIR-001",
-      "title": "67P forward direction operates",
-      "category": "directional-operate",
-      "input": "Positive-sequence current in the configured forward region with adequate V1 polarization",
-      "expected": "67P directional pickup, delay completion, and virtual trip",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "DirectionalPhase67_TripsForwardAndRestrainsReverse"
-    },
-    {
-      "id": "DIR-002",
-      "title": "67P reverse direction restrains",
-      "category": "directional-restraint",
-      "input": "Positive-sequence current in the reverse region with adequate V1 polarization",
-      "expected": "No directional pickup and no virtual trip",
-      "outcome": "restrain",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "DirectionalPhase67_TripsForwardAndRestrainsReverse"
-    },
-    {
-      "id": "DIR-003",
-      "title": "67N prefers independent residual channels",
-      "category": "directional-operate",
-      "input": "Balanced phase sums with explicit residual-current and residual-voltage channels",
-      "expected": "67N uses explicit 3I0/3V0 provenance and operates in the selected direction",
-      "outcome": "operate",
-      "sourceFile": "src/Arvrel.Protection/FeederProtection.cs",
-      "testFile": "tests/Arvrel.Protection.Tests/FeederProtectionTests.cs",
-      "testMethod": "DirectionalEarth67N_PrefersIndependentResidualChannelOverBalancedPhaseSum"
-    }
+    {"id":"SIG-001","title":"Balanced fundamental RMS and positive sequence","category":"measurement","input":"80 samples per cycle; balanced 2 A RMS current and 63.5 V RMS voltage at nominal frequency","expected":"Phase RMS and positive-sequence magnitudes match the synthetic inputs; negative sequence remains near zero","outcome":"measure","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"FundamentalEstimator_ReturnsRmsMagnitudeAndBalancedPositiveSequence"},
+    {"id":"P50-001","title":"Normal load remains secure","category":"protection-security","input":"Balanced 1 A phase current and 0.02 A residual current under healthy SMV trust","expected":"No phase or earth pickup and no virtual trip latch","outcome":"restrain","sourceFile":"src/Arvrel.Protection/ProtectionEngine.cs","testFile":"tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs","testMethod":"NormalLoad_RemainsSecure"},
+    {"id":"P50-002","title":"Phase instantaneous overcurrent operates after definite delay","category":"protection-operate","input":"Phase A above 50P pickup under healthy SMV trust","expected":"Phase pickup, configured delay completion, and virtual trip latch","outcome":"operate","sourceFile":"src/Arvrel.Protection/ProtectionEngine.cs","testFile":"tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs","testMethod":"PhaseInstantaneous_TripsAfterDefiniteDelay"},
+    {"id":"TRUST-001","title":"SMV trust gate blocks trip without hiding pickup","category":"trust-restraint","input":"Phase current above pickup with trip-blocked SMV trust reason SMPCNT_GAP","expected":"Pickup remains visible, blocked state is asserted, and no new virtual trip is latched","outcome":"block-trip","sourceFile":"src/Arvrel.Protection/ProtectionEngine.cs","testFile":"tests/Arvrel.Protection.Tests/ProtectionEngineTests.cs","testMethod":"SmvTrustGate_BlocksOperationWithoutHidingPickup"},
+    {"id":"V27-001","title":"Undervoltage 27 operates after configured delay","category":"protection-operate","input":"Balanced 70 V phase-neutral phasors with 90 V pickup and two-of-three logic","expected":"27 operates after the configured delay and latches a virtual trip","outcome":"operate","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"Undervoltage27_OperatesAfterConfiguredDelay"},
+    {"id":"V59-001","title":"Overvoltage 59 operates after configured delay","category":"protection-operate","input":"Balanced 125 V phase-neutral phasors with 110 V pickup and one-of-three logic","expected":"59 operates after the configured delay and latches a virtual trip","outcome":"operate","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"Overvoltage59_OperatesAfterConfiguredDelay"},
+    {"id":"V59N-001","title":"Residual overvoltage 59N operates from 3V0","category":"protection-operate","input":"Residual voltage magnitude above 59N pickup","expected":"59N operates from the residual quantity and latches a virtual trip","outcome":"operate","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"ResidualOvervoltage59N_OperatesFromThreeVZero"},
+    {"id":"DIR-001","title":"67P forward direction operates","category":"directional-operate","input":"Positive-sequence current in the configured forward region with adequate V1 polarization","expected":"67P directional pickup, delay completion, and virtual trip","outcome":"operate","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"DirectionalPhase67_TripsForwardAndRestrainsReverse"},
+    {"id":"DIR-002","title":"67P reverse direction restrains","category":"directional-restraint","input":"Positive-sequence current in the reverse region with adequate V1 polarization","expected":"No directional pickup and no virtual trip","outcome":"restrain","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"DirectionalPhase67_TripsForwardAndRestrainsReverse"},
+    {"id":"DIR-003","title":"67N prefers independent residual channels","category":"directional-operate","input":"Balanced phase sums with explicit residual-current and residual-voltage channels","expected":"67N uses explicit 3I0/3V0 provenance and operates in the selected direction","outcome":"operate","sourceFile":"src/Arvrel.Protection/FeederProtection.cs","testFile":"tests/Arvrel.Protection.Tests/FeederProtectionTests.cs","testMethod":"DirectionalEarth67N_PrefersIndependentResidualChannelOverBalancedPhaseSum"},
+    {"id":"MET-001","title":"CMC-style behavioral profile uses microsecond clock and 10 kHz BI sampling","category":"closed-loop-metrology","input":"Default MetrologyTimingProfile.CmcStyle","expected":"1 us metrology clock resolution, 10 kHz BI sampling, 100 us BI sample period, 0.5 ms deglitch, and zero debounce holdoff","outcome":"profile","sourceFile":"src/Arvrel.Application/Laboratory/MetrologyTiming.cs","testFile":"tests/Arvrel.Application.Tests/MetrologyGradeTimingTests.cs","testMethod":"CmcStyleProfileUsesMicrosecondClockAndTenKilohertzBinarySampling"},
+    {"id":"MET-002","title":"Causal relay front end starts from settled pre-fault history","category":"closed-loop-acquisition","input":"Strong phase fault applied at T0 to a powered behavioral numerical relay","expected":"Measurement is valid at T0, no artificial empty one-cycle blackout occurs, and pickup develops causally as post-T0 samples replace pre-fault history","outcome":"measure-pickup","sourceFile":"src/Arvrel.Application/Laboratory/CausalRelayFrontEnd.cs","testFile":"tests/Arvrel.Application.Tests/MetrologyGradeTimingTests.cs","testMethod":"CausalRelayFrontEndStartsFromSettledPreFaultHistoryAndRespondsWithoutOneCycleBlackout"},
+    {"id":"MET-003","title":"Desktop A-B-G closed loop has no unexplained trip timing gap","category":"closed-loop-operate","input":"Desktop-style A-B-G fault with the normal default protection setting group","expected":"Generic ANY PICKUP is distinct from the operated element, operated-element timing is causal, relay trip-to-BI1 follows the modeled contact/input path, and measured trip remains within the regression envelope","outcome":"operate","sourceFile":"src/Arvrel.Application/Laboratory/ClosedLoopVirtualTestBench.cs","testFile":"tests/Arvrel.Application.Tests/MetrologyGradeTimingTests.cs","testMethod":"DesktopDefaultA_B_GRunHasNoUnexplainedTripTimingGap"},
+    {"id":"MET-004","title":"Closed-loop event timeline is chronologically causal","category":"closed-loop-evidence","input":"Timed feeder injection through relay contact and TESTSET BI paths","expected":"T0, relay pickup, relay trip request, BI2, BI1, and output stop events remain monotonic and event-derived timing matches authoritative snapshot timing","outcome":"evidence","sourceFile":"src/Arvrel.Application/Laboratory/MetrologyTiming.cs","testFile":"tests/Arvrel.Application.Tests/MetrologyGradeTimingTests.cs","testMethod":"MetrologyTimelineOrdersPhysicalClosedLoopEvents"},
+    {"id":"MET-005","title":"Open trip wire prevents external measured trip","category":"closed-loop-security","input":"Relay BO1-to-TESTSET BI1 virtual trip wire disconnected while an internal fault operates the relay","expected":"Relay internal trip may latch, but no TESTSET trip time is measured and the source does not trip-auto-stop","outcome":"restrain-external-trip","sourceFile":"src/Arvrel.Application/Laboratory/ClosedLoopVirtualTestBench.cs","testFile":"tests/Arvrel.Application.Tests/MetrologyGradeTimingTests.cs","testMethod":"OpenTripWireStillPreventsMeasuredTripInMetrologyMode"}
   ]
 }
