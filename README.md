@@ -25,6 +25,19 @@
 
 ![ARVREL Windows engineering workspace](docs/assets/arvrel-main.webp)
 
+### Latest desktop views
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/arvrel-screen-1.webp" alt="Latest ARVREL desktop workspace view 1"></td>
+<td width="50%"><img src="docs/assets/arvrel-screen-2.webp" alt="Latest ARVREL desktop workspace view 2"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/arvrel-screen-3.webp" alt="Latest ARVREL desktop workspace view 3"></td>
+<td width="50%"><img src="docs/assets/arvrel-screen-4.webp" alt="Latest ARVREL desktop workspace view 4"></td>
+</tr>
+</table>
+
 ## Repository scope
 
 This repository is the **stable Windows WPF edition** of ARVREL. The public desktop product combines:
