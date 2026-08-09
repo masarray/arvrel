@@ -192,7 +192,8 @@ public sealed record VirtualTestSetTimingSnapshot(
     long? RelayPickupDetectedMicroseconds = null,
     long? RelayTripDetectedMicroseconds = null,
     int TimingResolutionMicroseconds = 250,
-    IReadOnlyList<MetrologyEvent>? MetrologyTimeline = null)
+    IReadOnlyList<MetrologyEvent>? MetrologyTimeline = null,
+    long? ObservedMicroseconds = null)
 {
     public bool TimerArmed => TimerState == VirtualTestSetTimerState.Armed;
     public bool TimerCompleted => TimerState == VirtualTestSetTimerState.Completed;
@@ -245,8 +246,8 @@ public sealed record VirtualTestSetTimingSnapshot(
         {
             if (TripDetectedMicroseconds is { } tripUs && TimerCompleted)
                 return TimeSpan.FromTicks(tripUs * 10);
-            if (InjectionStartedMicroseconds is not null && MetrologyTimeline is { Count: > 0 })
-                return TimeSpan.FromTicks(MetrologyTimeline[^1].Microseconds * 10);
+            if (ObservedMicroseconds is { } observedUs && InjectionStartedMicroseconds is not null)
+                return TimeSpan.FromTicks(observedUs * 10);
             if (InjectionStartedAt is not { } start)
                 return null;
             var end = TimerCompleted && TripDetectedAt is { } trip
@@ -667,7 +668,7 @@ public sealed class ClosedLoopVirtualTestBench
             var completed = Snapshot();
             _tripCapture = new ClosedLoopTripCapture(
                 _testRunId,
-                _tripDetectedAt!.Value,
+                relayMeasurement.Timestamp,
                 sourceStep,
                 relayMeasurement,
                 protection,
@@ -872,7 +873,8 @@ public sealed class ClosedLoopVirtualTestBench
             Relative(_relayPickupDetectedUs),
             Relative(_relayTripDetectedUs),
             _metrologyProfile?.BinaryInputSamplePeriodMicroseconds ?? (int)Math.Round(SimulationQuantum.TotalMilliseconds * 1_000),
-            _metrologyProfile is null ? null : _metrologyTimeline.ToArray());
+            _metrologyProfile is null ? null : _metrologyTimeline.ToArray(),
+            _metrologyProfile is null ? null : Relative(_metrologyClock?.Microseconds));
     }
 
     private static bool HasAnyPickup(ProtectionSnapshot snapshot)
