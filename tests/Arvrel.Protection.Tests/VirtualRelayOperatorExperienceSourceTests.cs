@@ -30,14 +30,16 @@ public sealed class VirtualRelayOperatorExperienceSourceTests
         var model = Read("src", "Arvrel.App", "Controls", "VirtualRelay", "VirtualRelayOperatorModel.cs");
         var experience = Read("src", "Arvrel.App", "MainWindow.RelayOperatorExperience.cs");
         var p6 = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+        var resetAuthority = Read("src", "Arvrel.App", "MainWindow.RelayResetSeparation.cs");
 
         StringAssert.Contains(model, "public int AcknowledgeAll()");
         StringAssert.Contains(model, "public int ClearInactiveAcknowledged()");
         StringAssert.Contains(experience, "RESET and ACK are intentionally different operations");
         StringAssert.Contains(experience, "alarm history retained until ACK/CLEAR");
         StringAssert.Contains(experience, "RESET DOES NOT ACK");
-        StringAssert.Contains(p6, "Reset_Click(sender, e);");
-        StringAssert.Contains(p6, "NotifyRelayOperatorReset();");
+        StringAssert.Contains(p6, "ExecuteRelayResetCommand();");
+        Assert.IsFalse(p6.Contains("Reset_Click(sender, e);", StringComparison.Ordinal));
+        StringAssert.Contains(resetAuthority, "NotifyRelayOperatorReset();");
     }
 
     [TestMethod]

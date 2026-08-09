@@ -39,6 +39,7 @@ public partial class MainWindow
         _timer.Tick += ClosedLoopTimer_Tick;
 
         InstallClosedLoopEvidenceOverride();
+        InitializeClosedLoopOperatorClarity();
         AddEvent("BACKPLANE", "Closed-loop active · causal relay ADC/DFT · 1 µs metrology clock · 10 kHz TESTSET BI");
         EngineModeText.Text = SmvProcessBusController.IsAvailable
             ? "P0 METROLOGY · ARIEC61850 READY"
@@ -64,6 +65,8 @@ public partial class MainWindow
             _closedLoopEvidenceButton.Click += ExportVirtualInjectionEvidence_Click;
             _closedLoopEvidenceButton = null;
         }
+
+        StatusText.ToolTip = null;
         _closedLoopBench = null;
     }
 
@@ -74,12 +77,42 @@ public partial class MainWindow
             if (_closedLoopBench is null)
                 return;
 
+            // Trip details belong to one completed test run only. As soon as a new
+            // run is armed/idle, discard the previous run's explanatory tooltip so
+            // unrelated status text can never inherit stale BI1/capture evidence.
+            if (_closedLoopBench.TestSetSnapshot.TimerState != VirtualTestSetTimerState.Completed &&
+                StatusText.ToolTip is not null)
+            {
+                StatusText.ToolTip = null;
+            }
+
             if (_internalRunning)
             {
-                var result = _closedLoopBench.Advance(TimeSpan.FromMilliseconds(40));
-                _snapshot = result.Protection;
-                ObserveTransitions(_snapshot);
-                ReportClosedLoopTestSetTransitions(result.TestSet);
+                // Advance one 250 µs relay quantum at a time from the WPF presentation
+                // slice. The bench still owns all timing authority; this only lets the
+                // desktop observe the exact first frame where generic relay pickup is
+                // asserted instead of trying to infer its source 40 ms later.
+                var remaining = TimeSpan.FromMilliseconds(40);
+                ClosedLoopVirtualTestBenchStep? result = null;
+                while (remaining > TimeSpan.Zero && _scenario.IsRunning)
+                {
+                    var quantum = remaining > ClosedLoopBench.SimulationQuantum
+                        ? ClosedLoopBench.SimulationQuantum
+                        : remaining;
+                    result = _closedLoopBench.Advance(quantum);
+                    remaining -= quantum;
+
+                    _snapshot = result.Protection;
+                    ObserveFirstAnyPickupSource(result.TestSet, result.Protection);
+                    ObserveClosedLoopProtectionTransitions(result.TestSet, _snapshot);
+                    ReportClosedLoopTestSetTransitions(result.TestSet);
+
+                    if (!result.TestSet.OutputRunning)
+                        break;
+                }
+
+                if (result is null)
+                    return;
 
                 _internalRunning = _scenario.IsRunning;
                 var displayStep = _scenario.Project(result.Source, _pickupPosition, _tripPosition) with
@@ -87,6 +120,7 @@ public partial class MainWindow
                     Measurement = result.RelayMeasurement
                 };
                 RenderInternal(displayStep, _snapshot);
+                RefreshClosedLoopOperatorState(result.TestSet, _snapshot);
 
                 if (!_internalRunning)
                 {
@@ -96,6 +130,9 @@ public partial class MainWindow
             }
             return;
         }
+
+        if (StatusText.ToolTip is not null)
+            StatusText.ToolTip = null;
 
         _streamRefreshDivider++;
         if (_streamRefreshDivider >= 6)
@@ -112,41 +149,26 @@ public partial class MainWindow
         {
             _lastReportedTestSetPickup = pickup;
             AddEvent(
-                "TEST PICKUP",
-                $"BI2 ANY PICKUP ↑ · START→BI2 {testSet.PickupTime?.TotalMilliseconds:0.000} ms · resolution {testSet.TimingResolutionMicroseconds} µs");
+                "TESTSET BI2",
+                $"{testSet.PickupTime?.TotalMilliseconds:0.000} ms · ACCEPT · from RELAY ANY [{FirstAnyPickupSourceFor(testSet)}]");
         }
 
         if (testSet.TripDetectedAt is not { } trip || trip == _lastReportedTestSetTrip)
             return;
 
         _lastReportedTestSetTrip = trip;
-        var pickupText = testSet.PickupTime is { } pickupTime
-            ? $"BI2 ANY {pickupTime.TotalMilliseconds:0.000} ms"
-            : "BI2 ANY —";
-        var tripText = testSet.TripTime is { } tripTime
-            ? $"BI1 {tripTime.TotalMilliseconds:0.000} ms"
-            : "BI1 —";
-
-        var operationTiming = RelayOperationTimingCorrelator.Correlate(testSet, _snapshot);
-        var relayText = operationTiming is { } timing
-            ? timing.LiveTripRequestFromStart is { } liveTrip
-                ? $"{timing.Element} pickup {timing.ElementPickupFromStart.TotalMilliseconds:0.000} ms · " +
-                  $"P→T {timing.ElementPickupToTrip.TotalMilliseconds:0.000} ms · " +
-                  $"relay START→TRIP {liveTrip.TotalMilliseconds:0.000} ms"
-                : $"{timing.Element} pickup {timing.ElementPickupFromStart.TotalMilliseconds:0.000} ms · " +
-                  $"P→T {timing.ElementPickupToTrip.TotalMilliseconds:0.000} ms"
-            : testSet.RelayTripTime is { } relayTrip
-                ? $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms · operated-element pickup unavailable"
-                : "relay live timing unavailable";
-        var outputPath = testSet.RelayTripToBi1 is { } external
-            ? $" · relay TRIP→BI1 {external.TotalMilliseconds:0.000} ms"
-            : string.Empty;
+        var rail = BuildClosedLoopTimingRail(testSet, _snapshot);
+        var detail = BuildClosedLoopTimingDetail(testSet, _snapshot);
 
         AddEvent(
-            "TEST TRIP",
-            $"BI1 ↑ · START→BI1 {testSet.TripTime?.TotalMilliseconds:0.000} ms · {testSet.TimingResolutionMicroseconds} µs resolution · output stopped");
-        StatusText.Text =
-            $"TESTSET measured trip · {tripText} · {pickupText} · {relayText}{outputPath} · output stopped · capture frozen at BI1 edge.";
+            "TESTSET BI1",
+            $"{testSet.TripTime?.TotalMilliseconds:0.000} ms · ACCEPT · OUTPUT OFF · {testSet.TimingResolutionMicroseconds} µs resolution");
+
+        StatusText.Text = rail;
+        StatusText.ToolTip =
+            $"{detail}\n" +
+            "TESTSET measurement authority: accepted wired BI1 edge.\n" +
+            "Frozen waveform/phasor: first relay processing frame after that accepted edge, not an interpolated frame at the exact BI sample instant.";
     }
 
     private void InstallClosedLoopEvidenceOverride()
@@ -179,12 +201,30 @@ public partial class MainWindow
 
         var current = _closedLoopBench.Advance(TimeSpan.Zero);
         var algorithmRuntime = AlgorithmRuntimeRegistry.Snapshot();
+        var testSetSnapshot = _closedLoopBench.TestSetSnapshot;
         var operatingElementTiming = RelayOperationTimingCorrelator.Correlate(
-            _closedLoopBench.TestSetSnapshot,
+            testSetSnapshot,
             _snapshot);
+        var tripCapture = _closedLoopBench.TripCapture;
+        long? captureFrameOffsetUs = TryGetTripCaptureFrameOffsetMicroseconds(tripCapture, out var offsetUs)
+            ? offsetUs
+            : null;
+        object? tripCaptureTiming = tripCapture is null
+            ? null
+            : new
+            {
+                measurementAuthority = "TESTSET.BI1 accepted wired rising edge",
+                bi1AcceptedAt = tripCapture.TestSet.TripDetectedAt,
+                bi1AcceptedMicroseconds = tripCapture.TestSet.TripDetectedMicroseconds,
+                captureFrameAt = tripCapture.CapturedAt,
+                captureFrameMicroseconds = tripCapture.TestSet.ObservedMicroseconds,
+                captureFrameOffsetMicroseconds = captureFrameOffsetUs,
+                displayFreezeSemantics = "Frozen waveform/phasor are the first relay processing frame in which the accepted BI1 edge is observable; they are not claimed to be an interpolated state at the exact 10 kHz BI sampling instant."
+            };
+
         var evidence = new
         {
-            schemaVersion = 8,
+            schemaVersion = 9,
             exportedAt = DateTimeOffset.Now,
             application = "ARVREL",
             operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
@@ -218,9 +258,17 @@ public partial class MainWindow
             legacyRelayFrontEnd = _closedLoopBench.FrontEndSnapshot,
             causalRelayFrontEnd = _closedLoopBench.CausalFrontEndSnapshot,
             relayContactProfile = _closedLoopBench.ContactProfile,
-            testSet = _closedLoopBench.TestSetSnapshot,
+            testSet = testSetSnapshot,
+            firstAnyPickup = new
+            {
+                source = FirstAnyPickupSourceFor(testSetSnapshot),
+                relayAssertFromStart = testSetSnapshot.RelayPickupTime,
+                testSetBi2FromStart = testSetSnapshot.PickupTime,
+                semantics = "Source is captured on the first 4 kHz relay frame that asserts generic ANY-PICKUP/BO2; BI2 is the later wired test-set acceptance."
+            },
             operatingElementTiming,
-            tripCapture = _closedLoopBench.TripCapture,
+            tripCapture,
+            tripCaptureTiming,
             relayMeasurement = current.RelayMeasurement,
             protection = _snapshot,
             protectionSettings = _settings,
@@ -234,6 +282,7 @@ public partial class MainWindow
             dialog.FileName,
             JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         AddEvent("EXPORT", System.IO.Path.GetFileName(dialog.FileName));
+        StatusText.ToolTip = null;
         StatusText.Text = $"Closed-loop metrology evidence exported to {dialog.FileName}.";
     }
 }

@@ -56,6 +56,52 @@ public sealed class TestSetTimingCorrectnessTests
     }
 
     [TestMethod]
+    public void OneResetTransactionFullyReleasesFrozenDesktopFeedbackAndRearms()
+    {
+        var source = CreateFaultSource();
+        var relay = new ResearchProtectionEngine(FastPhase50Settings());
+        var bench = new ClosedLoopVirtualTestBench(
+            source,
+            relay,
+            contactProfile: VirtualRelayContactProfile.RealisticNumericalRelay,
+            frontEndProfile: VirtualRelayFrontEndProfile.NumericalRelayDefault,
+            metrologyProfile: MetrologyTimingProfile.CmcStyle);
+
+        Assert.IsTrue(bench.StartInjection());
+        var first = bench.Advance(TimeSpan.FromMilliseconds(150));
+
+        Assert.AreEqual(VirtualTestSetTimerState.Completed, first.TestSet.TimerState);
+        Assert.IsTrue(first.Protection.TripLatched);
+        Assert.IsTrue(first.TestSet.TripInput);
+        Assert.IsFalse(source.IsRunning, "Accepted BI1 must auto-stop the virtual source before reset.");
+        var completedRunId = first.TestSet.TestRunId;
+        var capture = bench.TripCapture;
+        Assert.IsNotNull(capture);
+
+        var reset = ClosedLoopRelayResetTransaction.Execute(bench, relay);
+
+        Assert.IsTrue(reset.ResetApplied);
+        Assert.IsTrue(reset.ReadyToRearm, reset.Detail);
+        Assert.IsFalse(reset.SourceWasRunning);
+        Assert.IsFalse(reset.FinalStep.Protection.TripLatched);
+        Assert.IsFalse(reset.FinalStep.TestSet.PickupContactRaw, "BO2 must release during the same reset transaction.");
+        Assert.IsFalse(reset.FinalStep.TestSet.TripContactRaw, "BO1 must release during the same reset transaction.");
+        Assert.IsFalse(reset.FinalStep.TestSet.PickupInput, "TESTSET.BI2 must be low before RESET reports ready-to-rearm.");
+        Assert.IsFalse(reset.FinalStep.TestSet.TripInput, "TESTSET.BI1 must be low before RESET reports ready-to-rearm.");
+        Assert.IsFalse(source.IsRunning, "Relay reset must not restart or mutate the virtual source.");
+        Assert.AreSame(capture, bench.TripCapture, "Completed trip evidence must survive relay reset for inspection.");
+        Assert.IsTrue(
+            reset.SimulatedSettleTime > bench.FeedbackSettleTime,
+            "The desktop causal acquisition window should require more than the old fixed feedback delay, reproducing the former multi-click reset condition.");
+
+        Assert.IsTrue(bench.TryStartInjection(out var reason), reason);
+        Assert.IsNull(reason);
+        Assert.AreEqual(VirtualTestSetTimerState.Armed, bench.TestSetSnapshot.TimerState);
+        Assert.IsTrue(source.IsRunning);
+        Assert.IsTrue(bench.TestSetSnapshot.TestRunId > completedRunId);
+    }
+
+    [TestMethod]
     public void AutoStopReturnsAtAcceptedBi1EdgeAndPreservesExactFaultCapture()
     {
         var source = CreateFaultSource();

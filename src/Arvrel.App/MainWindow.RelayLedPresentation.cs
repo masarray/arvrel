@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
@@ -47,12 +48,54 @@ public partial class MainWindow
         ConfigureRelayLed(PhaseCLed);
         ConfigureRelayLed(EarthLed);
         ConfigureRelayLed(BlockLed);
+        ClarifyRelayLedSemantics();
 
         // Keep the top application-health indicator compact while giving it the
         // same circular lens, bezel and state-matched glow geometry.
         ConfigureRelayLed(TopHealthLed, compact: true);
 
         Closed += (_, _) => ReleaseRelayLedPresentation();
+    }
+
+    private void ClarifyRelayLedSemantics()
+    {
+        if (PickupLed.Parent is Grid statusGrid)
+        {
+            foreach (var label in statusGrid.Children.OfType<TextBlock>())
+            {
+                switch (Grid.GetRow(label))
+                {
+                    case 1:
+                        label.Text = "PICKUP LIVE";
+                        label.ToolTip = "Live pickup state of the relay frame currently shown. It is not a latched target.";
+                        break;
+                    case 2:
+                        label.Text = "TRIP LATCH";
+                        label.ToolTip = "Latched relay trip indication. Clear it with relay reset.";
+                        break;
+                    case 3:
+                    case 4:
+                    case 5:
+                        label.ToolTip = "Phase indication from the relay frame currently shown. After auto-stop the display may be a frozen trip-capture frame.";
+                        break;
+                    case 6:
+                        label.Text = "EARTH";
+                        label.ToolTip = "Earth/residual indication from the relay frame currently shown. After auto-stop the display may be a frozen trip-capture frame.";
+                        break;
+                    case 7:
+                        label.ToolTip = "Live measurement-block state of the relay frame currently shown.";
+                        break;
+                }
+            }
+        }
+
+        PickupLed.ToolTip = "Live pickup state of the rendered relay frame; not latched.";
+        TripLed.ToolTip = "Latched trip indication.";
+        PhaseALed.ToolTip = "Phase A indication of the rendered relay frame.";
+        PhaseBLed.ToolTip = "Phase B indication of the rendered relay frame.";
+        PhaseCLed.ToolTip = "Phase C indication of the rendered relay frame.";
+        EarthLed.ToolTip = "Earth/residual indication of the rendered relay frame.";
+        BlockLed.ToolTip = "Live SMV/measurement block indication.";
     }
 
     private void ConfigureRelayLed(Ellipse led, bool compact = false)

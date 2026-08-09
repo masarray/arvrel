@@ -216,6 +216,7 @@ public sealed class VirtualRelayP6SourceTests
     public void P6Adapter_RebindsExistingStateAuthoritiesWithoutProtectionChanges()
     {
         var adapter = Read("src", "Arvrel.App", "MainWindow.P6VirtualRelay.cs");
+        var resetAuthority = Read("src", "Arvrel.App", "MainWindow.RelayResetSeparation.cs");
         var annunciation = Read("src", "Arvrel.App", "MainWindow.RelayAnnunciation.cs");
 
         StringAssert.Contains(adapter, "relayHost.Child = relay");
@@ -224,7 +225,9 @@ public sealed class VirtualRelayP6SourceTests
         StringAssert.Contains(adapter, "BlockLed = relay.BlockLamp.Lens");
         StringAssert.Contains(adapter, "InitializeRelayFaceplate()");
         StringAssert.Contains(adapter, "InitializeRelayMeasurementHome()");
-        StringAssert.Contains(adapter, "Reset_Click(sender, e)");
+        StringAssert.Contains(adapter, "ExecuteRelayResetCommand()");
+        Assert.IsFalse(adapter.Contains("Reset_Click(sender, e)", StringComparison.Ordinal));
+        StringAssert.Contains(resetAuthority, "ClosedLoopRelayResetTransaction.Execute");
 
         Assert.IsFalse(adapter.Contains("ProtectionEngine", StringComparison.Ordinal));
         Assert.IsFalse(adapter.Contains("UpdateSettings", StringComparison.Ordinal));
