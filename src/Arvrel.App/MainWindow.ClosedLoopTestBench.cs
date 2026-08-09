@@ -25,10 +25,11 @@ public partial class MainWindow
 
         _closedLoopBench = new ClosedLoopBench(_scenario.CoreScenario, _internalEngine);
 
-        // Replace the legacy 5 ms direct-call loop. WPF remains a 40 ms presenter,
-        // while the platform-neutral bench advances protection and wired I/O at the
-        // injector's native 4 kHz / 0.25 ms deterministic sample grid.
+        // Closed-loop owns the WPF advancement clock exclusively. Detach both the
+        // original timer and the later UI-stability replacement so initializer order
+        // cannot leave two source/protection loops active at the same time.
         _timer.Tick -= Timer_Tick;
+        _timer.Tick -= StableTimer_Tick;
         _timer.Tick += ClosedLoopTimer_Tick;
 
         InstallClosedLoopEvidenceOverride();
@@ -44,7 +45,13 @@ public partial class MainWindow
             return;
 
         _timer.Tick -= ClosedLoopTimer_Tick;
-        _timer.Tick += Timer_Tick;
+        _timer.Tick -= Timer_Tick;
+        _timer.Tick -= StableTimer_Tick;
+        if (_globalUiStabilityInitialized)
+            _timer.Tick += StableTimer_Tick;
+        else
+            _timer.Tick += Timer_Tick;
+
         if (_closedLoopEvidenceButton is not null)
         {
             _closedLoopEvidenceButton.Click -= ExportClosedLoopEvidence_Click;
