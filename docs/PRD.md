@@ -1,111 +1,176 @@
 # ARVREL Product Requirements Document
 
+> Current product definition for the Windows WPF line as of **v0.1.0-beta.6**. Historical milestone PRDs/design notes remain useful for design history but do not override [`CURRENT_STATUS.md`](CURRENT_STATUS.md), the selected release, or current tests.
+
 ## Product definition
 
-ARVREL is a Windows engineering laboratory that behaves as a vendor-neutral numerical protection relay driven by IEC 61850 Sampled Values. It is not a decorative dashboard and not merely an SV analyzer.
+ARVREL is a vendor-neutral Windows **virtual protection and control IED laboratory**. It is not merely a Sampled Values analyzer and not merely a relay-faceplate simulation.
 
-The product makes the full decision chain visible in one laptop screen:
-
-```text
-SMV reception
-→ stream trust assessment
-→ channel mapping and scaling
-→ two-cycle waveform
-→ current measurement
-→ 50/51 protection
-→ pickup / timing / trip or block
-→ event and disturbance evidence
-```
-
-## Locked UX direction
-
-- one-screen 62/38 waveform-to-relay layout;
-- no long vertical scrolling on 1366×768 and above;
-- no oversized typography, bulky cards, glass effects or decorative animation;
-- thin dividers, compact controls, engineering typography and restrained status color;
-- waveform is stationary like an oscilloscope evidence window;
-- pickup and trip markers remain visible;
-- relay faceplate is original and vendor-neutral;
-- green is reserved for healthy, amber for warning/block, red for trip/error;
-- the right-side virtual relay remains fully visible while the user observes waveform causality.
-
-## P0 foundation
-
-- deterministic internal measurement source;
-- 50P, 51P, 50N and 51N;
-- trip latch and reset;
-- phase and earth-fault indications;
-- SMV trust contract with separate measurement, pickup and trip permission;
-- typed Algorithm Editor policy validation;
-- virtual trip only.
-
-## Sibling architecture
-
-`arvrel` is an application repository. `ARIEC61850` remains the source of truth for reusable IEC 61850, SCL, Sampled Values, PCAP and Npcap behavior.
+The shipped product combines four engineering chains:
 
 ```text
-Git/
-├── ARIEC61850/
-└── arvrel/
+Feeder closed-loop secondary injection
+TESTSET source → virtual analog wire → causal relay front end → protection
+     ↑                                                   ↓
+     └── timing/auto-stop ← TESTSET BI ← virtual wire ← relay BO
+
+IEC 61850 process bus
+Live/Replay SV → identity/mapping/scaling/continuity/trust → measurement → protection → evidence
+
+Transformer Differential
+Internal synchronized HV/LV/NGR or paired external SV → engineering compensation → 87T/87T-HS/REF → evidence
+
+AVR / OLTC
+Virtual transformer plant ↔ AVR/OLTC logic ↔ virtual interlocks/authority ↔ laboratory MMS model
 ```
 
-The application references the sibling core projects when present. Protection logic remains in `Arvrel.Protection` so it is deterministic, UI-independent and directly testable.
+## Public product goals
 
-## P1 process-bus integration
+ARVREL should let an engineer:
 
-P1 implements live Npcap capture, classic PCAP and PCAPNG replay, dynamic stream discovery, SCL-assisted binding, fixed-layout fallback, circular samples, RMS measurement, CT context, trust evidence, and JSON export. The adapter translates ARIEC61850 observations into the canonical input:
+1. observe the accepted signal source and engineering context;
+2. see which measured quantities enter protection/control logic;
+3. distinguish relay internal behavior from external virtual-I/O behavior;
+4. reproduce protection pickup, timing, trip, restraint, and reset causally;
+5. exercise virtual transformer differential and AVR/OLTC workflows without physical output authority;
+6. preserve enough evidence to explain why a virtual operation occurred or did not occur.
+
+## Locked safety boundary
+
+- outputs remain virtual only;
+- no physical relay contact, physical OLTC motor command, operational GOOSE trip, autonomous switching, or primary-equipment authority;
+- no claim of calibrated test-set performance, IEC 60255 type-test evidence, IEC 61850 conformance certification, commissioning acceptance, or protection-grade hard-real-time timing;
+- laboratory MMS controls may change only the modeled AVR/OLTC process;
+- live Ethernet work is restricted to authorized isolated laboratory networks.
+
+## Feeder closed-loop P0 acceptance
+
+### External TESTSET authority
+
+Measured trip and optional auto-stop must follow only:
 
 ```text
-MeasurementFrame
-  Timestamp
-  IA / IB / IC
-  residual or measured IN
-  SmvTrustState
+relay trip request → BO1 behavior → virtual trip wire → TESTSET BI1 acceptance
 ```
 
-Before a trip is permitted, the trust guard evaluates:
+Directly reading internal relay trip state as a TESTSET result is forbidden.
 
-- Ethernet and SV decode validity;
-- selected stream identity;
-- SCL or reviewed manual channel mapping;
-- scaling provenance;
-- sample rate and timebase stability;
-- sample-counter continuity;
-- freshness;
-- quality;
-- configuration revision and expected-versus-observed evidence;
-- protection-processing backlog.
+Required regression: with BO1→BI1 disconnected, the relay may trip internally but the TESTSET must record no external trip time and must not auto-stop from trip.
 
-Uncertain data must produce a visible reasoned block, never a silent trip.
+### Timing domains
 
-## Algorithm laboratory
+The beta.6 reference profile requires:
 
-Each element has its own typed DSL definition for input, filtering, pickup, dropout, timing, reset and trip. The safe-laboratory policy requires `smv.allowsTrip` in the final trip expression and forbids file, network, process, reflection, unmanaged and unbounded behavior.
+- monotonic integer-microsecond TESTSET clock;
+- 1 µs metrology clock resolution;
+- 10 kHz TESTSET BI sampling;
+- independent deglitch and debounce semantics;
+- 4 kHz / 250 µs relay/source acquisition grid;
+- WPF rendering excluded from timing authority.
 
-Activation workflow:
+### Causal relay acquisition
 
-```text
-Edit → validate → static policy analysis → deterministic tests → stage → shadow compare → activate
-```
+The closed-loop relay input must be based on instantaneous signed terminal samples and model clipping, quantization, configured input delay, and a causal rolling measurement. It must not receive source-side RMS/phasor values as a substitute for an ADC/front-end path.
 
-P1 keeps validation and immutable shadow staging only; compilation, A/B evaluation, and activation remain P2. Arbitrary C# compilation is intentionally not supported.
+The stopped-source start condition must represent a powered relay with settled pre-fault history rather than an empty measurement window.
 
-## Acceptance criteria
+### Timing semantics
 
-- normal load never trips;
-- 50P operates after its definite delay;
-- 51P integrates IEC standard-inverse time;
-- 50N/51N use an independently visible earth operating quantity;
-- trip latch survives fault removal until reset;
-- phase LEDs identify pickup phases;
-- degraded SMV can expose pickup but blocks a new trip request;
-- UI refresh never drives the protection timer;
-- main workspace needs no page scrolling at the supported minimum size;
-- live Npcap and PCAP/PCAPNG sources feed the same protection engine as the deterministic source;
-- SCL-unbound, unscaled, stale, discontinuous, or invalid-quality streams expose explicit trust reasons;
-- no active GOOSE, MMS control or physical output exists in P1;
-- every algorithm staging action records element, time and content hash.
+The UI/evidence must not conflate:
 
-## Safety and public claims
+- generic ANY PICKUP / BO2 request;
+- accepted TESTSET BI2;
+- pickup of the element that ultimately operates;
+- operated-element P→T;
+- live relay trip request / BO1 request;
+- accepted TESTSET BI1.
 
-ARVREL is for education, research, approved FAT/SAT preparation and isolated laboratory work. It does not claim IEC 61850 conformance, protection certification, calibrated measurement, functional safety, deterministic real-time performance, or permission to operate an energised power system.
+A 60 ms definite-time 50P setting exactly representable on the 250 µs relay grid should produce an exact 60.000 ms operated-element P→T in the reference engine.
+
+### Reset/re-arm
+
+One relay RESET command after BI1 auto-stop must deterministically settle stale causal acquisition, clear relay latch/timers once, release BO1/BO2 and TESTSET BI1/BI2, preserve completed evidence, leave source output OFF, and report READY TO RE-ARM only after the full postcondition is met.
+
+## Process-bus requirements
+
+- live Npcap capture and PCAP/PCAPNG replay;
+- SCL-assisted binding plus reviewed fallback where supported;
+- APPID/MAC/VLAN/`svID`/dataset/`confRev` evidence;
+- mapping/scaling provenance;
+- freshness, quality, continuity, complete-window, and source-context trust;
+- duplicate/out-of-order frames visible diagnostically but rejected before measurement/protection admission;
+- distinct `AllowsMeasurement`, `AllowsPickup`, and `AllowsTrip` authority.
+
+Uncertain process-bus data must produce an explicit reasoned block rather than a silent trip decision.
+
+## Feeder protection scope
+
+Public feeder protection includes 50P-1, 51P, 50N, 51N, 67P, 67N, 27, 59, and 59N, with practitioner setting groups, revisions, fingerprints, timers, event/operation evidence, and virtual trip latch.
+
+## Transformer Differential requirements
+
+The public Transformer IED must retain:
+
+- 87T with generic dual-slope restraint semantics;
+- 87T-HS;
+- REF HV and REF LV with independent neutral/NGR evidence;
+- H2/H5 security;
+- context-gated external-fault/CT-saturation security;
+- CT ratio, polarity, transformer rating, and supported vector-group compensation;
+- deterministic 10-scenario self-test;
+- synchronized internal two-sided injection;
+- paired-SV live/replay workflow with synchronization and trust checks.
+
+Calculated phase residual must not silently become independent neutral-CT evidence for REF.
+
+## AVR / OLTC requirements
+
+The public AVR/OLTC workspace must retain:
+
+- simulated transformer plant;
+- 17-position OLTC;
+- modeled LOCAL/REMOTE and AUTO/MANUAL authority;
+- AVR regulation/deadband/interlocks;
+- IEC 61850 MMS browse/read;
+- DataSets, reports, GI/integrity;
+- modeled SBO/SBOw controls and virtual settings;
+- evidence showing accepted/rejected virtual control cause.
+
+MMS commands terminate inside the virtual process.
+
+## Evidence requirements
+
+A reviewable operation should preserve enough context to identify:
+
+- product version and run/source identity;
+- settings identity/fingerprint;
+- input/source provenance and virtual wiring when relevant;
+- trust state and permission decisions;
+- measured operating quantities;
+- first generic pickup and source;
+- operated element and its own pickup/trip timing;
+- relay trip request;
+- external TESTSET BI acceptance and timing resolution;
+- output stop/frozen-capture relationship;
+- reset/re-arm state;
+- transformer or AVR engineering context where relevant.
+
+Closed-loop beta.6 evidence uses schema 9.
+
+## UX direction
+
+- one compact engineering workspace without decorative animation as an authority signal;
+- relay lamps/LCD/timing rail present state but never become protection logic inputs;
+- source configured setpoints must remain distinguishable from effective OUTPUT ON/OFF state;
+- `OUTPUT OFF · FROZEN CAPTURE`, generic pickup, TESTSET accepted inputs, operated-element timing, and trip latch must use explicit labels;
+- READY TO RE-ARM may only be displayed after the reset transaction's modeled postcondition is satisfied.
+
+## Distribution requirements
+
+Official Windows releases publish a non-elevated per-user installer, single-file portable EXE, portable ZIP, legal notices, SHA-256 checksums, dependency evidence, and release-workflow supply-chain evidence. The selected GitHub Release remains the asset source of truth.
+
+## Current acceptance baseline
+
+The beta.6 feature baseline passed 403 deterministic tests plus .NET CI, CodeQL, cross-platform protection-core checks, Windows packaging, no-admin/single-file contract checks, dependency audit, release asset verification, provenance, and SBOM attestation.
+
+Future stronger fidelity claims require measured device-specific evidence; they cannot be inferred from the generic behavioral model.
