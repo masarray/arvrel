@@ -1,81 +1,154 @@
-# ARVREL v0.1.0-beta.5 — Transformer Differential Injection Public Beta
+# ARVREL v0.1.0-beta.6 — Metrology-Grade Closed-Loop Timing Public Beta
 
 ARVREL is a vendor-neutral Windows virtual protection and control IED laboratory for IEC 61850 engineering, education, FAT/SAT preparation, troubleshooting, and research.
 
-This is a **public engineering beta**, not a certified protection or control IED.
+This is a **public engineering beta**, not a certified relay, calibrated secondary-injection set, or hard-real-time protection platform.
 
-## Release highlight — two-sided Transformer Differential secondary injection
+## Release highlight — metrology-grade virtual test-set timing
 
-`v0.1.0-beta.5` adds an integrated internal secondary-injection workflow for the Transformer Differential IED while preserving the multi-IED OCR / AVR / Transformer shell introduced in beta.4.
+`v0.1.0-beta.6` upgrades the feeder closed-loop laboratory so trip timing is measured through an explicit virtual secondary-injection path rather than inferred from relay-internal trip state.
 
-The Transformer Differential operator workspace now provides:
-
-- synchronized **HV IA/IB/IC/IN** and **LV IA/IB/IC/IN** secondary-current sources;
-- independent neutral / NGR current availability on each transformer side;
-- distinct synthetic HV/LV SV identities with common timestamp, `smpCnt`, `smpSynch=2`, 80 samples/cycle and coherent waveform windows;
-- direct evaluation through the existing `TransformerProtectionRuntime` and existing 87T / 87T-HS / REF authority;
-- no duplicate differential or REF protection algorithm in the UI;
-- CT-ratio and vector-group-aware stable through-load baseline generation;
-- editable presets for **Balanced through load**, **Internal A fault**, **REF HV / NGR**, and **REF LV / NGR**;
-- shared OCR waveform and phasor instruments for either transformer side;
-- lower operation-panel evidence for 87T, 87T-HS, REF HV and REF LV;
-- a stable relay HOME LCD with transformer single-line, HV/LV secondary currents, independent neutral-current indication and authoritative per-phase `Idiff`.
-
-## Transformer protection retained
-
-The existing two-winding Transformer Differential feature set remains available:
-
-- restrained 87T with generic Is1 / K1 / Is2 / K2 dual-slope semantics;
-- 87T-HS unrestrained high-set stage;
-- REF HV and REF LV with independent neutral-current inputs;
-- H2 inrush and H5 overexcitation security;
-- paired HV/LV Sampled Values engineering and synchronization checks;
-- CT ratio, transformer rating, polarity and supported vector-group compensation;
-- external-fault / CT-saturation security;
-- deterministic 10-scenario Transformer Self-Test.
-
-Expected packaged-core baseline:
+The authoritative timing chain is now:
 
 ```text
-PASS · 10/10 · transformer-public-beta-v1
+TESTSET T0
+→ instantaneous 4I+4V waveform
+→ virtual analog wiring
+→ relay terminal samples
+→ signed ADC / clipping / quantization
+→ causal relay measurement window
+→ protection pickup / timer / trip request
+→ relay BO contact delay / bounce
+→ virtual binary wiring
+→ independent TESTSET BI sampling / deglitch
+→ accepted BI1 edge
+→ measured trip time / optional auto-stop
 ```
 
-## Internal injection behavior
+`ProtectionSnapshot.TripLatched` may request relay BO1, but TESTSET timing and auto-stop remain driven only by the externally wired `TESTSET.BI1` path.
 
-The internal Transformer source is a software-only secondary-injection model. It creates two synchronized `SmvRuntimeSnapshot` objects and passes them through the same runtime path used by Transformer protection evaluation.
+## Independent timing domains
 
-Neutral / NGR current is explicit. Calculated phase residual is never promoted to independent neutral-CT evidence for REF.
+The desktop reference model now separates timing authorities:
 
-The stable-through-load preset is generated from the active transformer engineering configuration so normalized HV/LV currents cancel correctly rather than assuming equal raw secondary amperes.
+- monotonic TESTSET metrology clock with **1 µs integer resolution**;
+- TESTSET binary-input sampling at **10 kHz / 100 µs**;
+- relay/source processing at **4 kHz / 250 µs**;
+- WPF presentation refresh remains presentation-only and has no timing authority.
 
-## Multi-IED laboratory
+The reference numerical-relay behavioral front end includes signed ADC quantization, clipping, configured input/filter delay and a causal one-cycle rolling measurement window. A timed test begins from settled pre-fault history rather than an artificial empty relay window.
 
-ARVREL continues to provide three first-class virtual IED workspaces:
+## Protection timer correctness
 
-- **Protection Relay · OCR**;
-- **AVR · OLTC Controller**;
-- **Transformer Differential · 87T / REF**.
+Definite and inverse timing now starts at the observed pickup edge. The interval before pickup is not retroactively counted.
 
-The Transformer Differential relay continues to reuse the same physical virtual-relay hardware style and operator workspace as the OCR relay while presenting Transformer-specific functions and evidence.
+For settings exactly representable on the 250 µs relay processing grid, a **60 ms definite-time element produces exactly 60.000 ms pickup-to-trip** in the reference engine.
 
-## AVR / OLTC retained
+## Generic pickup versus operated-element timing
 
-Beta.5 retains the AVR / OLTC capabilities introduced in beta.4, including the simulated transformer plant, 17-position OLTC, REMOTE/AUTO operation, IEC 61850 MMS browse/read, DataSets, reports, modeled controls, and virtual process interlocks.
+The relay BO2 pickup output remains an **ANY PICKUP** contact. Therefore the first element that asserts generic pickup can differ from the element that ultimately trips.
+
+Beta.6 makes this distinction explicit:
+
+- `RELAY ANY PU [element]` identifies the first relay pickup source;
+- `TESTSET BI2 ACCEPT` reports the independently sampled external pickup indication;
+- operated-element pickup is correlated to `LatchedOperation.Element`;
+- element `P→T` is calculated only from the pickup and trip timestamps of that same operated element;
+- `RELAY TRIP → TESTSET BI1` remains visible as a separate external output-path contribution.
+
+The timing rail is sorted chronologically by timestamp rather than by event type.
+
+## Operator timing and frozen-capture clarity
+
+The feeder Virtual Injection workspace now makes closed-loop timing a first-class operator display:
+
+- full-width chronological timing rail;
+- explicit separation between relay pickup and TESTSET BI2 acceptance;
+- explicit `OUTPUT OFF · FROZEN CAPTURE` state after auto-stop;
+- configured injection columns labeled `RMS SET` / `ANGLE SET` so retained setpoints are not mistaken for live output;
+- frozen protection states identified as frozen snapshot evidence;
+- native P6 annunciation labels clarified as `PICKUP LIVE` and `TRIP LATCH`;
+- capture semantics distinguish the accepted BI1 timer edge from the later relay processing frame used for waveform/phasor freeze;
+- evidence schema includes first-any-pickup source plus BI1-versus-capture-frame timing.
+
+## One-click relay RESET / re-arm fix
+
+Beta.6 fixes a desktop issue where RESET could appear to require several clicks after an auto-stopped trip.
+
+The root cause was a frozen causal relay measurement window: after BI1 auto-stop the virtual source was already OFF, but the relay acquisition window could still contain pre-stop fault samples. The former reset path used a fixed settling delay that could end before that acquisition state had fully dropped out.
+
+RESET is now one deterministic equipment transaction:
+
+```text
+RESET once
+→ allow source-off relay acquisition to clear stale fault samples
+→ clear relay latch and timers once
+→ model BO1 / BO2 release and contact bounce
+→ model TESTSET BI1 / BI2 release
+→ verify relay pickup/trip and all BO/BI states are LOW
+→ READY TO RE-ARM
+```
+
+The transaction uses a bounded simulated timeout and reports diagnostic state if the postcondition cannot be reached. It does not restart or alter the virtual source, and it preserves completed TESTSET timing plus trip/event history.
+
+Alarm ACK/CLEAR remains a separate operator function from protection RESET.
+
+## Regression baseline
+
+The release includes deterministic regression coverage for the realistic desktop closed-loop profile, including:
+
+- `VirtualRelayFrontEndProfile.NumericalRelayDefault`;
+- `VirtualRelayContactProfile.RealisticNumericalRelay`;
+- `MetrologyTimingProfile.CmcStyle`;
+- trip → TESTSET BI1 → auto-stop → **one RESET command only** → BO1/BO2 and BI1/BI2 released → successful re-arm.
+
+Final pre-release validation on the accepted implementation completed with:
+
+```text
+Capture        5 / 5
+Protection   276 / 276
+Application   71 / 71
+ProcessBus    51 / 51
+---------------------
+TOTAL        403 / 403
+```
+
+Release build completed with zero warnings / zero errors, NuGet vulnerability audit clean, compatibility compile against the older pinned ARIEC61850 interface passed, CodeQL passed, and the protection core passed on Windows, macOS and Ubuntu. Windows installer, single-file portable executable, portable archive and no-admin package contracts also passed.
+
+## Multi-IED laboratory retained
+
+Beta.6 retains the public multi-IED capabilities from earlier betas:
+
+- **Protection Relay · OCR** with 50P, 51P, 50N, 51N, 67P, 67N, 27, 59 and 59N;
+- **Transformer Differential · 87T / REF** with synchronized HV/LV internal secondary injection, restrained 87T, 87T-HS, REF HV/LV, harmonic and CT-saturation security, and deterministic transformer self-test;
+- **AVR · OLTC Controller** with the virtual transformer plant, 17-position OLTC, operator authority model, MMS browse/read, reports and virtual controls;
+- Internal Demo, PCAP/PCAPNG replay and authorized live Npcap Sampled Values capture;
+- evidence export, settings fingerprints, trust/authority diagnostics and native P6 relay operator experience.
 
 ## Public package set
 
 Official release assets are expected to include:
 
-- `ARVREL-Setup-v0.1.0-beta.5-win-x64.exe` — per-user Windows installer;
-- `ARVREL-v0.1.0-beta.5-win-x64-portable.exe` — single-file portable executable;
-- `ARVREL-v0.1.0-beta.5-win-x64-portable.zip` — portable archive;
-- `ARVREL-v0.1.0-beta.5-legal-notices.zip`;
+- `ARVREL-Setup-v0.1.0-beta.6-win-x64.exe` — per-user Windows installer;
+- `ARVREL-v0.1.0-beta.6-win-x64-portable.exe` — single-file portable executable;
+- `ARVREL-v0.1.0-beta.6-win-x64-portable.zip` — portable archive;
+- `ARVREL-v0.1.0-beta.6-legal-notices.zip`;
 - `SHA256SUMS.txt`;
 - NuGet dependency evidence;
 - CycloneDX SBOM when generated by the release workflow;
 - GitHub build-provenance attestations.
 
 The installer remains per-user and non-elevated.
+
+## Recommended feeder timing evaluation
+
+1. verify the downloaded package with `SHA256SUMS.txt`;
+2. select **Protection Relay · OCR** and keep **SOURCE = Internal demo**;
+3. choose a virtual injection preset and confirm the configured protection settings;
+4. start injection and observe `RELAY ANY PU`, `TESTSET BI2 ACCEPT`, operated-element pickup/trip and `TESTSET BI1 ACCEPT` in chronological order;
+5. confirm auto-stop reports `OUTPUT OFF · FROZEN CAPTURE`;
+6. press **RESET once** and confirm the relay reaches `READY TO RE-ARM` without a second or third click;
+7. start the next injection and verify a new test run is created.
 
 ## Requirements
 
@@ -85,19 +158,6 @@ The installer remains per-user and non-elevated.
 - an authorized, isolated laboratory network for live Ethernet protocol testing.
 
 Npcap is not silently installed or relicensed by ARVREL.
-
-## Recommended Transformer evaluation
-
-1. verify the downloaded package with `SHA256SUMS.txt`;
-2. select **Transformer Differential · 87T / REF**;
-3. keep **SOURCE = Internal demo**;
-4. open **INJECTION**;
-5. select **Balanced through load** and confirm low `Idiff` with no 87T trip;
-6. apply **Internal A fault** and verify restrained 87T pickup / operate / virtual trip latch;
-7. reset the relay;
-8. test **REF HV / NGR** and verify only REF HV operates;
-9. reset and test **REF LV / NGR** and verify only REF LV operates;
-10. use F4 / Engineering for live or PCAP paired-SV configuration and detailed evidence.
 
 ## Safety boundary
 
@@ -112,6 +172,8 @@ Do not use ARVREL as the sole basis for operational protection settings, AVR set
 ## Known beta limitations
 
 - community binaries are not currently claimed as Authenticode-signed and may trigger Windows reputation warnings;
+- metrology behavior is a deterministic software reference model, not calibration evidence for physical test hardware;
+- relay front-end/contact parameters are generic behavioral profiles and are not claims about a named commercial relay;
 - the Transformer internal injector is a deterministic software source, not a calibrated secondary-injection instrument;
 - the AVR MMS/control model is vendor-neutral laboratory behavior and not a formal conformance profile;
 - live performance depends on Windows scheduling, adapter drivers, publisher behavior and host load;
