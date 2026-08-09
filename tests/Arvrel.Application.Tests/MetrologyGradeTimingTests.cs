@@ -21,6 +21,38 @@ public sealed class MetrologyGradeTimingTests
     }
 
     [TestMethod]
+    public void UnsupportedClockResolutionIsRejectedInsteadOfMisreported()
+    {
+        var profile = MetrologyTimingProfile.CmcStyle with { ClockResolutionMicroseconds = 100 };
+
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => profile.Validate(),
+            "Until every metrology timestamp producer is quantized to another domain, the engine must advertise only its implemented 1 us clock.");
+    }
+
+    [TestMethod]
+    public void ArmedElapsedTimeAdvancesFromMetrologyClockBetweenDiscreteEvents()
+    {
+        var source = CreateSource("Normal balanced");
+        var settings = new ProtectionSettings
+        {
+            PhaseInstantaneousEnabled = false,
+            PhaseTimeEnabled = false,
+            EarthInstantaneousEnabled = false,
+            EarthTimeEnabled = false,
+            Feeder = new FeederProtectionSettings()
+        };
+        var bench = CreateMetrologyBench(source, settings) { AutoStopOnTrip = false };
+
+        Assert.IsTrue(bench.StartInjection());
+        var result = bench.Advance(TimeSpan.FromMilliseconds(3));
+
+        Assert.AreEqual(VirtualTestSetTimerState.Armed, result.TestSet.TimerState);
+        Assert.AreEqual(3.0, result.TestSet.ElapsedTime!.Value.TotalMilliseconds, 1e-9,
+            "The live timer must advance from the monotonic clock even when OutputApplied is still the newest discrete timeline event.");
+        Assert.AreEqual(3_000L, result.TestSet.ObservedMicroseconds);
+    }
+
+    [TestMethod]
     public void CausalRelayFrontEndStartsFromSettledPreFaultHistoryAndRespondsWithoutOneCycleBlackout()
     {
         var source = CreateSource("A-G fault");
@@ -93,6 +125,26 @@ public sealed class MetrologyGradeTimingTests
             .Single(item => item.Kind == MetrologyEventKind.TestSetBi1Trip);
         Assert.AreEqual(result.TestSet.TripDetectedMicroseconds!.Value, bi1Event.Microseconds,
             "Relative test duration may carry the asynchronous T0 phase; the accepted BI1 event itself must remain authoritative and self-consistent on the independent BI clock.");
+    }
+
+    [TestMethod]
+    public void TripCaptureTimestampDescribesStoredStateNotEarlierBiEdge()
+    {
+        var source = CreateSource("A-G fault");
+        var bench = CreateMetrologyBench(source, Phase50OnlySettings(delayMilliseconds: 20));
+
+        Assert.IsTrue(bench.StartInjection());
+        var result = bench.Advance(TimeSpan.FromMilliseconds(150));
+        var capture = bench.TripCapture;
+
+        Assert.IsNotNull(capture);
+        Assert.IsNotNull(result.TestSet.TripDetectedAt);
+        Assert.AreEqual(capture!.RelayMeasurement.Timestamp, capture.CapturedAt,
+            "CapturedAt must timestamp the source/relay/protection state actually stored in the capture.");
+        Assert.IsTrue(capture.CapturedAt >= result.TestSet.TripDetectedAt!.Value,
+            "A 10 kHz BI edge may precede the next 4 kHz relay quantum, but stored state must never be labeled as if it existed before that quantum.");
+        Assert.IsTrue(capture.CapturedAt - result.TestSet.TripDetectedAt.Value < ClosedLoopVirtualTestBench.SimulationQuantum,
+            "Capture-state observation should remain less than one relay processing quantum after the accepted BI edge.");
     }
 
     [TestMethod]
