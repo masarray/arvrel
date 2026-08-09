@@ -65,6 +65,8 @@ public partial class MainWindow
             _closedLoopEvidenceButton.Click += ExportVirtualInjectionEvidence_Click;
             _closedLoopEvidenceButton = null;
         }
+
+        StatusText.ToolTip = null;
         _closedLoopBench = null;
     }
 
@@ -74,6 +76,15 @@ public partial class MainWindow
         {
             if (_closedLoopBench is null)
                 return;
+
+            // Trip details belong to one completed test run only. As soon as a new
+            // run is armed/idle, discard the previous run's explanatory tooltip so
+            // unrelated status text can never inherit stale BI1/capture evidence.
+            if (_closedLoopBench.TestSetSnapshot.TimerState != VirtualTestSetTimerState.Completed &&
+                StatusText.ToolTip is not null)
+            {
+                StatusText.ToolTip = null;
+            }
 
             if (_internalRunning)
             {
@@ -119,6 +130,9 @@ public partial class MainWindow
             }
             return;
         }
+
+        if (StatusText.ToolTip is not null)
+            StatusText.ToolTip = null;
 
         _streamRefreshDivider++;
         if (_streamRefreshDivider >= 6)
@@ -268,6 +282,7 @@ public partial class MainWindow
             dialog.FileName,
             JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         AddEvent("EXPORT", System.IO.Path.GetFileName(dialog.FileName));
+        StatusText.ToolTip = null;
         StatusText.Text = $"Closed-loop metrology evidence exported to {dialog.FileName}.";
     }
 }
