@@ -124,19 +124,11 @@ public sealed record VirtualRelayContactProfile(
     TimeSpan ContactBouncePeriod = default,
     TimeSpan TestSetInputDebounce = default)
 {
-    /// <summary>
-    /// Compatibility profile used by the P0/P1 regression suite. It retains the
-    /// original operate/release latency without bounce or input debounce.
-    /// </summary>
     public static VirtualRelayContactProfile NumericalRelayDefault { get; } = new(
         TimeSpan.FromMilliseconds(1),
         TimeSpan.FromMilliseconds(3),
         TimeSpan.FromMilliseconds(1));
 
-    /// <summary>
-    /// Desktop realism profile. The relay contact is allowed to chatter briefly and
-    /// the virtual test-set binary input requires a stable state before accepting it.
-    /// </summary>
     public static VirtualRelayContactProfile RealisticNumericalRelay { get; } = new(
         TimeSpan.FromMilliseconds(1),
         TimeSpan.FromMilliseconds(3),
@@ -193,35 +185,68 @@ public sealed record VirtualTestSetTimingSnapshot(
     long TestRunId = 0,
     DateTimeOffset? RelayPickupDetectedAt = null,
     DateTimeOffset? RelayTripDetectedAt = null,
-    DateTimeOffset? ObservedAt = null)
+    DateTimeOffset? ObservedAt = null,
+    long? InjectionStartedMicroseconds = null,
+    long? PickupDetectedMicroseconds = null,
+    long? TripDetectedMicroseconds = null,
+    long? RelayPickupDetectedMicroseconds = null,
+    long? RelayTripDetectedMicroseconds = null,
+    int TimingResolutionMicroseconds = 250,
+    IReadOnlyList<MetrologyEvent>? MetrologyTimeline = null)
 {
     public bool TimerArmed => TimerState == VirtualTestSetTimerState.Armed;
     public bool TimerCompleted => TimerState == VirtualTestSetTimerState.Completed;
 
-    public TimeSpan? PickupTime => InjectionStartedAt is { } start && PickupDetectedAt is { } pickup
-        ? pickup - start
-        : null;
+    public TimeSpan? PickupTime => PickupDetectedMicroseconds is { } pickupUs
+        ? TimeSpan.FromTicks(pickupUs * 10)
+        : InjectionStartedAt is { } start && PickupDetectedAt is { } pickup
+            ? pickup - start
+            : null;
 
-    public TimeSpan? TripTime => InjectionStartedAt is { } start && TripDetectedAt is { } trip
-        ? trip - start
-        : null;
+    public TimeSpan? TripTime => TripDetectedMicroseconds is { } tripUs
+        ? TimeSpan.FromTicks(tripUs * 10)
+        : InjectionStartedAt is { } start && TripDetectedAt is { } trip
+            ? trip - start
+            : null;
 
-    public TimeSpan? RelayPickupTime => InjectionStartedAt is { } start && RelayPickupDetectedAt is { } pickup
-        ? pickup - start
-        : null;
+    public TimeSpan? RelayPickupTime => RelayPickupDetectedMicroseconds is { } pickupUs
+        ? TimeSpan.FromTicks(pickupUs * 10)
+        : InjectionStartedAt is { } start && RelayPickupDetectedAt is { } pickup
+            ? pickup - start
+            : null;
 
-    public TimeSpan? RelayTripTime => InjectionStartedAt is { } start && RelayTripDetectedAt is { } trip
-        ? trip - start
-        : null;
+    public TimeSpan? RelayTripTime => RelayTripDetectedMicroseconds is { } tripUs
+        ? TimeSpan.FromTicks(tripUs * 10)
+        : InjectionStartedAt is { } start && RelayTripDetectedAt is { } trip
+            ? trip - start
+            : null;
 
-    public TimeSpan? RelayPickupToTrip => RelayPickupDetectedAt is { } pickup && RelayTripDetectedAt is { } trip
-        ? trip - pickup
-        : null;
+    public TimeSpan? RelayPickupToTrip => RelayPickupDetectedMicroseconds is { } pickupUs && RelayTripDetectedMicroseconds is { } tripUs
+        ? TimeSpan.FromTicks((tripUs - pickupUs) * 10)
+        : RelayPickupDetectedAt is { } pickup && RelayTripDetectedAt is { } trip
+            ? trip - pickup
+            : null;
+
+    public TimeSpan? RelayPickupToBi2 => RelayPickupDetectedMicroseconds is { } relayPickupUs && PickupDetectedMicroseconds is { } bi2Us
+        ? TimeSpan.FromTicks((bi2Us - relayPickupUs) * 10)
+        : RelayPickupDetectedAt is { } relayPickup && PickupDetectedAt is { } bi2
+            ? bi2 - relayPickup
+            : null;
+
+    public TimeSpan? RelayTripToBi1 => RelayTripDetectedMicroseconds is { } relayTripUs && TripDetectedMicroseconds is { } bi1Us
+        ? TimeSpan.FromTicks((bi1Us - relayTripUs) * 10)
+        : RelayTripDetectedAt is { } relayTrip && TripDetectedAt is { } bi1
+            ? bi1 - relayTrip
+            : null;
 
     public TimeSpan? ElapsedTime
     {
         get
         {
+            if (TripDetectedMicroseconds is { } tripUs && TimerCompleted)
+                return TimeSpan.FromTicks(tripUs * 10);
+            if (InjectionStartedMicroseconds is not null && MetrologyTimeline is { Count: > 0 })
+                return TimeSpan.FromTicks(MetrologyTimeline[^1].Microseconds * 10);
             if (InjectionStartedAt is not { } start)
                 return null;
             var end = TimerCompleted && TripDetectedAt is { } trip
@@ -248,11 +273,9 @@ public sealed record ClosedLoopTripCapture(
 
 /// <summary>
 /// Deterministic black-box laboratory backplane between the virtual secondary injector
-/// and the virtual protection relay. Analog measurements cross typed virtual wires and
-/// then pass through a configurable numerical-relay front end before protection sees
-/// them. Relay pickup/trip outputs cross delayed/bouncing virtual contacts, separate
-/// binary wires and test-set input debounce before they become external test feedback.
-/// The test set never reads TripLatched directly to stop output or measure time.
+/// and the virtual protection relay. The optional metrology path uses a monotonic
+/// microsecond clock, causal instantaneous-sample relay acquisition and an independent
+/// binary-input sampler. TESTSET timing authority remains wired BI edges only.
 /// </summary>
 public sealed class ClosedLoopVirtualTestBench
 {
@@ -266,6 +289,14 @@ public sealed class ClosedLoopVirtualTestBench
     private readonly DelayedBinaryContact _tripContact;
     private readonly DebouncedBinaryInput _pickupInput;
     private readonly DebouncedBinaryInput _tripInput;
+    private readonly MetrologyTimingProfile? _metrologyProfile;
+    private readonly MetrologyClock? _metrologyClock;
+    private readonly CausalRelayFrontEndRuntime? _causalFrontEnd;
+    private readonly MetrologyBinaryContact? _metrologyPickupContact;
+    private readonly MetrologyBinaryContact? _metrologyTripContact;
+    private readonly MetrologyBinaryInput? _metrologyPickupInput;
+    private readonly MetrologyBinaryInput? _metrologyTripInput;
+    private readonly List<MetrologyEvent> _metrologyTimeline = new();
     private VirtualTestBenchTopology _topology;
     private DateTimeOffset? _injectionStartedAt;
     private DateTimeOffset? _pickupDetectedAt;
@@ -274,10 +305,17 @@ public sealed class ClosedLoopVirtualTestBench
     private DateTimeOffset? _relayPickupDetectedAt;
     private DateTimeOffset? _relayTripDetectedAt;
     private DateTimeOffset? _lastObservedAt;
+    private long? _injectionStartUs;
+    private long? _pickupDetectedUs;
+    private long? _tripDetectedUs;
+    private long? _relayPickupDetectedUs;
+    private long? _relayTripDetectedUs;
     private bool _lastPickupInput;
     private bool _lastTripInput;
     private bool _lastPickupContactRaw;
     private bool _lastTripContactRaw;
+    private bool _lastRelayPickupRequested;
+    private bool _lastRelayTripLatched;
     private long _testRunId;
     private VirtualTestSetTimerState _timerState;
     private string? _armBlockReason;
@@ -289,7 +327,8 @@ public sealed class ClosedLoopVirtualTestBench
         ResearchProtectionEngine relay,
         VirtualTestBenchTopology? topology = null,
         VirtualRelayContactProfile? contactProfile = null,
-        VirtualRelayFrontEndProfile? frontEndProfile = null)
+        VirtualRelayFrontEndProfile? frontEndProfile = null,
+        MetrologyTimingProfile? metrologyProfile = null)
     {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _relay = relay ?? throw new ArgumentNullException(nameof(relay));
@@ -311,6 +350,27 @@ public sealed class ClosedLoopVirtualTestBench
             ContactProfile.ContactBouncePeriod);
         _pickupInput = new DebouncedBinaryInput(ContactProfile.TestSetInputDebounce);
         _tripInput = new DebouncedBinaryInput(ContactProfile.TestSetInputDebounce);
+
+        _metrologyProfile = metrologyProfile;
+        if (_metrologyProfile is not null)
+        {
+            _metrologyProfile.Validate();
+            _metrologyClock = new MetrologyClock();
+            _causalFrontEnd = new CausalRelayFrontEndRuntime(FrontEndProfile);
+            _metrologyPickupContact = new MetrologyBinaryContact(
+                ContactProfile.PickupOperateDelay,
+                ContactProfile.ReleaseDelay,
+                ContactProfile.ContactBounceDuration,
+                ContactProfile.ContactBouncePeriod);
+            _metrologyTripContact = new MetrologyBinaryContact(
+                ContactProfile.TripOperateDelay,
+                ContactProfile.ReleaseDelay,
+                ContactProfile.ContactBounceDuration,
+                ContactProfile.ContactBouncePeriod);
+            _metrologyPickupInput = new MetrologyBinaryInput(_metrologyProfile);
+            _metrologyTripInput = new MetrologyBinaryInput(_metrologyProfile);
+        }
+
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
         _timerState = VirtualTestSetTimerState.Idle;
     }
@@ -318,7 +378,9 @@ public sealed class ClosedLoopVirtualTestBench
     public VirtualTestBenchTopology Topology => _topology;
     public VirtualRelayContactProfile ContactProfile { get; }
     public VirtualRelayFrontEndProfile FrontEndProfile { get; }
+    public MetrologyTimingProfile? MetrologyProfile => _metrologyProfile;
     public VirtualRelayFrontEndSnapshot FrontEndSnapshot => _frontEnd.Snapshot;
+    public CausalRelayFrontEndSnapshot? CausalFrontEndSnapshot => _causalFrontEnd?.Snapshot;
     public bool AutoStopOnTrip { get; set; } = true;
     public ProtectionSnapshot LastProtection => _lastProtection;
     public VirtualTestSetTimingSnapshot TestSetSnapshot => Snapshot();
@@ -353,10 +415,6 @@ public sealed class ClosedLoopVirtualTestBench
         if (_source.IsRunning)
             return false;
 
-        // A physical test set observes the present binary-input state before it
-        // starts a timer. Let the modeled relay/front-end/contact path settle while
-        // output is OFF, then refuse to arm if any monitored BI is already active.
-        // Never force BI low merely to manufacture a fresh rising edge.
         Advance(FeedbackSettleTime);
 
         if (_lastPickupInput || _lastTripInput)
@@ -398,6 +456,11 @@ public sealed class ClosedLoopVirtualTestBench
             _tripDetectedAt = null;
             _relayPickupDetectedAt = null;
             _relayTripDetectedAt = null;
+            _injectionStartUs = null;
+            _pickupDetectedUs = null;
+            _tripDetectedUs = null;
+            _relayPickupDetectedUs = null;
+            _relayTripDetectedUs = null;
         }
         return true;
     }
@@ -414,22 +477,26 @@ public sealed class ClosedLoopVirtualTestBench
         _relay.Reset();
         _source.Restart(keepProfile);
         _frontEnd.Reset();
+        _causalFrontEnd?.Reset();
         ResetObserverState();
+        _metrologyClock?.Reset();
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
-    /// <summary>
-    /// Clears the external test-set/contact observer as part of an explicit equipment
-    /// reset/settings workflow. Starting a new timed test does not call this method.
-    /// </summary>
     public void ResetObserverState()
     {
         _pickupContact.Reset();
         _tripContact.Reset();
         _pickupInput.Reset();
         _tripInput.Reset();
+        _metrologyPickupContact?.Reset();
+        _metrologyTripContact?.Reset();
+        _metrologyPickupInput?.Reset();
+        _metrologyTripInput?.Reset();
         _lastPickupContactRaw = false;
         _lastTripContactRaw = false;
+        _lastRelayPickupRequested = false;
+        _lastRelayTripLatched = false;
         ClearTestTiming();
     }
 
@@ -454,10 +521,6 @@ public sealed class ClosedLoopVirtualTestBench
             var step = remaining > SimulationQuantum ? SimulationQuantum : remaining;
             last = AdvanceQuantum(step);
             remaining -= step;
-
-            // A CMC-style timer freezes at the accepted BI edge. Do not continue
-            // simulating the remainder of a 40 ms WPF presentation tick after the
-            // source has already been stopped by TESTSET.BI1.
             if (stopExactlyOnTripEdge &&
                 last.TestSet.TimerCompleted &&
                 !last.TestSet.OutputRunning)
@@ -467,6 +530,11 @@ public sealed class ClosedLoopVirtualTestBench
     }
 
     private ClosedLoopVirtualTestBenchStep AdvanceQuantum(TimeSpan delta)
+        => _metrologyProfile is null
+            ? AdvanceLegacyQuantum(delta)
+            : AdvanceMetrologyQuantum(delta);
+
+    private ClosedLoopVirtualTestBenchStep AdvanceLegacyQuantum(TimeSpan delta)
     {
         var sourceStep = _source.Advance(delta);
         var terminalMeasurement = ApplyAnalogWiring(sourceStep.Measurement);
@@ -524,6 +592,116 @@ public sealed class ClosedLoopVirtualTestBench
         _lastPickupInput = pickupInput;
         _lastTripInput = tripInput;
         return new ClosedLoopVirtualTestBenchStep(sourceStep, relayMeasurement, protection, Snapshot());
+    }
+
+    private ClosedLoopVirtualTestBenchStep AdvanceMetrologyQuantum(TimeSpan delta)
+    {
+        var clock = _metrologyClock!;
+        clock.Advance(delta);
+        var nowUs = clock.Microseconds;
+        var sourceStep = _source.Advance(delta);
+        var terminal = BuildTerminalSample(sourceStep, nowUs);
+        var relayMeasurement = _causalFrontEnd!.Process(terminal);
+        var protection = _relay.Evaluate(relayMeasurement);
+        _lastProtection = protection;
+        _lastObservedAt = relayMeasurement.Timestamp;
+
+        var pickupRequested = HasAnyPickup(protection);
+        if (_timerState == VirtualTestSetTimerState.Armed && pickupRequested && !_lastRelayPickupRequested)
+        {
+            _relayPickupDetectedUs ??= nowUs;
+            _relayPickupDetectedAt ??= relayMeasurement.Timestamp;
+            AddMetrologyEvent(MetrologyEventKind.RelayPickupAssert, nowUs, "Relay pickup output requested from live protection state.");
+        }
+        if (_timerState == VirtualTestSetTimerState.Armed && protection.TripLatched && !_lastRelayTripLatched)
+        {
+            _relayTripDetectedUs ??= nowUs;
+            _relayTripDetectedAt ??= relayMeasurement.Timestamp;
+            AddMetrologyEvent(MetrologyEventKind.RelayTripRequest, nowUs, "Relay TripLatched rising edge requested BO1.");
+        }
+        _lastRelayPickupRequested = pickupRequested;
+        _lastRelayTripLatched = protection.TripLatched;
+
+        _metrologyPickupContact!.Request(pickupRequested, nowUs);
+        _metrologyTripContact!.Request(protection.TripLatched, nowUs);
+
+        var pickupUpdate = _metrologyPickupInput!.Observe(
+            sampleUs => _topology.IsBinaryConnected(VirtualBinarySignal.Pickup) && _metrologyPickupContact.StateAt(sampleUs),
+            nowUs);
+        var tripUpdate = _metrologyTripInput!.Observe(
+            sampleUs => _topology.IsBinaryConnected(VirtualBinarySignal.Trip) && _metrologyTripContact.StateAt(sampleUs),
+            nowUs);
+
+        _metrologyPickupContact.Commit(nowUs);
+        _metrologyTripContact.Commit(nowUs);
+        _lastPickupContactRaw = _metrologyPickupContact.StateAt(nowUs);
+        _lastTripContactRaw = _metrologyTripContact.StateAt(nowUs);
+        _lastPickupInput = pickupUpdate.State;
+        _lastTripInput = tripUpdate.State;
+
+        if (_timerState == VirtualTestSetTimerState.Armed &&
+            pickupUpdate.RisingEdgeMicroseconds is { } pickupEdgeUs &&
+            _injectionStartUs is not null)
+        {
+            _pickupDetectedUs ??= pickupEdgeUs;
+            _pickupDetectedAt ??= TimestampForMetrologyEdge(pickupEdgeUs);
+            AddMetrologyEvent(MetrologyEventKind.TestSetBi2Pickup, pickupEdgeUs, "TESTSET.BI2 accepted pickup after BI sampling and deglitch.");
+        }
+
+        if (_timerState == VirtualTestSetTimerState.Armed &&
+            tripUpdate.RisingEdgeMicroseconds is { } tripEdgeUs &&
+            _injectionStartUs is not null)
+        {
+            _tripDetectedUs ??= tripEdgeUs;
+            _tripDetectedAt ??= TimestampForMetrologyEdge(tripEdgeUs);
+            _timerState = VirtualTestSetTimerState.Completed;
+            AddMetrologyEvent(MetrologyEventKind.TestSetBi1Trip, tripEdgeUs, "TESTSET.BI1 accepted trip edge; this is the measured stop time.");
+
+            if (AutoStopOnTrip && _source.IsRunning)
+            {
+                _source.StopInjection();
+                _outputStoppedAt ??= _tripDetectedAt;
+                AddMetrologyEvent(MetrologyEventKind.OutputStopCommand, tripEdgeUs, "Virtual test-set stop command issued on accepted BI1 edge.");
+            }
+
+            var completed = Snapshot();
+            _tripCapture = new ClosedLoopTripCapture(
+                _testRunId,
+                _tripDetectedAt!.Value,
+                sourceStep,
+                relayMeasurement,
+                protection,
+                completed);
+            return new ClosedLoopVirtualTestBenchStep(sourceStep, relayMeasurement, protection, completed);
+        }
+
+        return new ClosedLoopVirtualTestBenchStep(sourceStep, relayMeasurement, protection, Snapshot());
+    }
+
+    private VirtualRelayTerminalSample BuildTerminalSample(ScenarioStep source, long nowUs)
+    {
+        static double First(double[] values) => values.Length == 0 ? 0 : values[0];
+        double Wired(VirtualInjectionSignal signal, double value)
+            => _topology.IsAnalogConnected(signal) ? value : 0;
+
+        var phasors = source.Measurement.Phasors;
+        return new VirtualRelayTerminalSample(
+            source.Measurement.Timestamp,
+            nowUs,
+            source.SourceSampleIndex,
+            source.Waveform.SampleRateHz,
+            source.Waveform.FrequencyHz,
+            Wired(VirtualInjectionSignal.PhaseACurrent, First(source.Waveform.PhaseA)),
+            Wired(VirtualInjectionSignal.PhaseBCurrent, First(source.Waveform.PhaseB)),
+            Wired(VirtualInjectionSignal.PhaseCCurrent, First(source.Waveform.PhaseC)),
+            Wired(VirtualInjectionSignal.NeutralCurrent, First(source.Waveform.Residual)),
+            Wired(VirtualInjectionSignal.PhaseAVoltage, First(source.Waveform.PhaseAVoltage)),
+            Wired(VirtualInjectionSignal.PhaseBVoltage, First(source.Waveform.PhaseBVoltage)),
+            Wired(VirtualInjectionSignal.PhaseCVoltage, First(source.Waveform.PhaseCVoltage)),
+            Wired(VirtualInjectionSignal.NeutralVoltage, First(source.Waveform.ResidualVoltage)),
+            phasors?.NeutralCurrentAvailable == true && _topology.IsAnalogConnected(VirtualInjectionSignal.NeutralCurrent),
+            phasors?.NeutralVoltageAvailable == true && _topology.IsAnalogConnected(VirtualInjectionSignal.NeutralVoltage),
+            source.Measurement.SmvTrust);
     }
 
     private MeasurementFrame ApplyAnalogWiring(MeasurementFrame source)
@@ -589,11 +767,23 @@ public sealed class ClosedLoopVirtualTestBench
         _timerState = VirtualTestSetTimerState.Armed;
         _armBlockReason = null;
         _tripCapture = null;
-
-        // The physical BI/BO states are deliberately preserved. Pre-existing active
-        // inputs are rejected before this point instead of being reset to create a
-        // synthetic edge. Only the analog acquisition pipeline begins a fresh event.
+        _lastRelayPickupRequested = false;
+        _lastRelayTripLatched = false;
         _frontEnd.Reset();
+        _causalFrontEnd?.Reset();
+
+        if (_metrologyClock is not null)
+        {
+            _injectionStartUs = _metrologyClock.Microseconds;
+            _pickupDetectedUs = null;
+            _tripDetectedUs = null;
+            _relayPickupDetectedUs = null;
+            _relayTripDetectedUs = null;
+            _metrologyTimeline.Clear();
+            _metrologyPickupInput!.Synchronize(_metrologyClock.Microseconds);
+            _metrologyTripInput!.Synchronize(_metrologyClock.Microseconds);
+            AddMetrologyEvent(MetrologyEventKind.OutputApplied, _metrologyClock.Microseconds, "Virtual secondary output application defines T0.");
+        }
     }
 
     private void ObserveRelayTiming(ProtectionSnapshot protection, DateTimeOffset timestamp)
@@ -610,10 +800,25 @@ public sealed class ClosedLoopVirtualTestBench
             operation.TripTimestamp < start)
             return;
 
-        // Once the relay produces an operation record from this test run, prefer its
-        // exact internal timestamps over the first observed live-pickup quantum.
         _relayPickupDetectedAt = operation.PickupTimestamp;
         _relayTripDetectedAt = operation.TripTimestamp;
+    }
+
+    private DateTimeOffset TimestampForMetrologyEdge(long absoluteUs)
+    {
+        if (_injectionStartedAt is not { } start || _injectionStartUs is not { } startUs)
+            return _lastObservedAt ?? DateTimeOffset.UtcNow;
+        return start + TimeSpan.FromTicks((absoluteUs - startUs) * 10);
+    }
+
+    private void AddMetrologyEvent(MetrologyEventKind kind, long absoluteUs, string detail)
+    {
+        if (_injectionStartUs is not { } startUs)
+            return;
+        var relativeUs = Math.Max(0, absoluteUs - startUs);
+        if (_metrologyTimeline.Count >= 128)
+            _metrologyTimeline.RemoveAt(0);
+        _metrologyTimeline.Add(new MetrologyEvent(kind, relativeUs, detail));
     }
 
     private void ClearTestTiming()
@@ -625,15 +830,25 @@ public sealed class ClosedLoopVirtualTestBench
         _relayPickupDetectedAt = null;
         _relayTripDetectedAt = null;
         _lastObservedAt = null;
+        _injectionStartUs = null;
+        _pickupDetectedUs = null;
+        _tripDetectedUs = null;
+        _relayPickupDetectedUs = null;
+        _relayTripDetectedUs = null;
         _lastPickupInput = false;
         _lastTripInput = false;
         _timerState = VirtualTestSetTimerState.Idle;
         _armBlockReason = null;
         _tripCapture = null;
+        _metrologyTimeline.Clear();
     }
 
     private VirtualTestSetTimingSnapshot Snapshot()
-        => new(
+    {
+        long? Relative(long? absolute)
+            => absolute is { } value && _injectionStartUs is { } start ? value - start : null;
+
+        return new VirtualTestSetTimingSnapshot(
             _injectionStartedAt,
             _pickupDetectedAt,
             _tripDetectedAt,
@@ -650,7 +865,15 @@ public sealed class ClosedLoopVirtualTestBench
             _testRunId,
             _relayPickupDetectedAt,
             _relayTripDetectedAt,
-            _lastObservedAt);
+            _lastObservedAt,
+            _injectionStartUs is null ? null : 0,
+            Relative(_pickupDetectedUs),
+            Relative(_tripDetectedUs),
+            Relative(_relayPickupDetectedUs),
+            Relative(_relayTripDetectedUs),
+            _metrologyProfile?.BinaryInputSamplePeriodMicroseconds ?? (int)Math.Round(SimulationQuantum.TotalMilliseconds * 1_000),
+            _metrologyProfile is null ? null : _metrologyTimeline.ToArray());
+    }
 
     private static bool HasAnyPickup(ProtectionSnapshot snapshot)
     {

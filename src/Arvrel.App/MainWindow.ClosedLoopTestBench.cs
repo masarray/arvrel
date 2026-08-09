@@ -27,19 +27,22 @@ public partial class MainWindow
             _scenario.CoreScenario,
             _internalEngine,
             contactProfile: VirtualRelayContactProfile.RealisticNumericalRelay,
-            frontEndProfile: VirtualRelayFrontEndProfile.NumericalRelayDefault);
+            frontEndProfile: VirtualRelayFrontEndProfile.NumericalRelayDefault,
+            metrologyProfile: MetrologyTimingProfile.CmcStyle);
 
-        // Replace the legacy 5 ms direct-call loop. WPF remains a 40 ms presenter,
-        // while the platform-neutral bench advances protection and wired I/O at the
-        // injector's native 4 kHz / 0.25 ms deterministic sample grid.
+        // WPF remains presentation only. Protection acquisition stays on the 4 kHz
+        // relay sample grid while TESTSET BI timing is timestamped by the independent
+        // microsecond metrology clock and sampled at 10 kHz. Closed-loop owns source
+        // advancement exclusively regardless of bootstrap initializer order.
         _timer.Tick -= Timer_Tick;
+        _timer.Tick -= StableTimer_Tick;
         _timer.Tick += ClosedLoopTimer_Tick;
 
         InstallClosedLoopEvidenceOverride();
-        AddEvent("BACKPLANE", "Closed-loop virtual wiring active · realistic relay front end · 0.25 ms simulation authority");
+        AddEvent("BACKPLANE", "Closed-loop active · causal relay ADC/DFT · 1 µs metrology clock · 10 kHz TESTSET BI");
         EngineModeText.Text = SmvProcessBusController.IsAvailable
-            ? "P1 RELAY FRONT END · ARIEC61850 READY"
-            : "P1 RELAY FRONT END · VIRTUAL I/O";
+            ? "P0 METROLOGY · ARIEC61850 READY"
+            : "P0 METROLOGY · VIRTUAL I/O";
     }
 
     internal void StopClosedLoopVirtualTestBench()
@@ -48,7 +51,13 @@ public partial class MainWindow
             return;
 
         _timer.Tick -= ClosedLoopTimer_Tick;
-        _timer.Tick += Timer_Tick;
+        _timer.Tick -= Timer_Tick;
+        _timer.Tick -= StableTimer_Tick;
+        if (_globalUiStabilityInitialized)
+            _timer.Tick += StableTimer_Tick;
+        else
+            _timer.Tick += Timer_Tick;
+
         if (_closedLoopEvidenceButton is not null)
         {
             _closedLoopEvidenceButton.Click -= ExportClosedLoopEvidence_Click;
@@ -72,11 +81,6 @@ public partial class MainWindow
                 ObserveTransitions(_snapshot);
                 ReportClosedLoopTestSetTransitions(result.TestSet);
 
-                // Auto-stop is driven exclusively by TESTSET.BI1 after the delayed
-                // relay BO1 contact crosses its virtual wire. Never by TripLatched.
-                // ClosedLoopVirtualTestBench returns immediately at the accepted BI1
-                // edge, so this frame is the exact pre-stop fault frame and must not
-                // be replaced by a zero-output Advance(0) frame.
                 _internalRunning = _scenario.IsRunning;
                 var displayStep = _scenario.Project(result.Source, _pickupPosition, _tripPosition) with
                 {
@@ -109,7 +113,7 @@ public partial class MainWindow
             _lastReportedTestSetPickup = pickup;
             AddEvent(
                 "TEST PICKUP",
-                $"BI2 ↑ · START→BI2 {testSet.PickupTime?.TotalMilliseconds:0.000} ms");
+                $"BI2 ANY PICKUP ↑ · START→BI2 {testSet.PickupTime?.TotalMilliseconds:0.000} ms · resolution {testSet.TimingResolutionMicroseconds} µs");
         }
 
         if (testSet.TripDetectedAt is not { } trip || trip == _lastReportedTestSetTrip)
@@ -117,22 +121,32 @@ public partial class MainWindow
 
         _lastReportedTestSetTrip = trip;
         var pickupText = testSet.PickupTime is { } pickupTime
-            ? $"BI2 {pickupTime.TotalMilliseconds:0.000} ms"
-            : "BI2 —";
+            ? $"BI2 ANY {pickupTime.TotalMilliseconds:0.000} ms"
+            : "BI2 ANY —";
         var tripText = testSet.TripTime is { } tripTime
             ? $"BI1 {tripTime.TotalMilliseconds:0.000} ms"
             : "BI1 —";
-        var relayText = testSet.RelayTripTime is { } relayTrip
-            ? testSet.RelayPickupToTrip is { } relayOperate
-                ? $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms · P→T {relayOperate.TotalMilliseconds:0.000} ms"
-                : $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms"
-            : "relay timing not correlated to this test run";
+
+        var operationTiming = RelayOperationTimingCorrelator.Correlate(testSet, _snapshot);
+        var relayText = operationTiming is { } timing
+            ? timing.LiveTripRequestFromStart is { } liveTrip
+                ? $"{timing.Element} pickup {timing.ElementPickupFromStart.TotalMilliseconds:0.000} ms · " +
+                  $"P→T {timing.ElementPickupToTrip.TotalMilliseconds:0.000} ms · " +
+                  $"relay START→TRIP {liveTrip.TotalMilliseconds:0.000} ms"
+                : $"{timing.Element} pickup {timing.ElementPickupFromStart.TotalMilliseconds:0.000} ms · " +
+                  $"P→T {timing.ElementPickupToTrip.TotalMilliseconds:0.000} ms"
+            : testSet.RelayTripTime is { } relayTrip
+                ? $"relay START→TRIP {relayTrip.TotalMilliseconds:0.000} ms · operated-element pickup unavailable"
+                : "relay live timing unavailable";
+        var outputPath = testSet.RelayTripToBi1 is { } external
+            ? $" · relay TRIP→BI1 {external.TotalMilliseconds:0.000} ms"
+            : string.Empty;
 
         AddEvent(
             "TEST TRIP",
-            $"BI1 ↑ · START→BI1 {testSet.TripTime?.TotalMilliseconds:0.000} ms · output stopped");
+            $"BI1 ↑ · START→BI1 {testSet.TripTime?.TotalMilliseconds:0.000} ms · {testSet.TimingResolutionMicroseconds} µs resolution · output stopped");
         StatusText.Text =
-            $"TESTSET measured trip · {tripText} · {pickupText} · {relayText} · output stopped · capture frozen at BI1 edge.";
+            $"TESTSET measured trip · {tripText} · {pickupText} · {relayText}{outputPath} · output stopped · capture frozen at BI1 edge.";
     }
 
     private void InstallClosedLoopEvidenceOverride()
@@ -165,17 +179,21 @@ public partial class MainWindow
 
         var current = _closedLoopBench.Advance(TimeSpan.Zero);
         var algorithmRuntime = AlgorithmRuntimeRegistry.Snapshot();
+        var operatingElementTiming = RelayOperationTimingCorrelator.Correlate(
+            _closedLoopBench.TestSetSnapshot,
+            _snapshot);
         var evidence = new
         {
-            schemaVersion = 7,
+            schemaVersion = 8,
             exportedAt = DateTimeOffset.Now,
             application = "ARVREL",
             operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
             sourceMode = "Closed-loop virtual secondary injection",
             simulation = new
             {
-                quantumMilliseconds = ClosedLoopBench.SimulationQuantum.TotalMilliseconds,
-                sampleRateHz = Services.DeterministicLabScenario.SampleRateHz,
+                protectionQuantumMilliseconds = ClosedLoopBench.SimulationQuantum.TotalMilliseconds,
+                sourceSampleRateHz = Services.DeterministicLabScenario.SampleRateHz,
+                metrology = _closedLoopBench.MetrologyProfile,
                 autoStopAuthority = "TESTSET.BI1 rising edge only"
             },
             injection = new
@@ -197,9 +215,11 @@ public partial class MainWindow
             },
             relayFrontEndProfile = _closedLoopBench.FrontEndProfile,
             relayFrontEndProfileFingerprint = _closedLoopBench.FrontEndProfile.Fingerprint(),
-            relayFrontEnd = _closedLoopBench.FrontEndSnapshot,
+            legacyRelayFrontEnd = _closedLoopBench.FrontEndSnapshot,
+            causalRelayFrontEnd = _closedLoopBench.CausalFrontEndSnapshot,
             relayContactProfile = _closedLoopBench.ContactProfile,
             testSet = _closedLoopBench.TestSetSnapshot,
+            operatingElementTiming,
             tripCapture = _closedLoopBench.TripCapture,
             relayMeasurement = current.RelayMeasurement,
             protection = _snapshot,
@@ -214,7 +234,7 @@ public partial class MainWindow
             dialog.FileName,
             JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         AddEvent("EXPORT", System.IO.Path.GetFileName(dialog.FileName));
-        StatusText.Text = $"Closed-loop evidence exported to {dialog.FileName}.";
+        StatusText.Text = $"Closed-loop metrology evidence exported to {dialog.FileName}.";
     }
 }
 
