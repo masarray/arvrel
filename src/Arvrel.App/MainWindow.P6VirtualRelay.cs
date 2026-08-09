@@ -94,14 +94,39 @@ public partial class MainWindow
 
         _p6VirtualRelayInstalled = true;
         RebindRelayStatePresentersToP6();
+        ClarifyP6RelayIndicatorSemantics(relay);
         InitializeRelayOperatorExperience(relay);
         InitializeRelayProtectionEvidence();
+        InitializeClosedLoopOperatorClarity();
 
         if (!EngineModeText.Text.Contains("P6", StringComparison.Ordinal))
             EngineModeText.Text = $"{EngineModeText.Text} · P6";
 
         AddEvent("P6", "Native virtual relay faceplate mounted");
         StatusText.Text = "P6 native virtual relay faceplate active.";
+    }
+
+    private void ClarifyP6RelayIndicatorSemantics(VirtualRelayControl relay)
+    {
+        // The native P6 control replaces the legacy relay visual tree after Loaded,
+        // so legacy row-label rewrites cannot reach these labels. Apply the wording
+        // directly to the mounted hardware control.
+        relay.ApplyTextOverrides(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PICKUP"] = "PICKUP LIVE",
+            ["TRIP"] = "TRIP LATCH"
+        });
+
+        relay.PickupLamp.ToolTip = "Live ANY protection pickup state that drives generic relay BO2; not a latched target.";
+        relay.TripLamp.ToolTip = "Latched relay trip indication. Reset the relay to clear it.";
+        relay.PhaseALamp.ToolTip = "Phase A indication of the rendered relay frame; after auto-stop this may be the frozen capture frame.";
+        relay.PhaseBLamp.ToolTip = "Phase B indication of the rendered relay frame; after auto-stop this may be the frozen capture frame.";
+        relay.PhaseCLamp.ToolTip = "Phase C indication of the rendered relay frame; after auto-stop this may be the frozen capture frame.";
+        relay.EarthLamp.ToolTip = "Earth/residual indication of the rendered relay frame; after auto-stop this may be the frozen capture frame.";
+        relay.BlockLamp.ToolTip = "Live measurement/trip-block indication of the rendered relay frame.";
+
+        PickupLed.ToolTip = relay.PickupLamp.ToolTip;
+        TripLed.ToolTip = relay.TripLamp.ToolTip;
     }
 
     private static void CalmP6WorkspaceChrome(Border relayHost)
