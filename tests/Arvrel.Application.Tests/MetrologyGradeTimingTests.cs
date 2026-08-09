@@ -41,7 +41,8 @@ public sealed class MetrologyGradeTimingTests
             EarthTimeEnabled = false,
             Feeder = new FeederProtectionSettings()
         };
-        var bench = CreateMetrologyBench(source, settings) { AutoStopOnTrip = false };
+        var bench = CreateMetrologyBench(source, settings);
+        bench.AutoStopOnTrip = false;
 
         Assert.IsTrue(bench.StartInjection());
         var result = bench.Advance(TimeSpan.FromMilliseconds(3));
