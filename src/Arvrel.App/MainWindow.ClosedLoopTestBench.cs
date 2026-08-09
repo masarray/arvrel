@@ -39,6 +39,7 @@ public partial class MainWindow
         _timer.Tick += ClosedLoopTimer_Tick;
 
         InstallClosedLoopEvidenceOverride();
+        InitializeClosedLoopOperatorClarity();
         AddEvent("BACKPLANE", "Closed-loop active · causal relay ADC/DFT · 1 µs metrology clock · 10 kHz TESTSET BI");
         EngineModeText.Text = SmvProcessBusController.IsAvailable
             ? "P0 METROLOGY · ARIEC61850 READY"
@@ -92,7 +93,7 @@ public partial class MainWindow
 
                     _snapshot = result.Protection;
                     ObserveFirstAnyPickupSource(result.TestSet, result.Protection);
-                    ObserveTransitions(_snapshot);
+                    ObserveClosedLoopProtectionTransitions(result.TestSet, _snapshot);
                     ReportClosedLoopTestSetTransitions(result.TestSet);
 
                     if (!result.TestSet.OutputRunning)
@@ -108,6 +109,7 @@ public partial class MainWindow
                     Measurement = result.RelayMeasurement
                 };
                 RenderInternal(displayStep, _snapshot);
+                RefreshClosedLoopOperatorState(result.TestSet, _snapshot);
 
                 if (!_internalRunning)
                 {
@@ -133,8 +135,8 @@ public partial class MainWindow
         {
             _lastReportedTestSetPickup = pickup;
             AddEvent(
-                "TEST PICKUP",
-                $"BI2 ANY PICKUP ↑ · first source {FirstAnyPickupSourceFor(testSet)} · START→BI2 {testSet.PickupTime?.TotalMilliseconds:0.000} ms · resolution {testSet.TimingResolutionMicroseconds} µs");
+                "TESTSET BI2",
+                $"{testSet.PickupTime?.TotalMilliseconds:0.000} ms · ACCEPT · from RELAY ANY [{FirstAnyPickupSourceFor(testSet)}]");
         }
 
         if (testSet.TripDetectedAt is not { } trip || trip == _lastReportedTestSetTrip)
@@ -145,8 +147,8 @@ public partial class MainWindow
         var detail = BuildClosedLoopTimingDetail(testSet, _snapshot);
 
         AddEvent(
-            "TEST TRIP",
-            $"BI1 ↑ · START→BI1 {testSet.TripTime?.TotalMilliseconds:0.000} ms · {testSet.TimingResolutionMicroseconds} µs resolution · {detail}");
+            "TESTSET BI1",
+            $"{testSet.TripTime?.TotalMilliseconds:0.000} ms · ACCEPT · OUTPUT OFF · {testSet.TimingResolutionMicroseconds} µs resolution");
 
         StatusText.Text = rail;
         StatusText.ToolTip =
