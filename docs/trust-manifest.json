@@ -1,20 +1,28 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "ARVREL",
-  "displayName": "ARVREL Virtual Protection Relay Laboratory",
-  "version": "0.1.0-beta.5",
-  "releaseTag": "v0.1.0-beta.5",
+  "displayName": "ARVREL Virtual Protection & Control IED Laboratory",
+  "version": "0.1.0-beta.6",
+  "releaseTag": "v0.1.0-beta.6",
   "maturity": "public engineering beta",
   "platforms": [
     "Windows 10 x64",
     "Windows 11 x64"
   ],
   "outputAuthority": "virtual-only",
-  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.5",
+  "releaseSource": "https://github.com/masarray/arvrel/releases/tag/v0.1.0-beta.6",
   "requiredReleaseAssets": [
-    "ARVREL-Setup-v0.1.0-beta.5-win-x64.exe",
-    "ARVREL-v0.1.0-beta.5-win-x64-portable.zip",
+    "ARVREL-Setup-v0.1.0-beta.6-win-x64.exe",
+    "ARVREL-v0.1.0-beta.6-win-x64-portable.zip",
     "SHA256SUMS.txt"
+  ],
+  "additionalPublishedEvidence": [
+    "ARVREL-v0.1.0-beta.6-win-x64-portable.exe",
+    "ARVREL-v0.1.0-beta.6-legal-notices.zip",
+    "ARVREL-v0.1.0-beta.6-nuget-dependencies.txt",
+    "ARVREL-v0.1.0-beta.6-sbom.cdx.json",
+    "ARVREL-v0.1.0-beta.6-build-info.txt",
+    "GitHub build-provenance attestations"
   ],
   "integrity": {
     "algorithm": "SHA-256",
@@ -25,16 +33,30 @@
     "repository": "masarray/ARIEC61850",
     "commit": "0d0aa4e31c17f9e5a10901ad52fa75e9c4581daf"
   },
+  "closedLoopTiming": {
+    "testSetClockResolutionMicroseconds": 1,
+    "binaryInputSampleRateHz": 10000,
+    "binaryInputSamplePeriodMicroseconds": 100,
+    "binaryInputDeglitchMilliseconds": 0.5,
+    "binaryInputDebounceHoldoffMilliseconds": 0,
+    "relayProcessingRateHz": 4000,
+    "relayProcessingPeriodMicroseconds": 250,
+    "tripAuthority": "accepted-wired-TESTSET.BI1-edge",
+    "pickupInput": "TESTSET.BI2-generic-any-pickup",
+    "evidenceSchema": 9
+  },
   "binarySigning": {
     "status": "not-claimed",
     "note": "The public site does not claim that the current community binaries are Authenticode-signed. Verify the GitHub Release source and SHA-256 before execution."
   },
   "sbom": {
-    "status": "release-dependent",
-    "note": "CycloneDX SBOM and dependency evidence are published when produced by the release workflow; the selected GitHub Release asset list is authoritative."
+    "status": "published-for-beta.6",
+    "format": "CycloneDX",
+    "note": "The beta.6 GitHub Release includes CycloneDX SBOM and dependency evidence; the selected GitHub Release asset list remains authoritative."
   },
-  "safetyBoundary": "ARVREL is virtual-output laboratory software. Modeled IEC 61850 MMS commands and synthetic secondary-injection signals terminate inside the virtual process and provide no physical relay contact, OLTC motor, GOOSE trip, switching, or primary-equipment authority.",
+  "safetyBoundary": "ARVREL is virtual-output laboratory software. TESTSET timing is behavioral, not calibrated. Modeled IEC 61850 MMS commands and synthetic secondary-injection signals terminate inside the virtual process and provide no physical relay contact, OLTC motor, operational GOOSE trip, switching, or primary-equipment authority.",
   "sourceOfTruth": {
+    "currentStatus": "https://github.com/masarray/arvrel/blob/main/docs/CURRENT_STATUS.md",
     "releaseWorkflow": "https://github.com/masarray/arvrel/blob/main/.github/workflows/release.yml",
     "versionFile": "https://github.com/masarray/arvrel/blob/main/VERSION",
     "releaseNotes": "https://github.com/masarray/arvrel/blob/main/RELEASE-NOTES.md",
