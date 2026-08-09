@@ -111,18 +111,54 @@ public sealed record VirtualTestBenchTopology(
 public sealed record VirtualRelayContactProfile(
     TimeSpan PickupOperateDelay,
     TimeSpan TripOperateDelay,
-    TimeSpan ReleaseDelay)
+    TimeSpan ReleaseDelay,
+    TimeSpan ContactBounceDuration = default,
+    TimeSpan ContactBouncePeriod = default,
+    TimeSpan TestSetInputDebounce = default)
 {
+    /// <summary>
+    /// Compatibility profile used by the P0/P1 regression suite. It retains the
+    /// original operate/release latency without bounce or input debounce.
+    /// </summary>
     public static VirtualRelayContactProfile NumericalRelayDefault { get; } = new(
         TimeSpan.FromMilliseconds(1),
         TimeSpan.FromMilliseconds(3),
         TimeSpan.FromMilliseconds(1));
+
+    /// <summary>
+    /// Desktop realism profile. The relay contact is allowed to chatter briefly and
+    /// the virtual test-set binary input requires a stable state before accepting it.
+    /// </summary>
+    public static VirtualRelayContactProfile RealisticNumericalRelay { get; } = new(
+        TimeSpan.FromMilliseconds(1),
+        TimeSpan.FromMilliseconds(3),
+        TimeSpan.FromMilliseconds(1),
+        TimeSpan.FromMilliseconds(1),
+        TimeSpan.FromMilliseconds(0.25),
+        TimeSpan.FromMilliseconds(0.5));
 
     public void Validate()
     {
         ValidateDelay(PickupOperateDelay, nameof(PickupOperateDelay));
         ValidateDelay(TripOperateDelay, nameof(TripOperateDelay));
         ValidateDelay(ReleaseDelay, nameof(ReleaseDelay));
+        ValidateDelay(ContactBounceDuration, nameof(ContactBounceDuration));
+        ValidateDelay(TestSetInputDebounce, nameof(TestSetInputDebounce));
+        if (ContactBounceDuration > TimeSpan.Zero)
+        {
+            if (ContactBouncePeriod <= TimeSpan.Zero || ContactBouncePeriod > ContactBounceDuration)
+                throw new ArgumentOutOfRangeException(nameof(ContactBouncePeriod), "Contact bounce period must be positive and no longer than the bounce duration.");
+            if (ContactBouncePeriod.Ticks % ClosedLoopVirtualTestBench.SimulationQuantum.Ticks != 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(ContactBouncePeriod),
+                    $"Contact bounce period must align to the {ClosedLoopVirtualTestBench.SimulationQuantum.TotalMilliseconds:0.###} ms deterministic grid.");
+            }
+        }
+        else if (ContactBouncePeriod < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ContactBouncePeriod));
+        }
     }
 
     private static void ValidateDelay(TimeSpan value, string name)
@@ -141,7 +177,9 @@ public sealed record VirtualTestSetTimingSnapshot(
     bool TripInput,
     bool AutoStopOnTrip,
     bool OutputRunning,
-    string TopologyFingerprint)
+    string TopologyFingerprint,
+    bool PickupContactRaw = false,
+    bool TripContactRaw = false)
 {
     public TimeSpan? PickupTime => InjectionStartedAt is { } start && PickupDetectedAt is { } pickup
         ? pickup - start
@@ -160,19 +198,24 @@ public sealed record ClosedLoopVirtualTestBenchStep(
 
 /// <summary>
 /// Deterministic black-box laboratory backplane between the virtual secondary injector
-/// and the virtual protection relay. Analog measurements cross typed virtual wires.
-/// Relay pickup/trip outputs cross delayed virtual contacts and separate binary wires
-/// before the test set can observe them. The test set never reads TripLatched directly
-/// to stop output or measure time.
+/// and the virtual protection relay. Analog measurements cross typed virtual wires and
+/// then pass through a configurable numerical-relay front end before protection sees
+/// them. Relay pickup/trip outputs cross delayed/bouncing virtual contacts, separate
+/// binary wires and test-set input debounce before they become external test feedback.
+/// The test set never reads TripLatched directly to stop output or measure time.
 /// </summary>
 public sealed class ClosedLoopVirtualTestBench
 {
-    public static readonly TimeSpan SimulationQuantum = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / 4_000);
+    public const int SimulationSampleRateHz = 4_000;
+    public static readonly TimeSpan SimulationQuantum = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / SimulationSampleRateHz);
 
     private readonly DeterministicLabScenario _source;
     private readonly ResearchProtectionEngine _relay;
+    private readonly VirtualRelayFrontEndRuntime _frontEnd;
     private readonly DelayedBinaryContact _pickupContact;
     private readonly DelayedBinaryContact _tripContact;
+    private readonly DebouncedBinaryInput _pickupInput;
+    private readonly DebouncedBinaryInput _tripInput;
     private VirtualTestBenchTopology _topology;
     private DateTimeOffset? _injectionStartedAt;
     private DateTimeOffset? _pickupDetectedAt;
@@ -180,26 +223,44 @@ public sealed class ClosedLoopVirtualTestBench
     private DateTimeOffset? _outputStoppedAt;
     private bool _lastPickupInput;
     private bool _lastTripInput;
+    private bool _lastPickupContactRaw;
+    private bool _lastTripContactRaw;
     private ProtectionSnapshot _lastProtection;
 
     public ClosedLoopVirtualTestBench(
         DeterministicLabScenario source,
         ResearchProtectionEngine relay,
         VirtualTestBenchTopology? topology = null,
-        VirtualRelayContactProfile? contactProfile = null)
+        VirtualRelayContactProfile? contactProfile = null,
+        VirtualRelayFrontEndProfile? frontEndProfile = null)
     {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _relay = relay ?? throw new ArgumentNullException(nameof(relay));
         _topology = topology ?? VirtualTestBenchTopology.Default;
         ContactProfile = contactProfile ?? VirtualRelayContactProfile.NumericalRelayDefault;
         ContactProfile.Validate();
-        _pickupContact = new DelayedBinaryContact(ContactProfile.PickupOperateDelay, ContactProfile.ReleaseDelay);
-        _tripContact = new DelayedBinaryContact(ContactProfile.TripOperateDelay, ContactProfile.ReleaseDelay);
+        FrontEndProfile = frontEndProfile ?? VirtualRelayFrontEndProfile.Ideal;
+        FrontEndProfile.Validate();
+        _frontEnd = new VirtualRelayFrontEndRuntime(FrontEndProfile);
+        _pickupContact = new DelayedBinaryContact(
+            ContactProfile.PickupOperateDelay,
+            ContactProfile.ReleaseDelay,
+            ContactProfile.ContactBounceDuration,
+            ContactProfile.ContactBouncePeriod);
+        _tripContact = new DelayedBinaryContact(
+            ContactProfile.TripOperateDelay,
+            ContactProfile.ReleaseDelay,
+            ContactProfile.ContactBounceDuration,
+            ContactProfile.ContactBouncePeriod);
+        _pickupInput = new DebouncedBinaryInput(ContactProfile.TestSetInputDebounce);
+        _tripInput = new DebouncedBinaryInput(ContactProfile.TestSetInputDebounce);
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
     public VirtualTestBenchTopology Topology => _topology;
     public VirtualRelayContactProfile ContactProfile { get; }
+    public VirtualRelayFrontEndProfile FrontEndProfile { get; }
+    public VirtualRelayFrontEndSnapshot FrontEndSnapshot => _frontEnd.Snapshot;
     public bool AutoStopOnTrip { get; set; } = true;
     public ProtectionSnapshot LastProtection => _lastProtection;
     public VirtualTestSetTimingSnapshot TestSetSnapshot => Snapshot();
@@ -235,19 +296,24 @@ public sealed class ClosedLoopVirtualTestBench
     {
         _relay.Reset();
         _source.Restart(keepProfile);
+        _frontEnd.Reset();
         ResetObserverState();
         _lastProtection = ProtectionSnapshot.Ready(DateTimeOffset.UtcNow);
     }
 
     /// <summary>
     /// Clears only the external test-set/contact observer. The injector profile,
-    /// relay settings and relay algorithm state remain owned by their existing
-    /// reset/apply workflows.
+    /// relay settings, analog front-end state and relay algorithm state remain owned
+    /// by their existing reset/apply workflows.
     /// </summary>
     public void ResetObserverState()
     {
         _pickupContact.Reset();
         _tripContact.Reset();
+        _pickupInput.Reset();
+        _tripInput.Reset();
+        _lastPickupContactRaw = false;
+        _lastTripContactRaw = false;
         ClearTestTiming();
     }
 
@@ -278,16 +344,20 @@ public sealed class ClosedLoopVirtualTestBench
     private ClosedLoopVirtualTestBenchStep AdvanceQuantum(TimeSpan delta)
     {
         var sourceStep = _source.Advance(delta);
-        var relayMeasurement = ApplyAnalogWiring(sourceStep.Measurement);
+        var terminalMeasurement = ApplyAnalogWiring(sourceStep.Measurement);
+        var relayMeasurement = _frontEnd.Process(terminalMeasurement);
         var protection = _relay.Evaluate(relayMeasurement);
         _lastProtection = protection;
 
         var pickupRequested = HasAnyPickup(protection);
         var timestamp = relayMeasurement.Timestamp;
-        var pickupContact = _pickupContact.Update(pickupRequested, timestamp);
-        var tripContact = _tripContact.Update(protection.TripLatched, timestamp);
-        var pickupInput = _topology.IsBinaryConnected(VirtualBinarySignal.Pickup) && pickupContact;
-        var tripInput = _topology.IsBinaryConnected(VirtualBinarySignal.Trip) && tripContact;
+        _lastPickupContactRaw = _pickupContact.Update(pickupRequested, timestamp);
+        _lastTripContactRaw = _tripContact.Update(protection.TripLatched, timestamp);
+
+        var wiredPickup = _topology.IsBinaryConnected(VirtualBinarySignal.Pickup) && _lastPickupContactRaw;
+        var wiredTrip = _topology.IsBinaryConnected(VirtualBinarySignal.Trip) && _lastTripContactRaw;
+        var pickupInput = _pickupInput.Update(wiredPickup, timestamp);
+        var tripInput = _tripInput.Update(wiredTrip, timestamp);
 
         if (pickupInput && !_lastPickupInput && _injectionStartedAt is not null)
             _pickupDetectedAt ??= timestamp;
@@ -365,8 +435,13 @@ public sealed class ClosedLoopVirtualTestBench
         _outputStoppedAt = null;
         _lastPickupInput = false;
         _lastTripInput = false;
+        _lastPickupContactRaw = false;
+        _lastTripContactRaw = false;
+        _frontEnd.Reset();
         _pickupContact.Reset();
         _tripContact.Reset();
+        _pickupInput.Reset();
+        _tripInput.Reset();
     }
 
     private void ClearTestTiming()
@@ -389,7 +464,9 @@ public sealed class ClosedLoopVirtualTestBench
             _lastTripInput,
             AutoStopOnTrip,
             _source.IsRunning,
-            _topology.Fingerprint());
+            _topology.Fingerprint(),
+            _lastPickupContactRaw,
+            _lastTripContactRaw);
 
     private static bool HasAnyPickup(ProtectionSnapshot snapshot)
     {
@@ -409,14 +486,23 @@ public sealed class ClosedLoopVirtualTestBench
     {
         private readonly TimeSpan _operateDelay;
         private readonly TimeSpan _releaseDelay;
+        private readonly TimeSpan _bounceDuration;
+        private readonly TimeSpan _bouncePeriod;
         private bool _state;
         private bool _target;
         private DateTimeOffset? _transitionDue;
+        private DateTimeOffset? _bounceStartedAt;
 
-        public DelayedBinaryContact(TimeSpan operateDelay, TimeSpan releaseDelay)
+        public DelayedBinaryContact(
+            TimeSpan operateDelay,
+            TimeSpan releaseDelay,
+            TimeSpan bounceDuration,
+            TimeSpan bouncePeriod)
         {
             _operateDelay = operateDelay;
             _releaseDelay = releaseDelay;
+            _bounceDuration = bounceDuration;
+            _bouncePeriod = bouncePeriod;
         }
 
         public bool Update(bool requested, DateTimeOffset timestamp)
@@ -425,12 +511,35 @@ public sealed class ClosedLoopVirtualTestBench
             {
                 _target = requested;
                 _transitionDue = timestamp + (requested ? _operateDelay : _releaseDelay);
+                _bounceStartedAt = null;
             }
 
             if (_transitionDue is { } due && timestamp >= due)
             {
-                _state = _target;
                 _transitionDue = null;
+                if (_bounceDuration <= TimeSpan.Zero)
+                {
+                    _state = _target;
+                }
+                else
+                {
+                    _bounceStartedAt = due;
+                }
+            }
+
+            if (_bounceStartedAt is { } started)
+            {
+                var elapsed = timestamp - started;
+                if (elapsed >= _bounceDuration)
+                {
+                    _state = _target;
+                    _bounceStartedAt = null;
+                }
+                else
+                {
+                    var phase = elapsed.Ticks / _bouncePeriod.Ticks;
+                    _state = phase % 2 == 0 ? _target : !_target;
+                }
             }
             return _state;
         }
@@ -440,6 +549,59 @@ public sealed class ClosedLoopVirtualTestBench
             _state = false;
             _target = false;
             _transitionDue = null;
+            _bounceStartedAt = null;
+        }
+    }
+
+    private sealed class DebouncedBinaryInput
+    {
+        private readonly TimeSpan _debounce;
+        private bool _state;
+        private bool? _candidate;
+        private DateTimeOffset? _candidateStableAt;
+
+        public DebouncedBinaryInput(TimeSpan debounce)
+        {
+            _debounce = debounce;
+        }
+
+        public bool Update(bool raw, DateTimeOffset timestamp)
+        {
+            if (raw == _state)
+            {
+                _candidate = null;
+                _candidateStableAt = null;
+                return _state;
+            }
+
+            if (_debounce <= TimeSpan.Zero)
+            {
+                _state = raw;
+                _candidate = null;
+                _candidateStableAt = null;
+                return _state;
+            }
+
+            if (_candidate != raw)
+            {
+                _candidate = raw;
+                _candidateStableAt = timestamp + _debounce;
+            }
+
+            if (_candidateStableAt is { } stableAt && timestamp >= stableAt)
+            {
+                _state = raw;
+                _candidate = null;
+                _candidateStableAt = null;
+            }
+            return _state;
+        }
+
+        public void Reset()
+        {
+            _state = false;
+            _candidate = null;
+            _candidateStableAt = null;
         }
     }
 }

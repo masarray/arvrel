@@ -23,20 +23,24 @@ public partial class MainWindow
         if (_closedLoopBench is not null)
             return;
 
-        _closedLoopBench = new ClosedLoopBench(_scenario.CoreScenario, _internalEngine);
+        _closedLoopBench = new ClosedLoopBench(
+            _scenario.CoreScenario,
+            _internalEngine,
+            contactProfile: VirtualRelayContactProfile.RealisticNumericalRelay,
+            frontEndProfile: VirtualRelayFrontEndProfile.NumericalRelayDefault);
 
-        // Closed-loop owns the WPF advancement clock exclusively. Detach both the
-        // original timer and the later UI-stability replacement so initializer order
-        // cannot leave two source/protection loops active at the same time.
+        // Closed-loop owns source/protection advancement exclusively. Detach both
+        // legacy and UI-stability timer handlers so bootstrap order cannot create a
+        // second hidden source clock beside the 4 kHz deterministic bench.
         _timer.Tick -= Timer_Tick;
         _timer.Tick -= StableTimer_Tick;
         _timer.Tick += ClosedLoopTimer_Tick;
 
         InstallClosedLoopEvidenceOverride();
-        AddEvent("BACKPLANE", "Closed-loop virtual wiring active · 0.25 ms simulation authority");
+        AddEvent("BACKPLANE", "Closed-loop virtual wiring active · realistic relay front end · 0.25 ms simulation authority");
         EngineModeText.Text = SmvProcessBusController.IsAvailable
-            ? "P0 CLOSED LOOP · ARIEC61850 READY"
-            : "P0 CLOSED LOOP · VIRTUAL I/O";
+            ? "P1 RELAY FRONT END · ARIEC61850 READY"
+            : "P1 RELAY FRONT END · VIRTUAL I/O";
     }
 
     internal void StopClosedLoopVirtualTestBench()
@@ -175,7 +179,7 @@ public partial class MainWindow
         var algorithmRuntime = AlgorithmRuntimeRegistry.Snapshot();
         var evidence = new
         {
-            schemaVersion = 5,
+            schemaVersion = 6,
             exportedAt = DateTimeOffset.Now,
             application = "ARVREL",
             operatingMode = OperatingModeCombo.SelectedIndex == 1 ? "Research" : "Practitioner",
@@ -203,6 +207,9 @@ public partial class MainWindow
                 topology = _closedLoopBench.Topology,
                 topologyFingerprint = _closedLoopBench.Topology.Fingerprint()
             },
+            relayFrontEndProfile = _closedLoopBench.FrontEndProfile,
+            relayFrontEndProfileFingerprint = _closedLoopBench.FrontEndProfile.Fingerprint(),
+            relayFrontEnd = _closedLoopBench.FrontEndSnapshot,
             relayContactProfile = _closedLoopBench.ContactProfile,
             testSet = _closedLoopBench.TestSetSnapshot,
             relayMeasurement = current.RelayMeasurement,

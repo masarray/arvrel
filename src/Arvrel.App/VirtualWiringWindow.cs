@@ -19,10 +19,10 @@ public sealed class VirtualWiringWindow : Window
     {
         _bench = bench ?? throw new ArgumentNullException(nameof(bench));
         Title = "ARVREL — Virtual Test Bench Wiring";
-        Width = 820;
-        Height = 640;
-        MinWidth = 720;
-        MinHeight = 520;
+        Width = 860;
+        Height = 700;
+        MinWidth = 740;
+        MinHeight = 560;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush("#F3F6F9");
         FontFamily = new FontFamily("Segoe UI Variable, Segoe UI");
@@ -59,7 +59,7 @@ public sealed class VirtualWiringWindow : Window
         });
         title.Children.Add(new TextBlock
         {
-            Text = "Injector and relay are separate black-box devices. Only connected virtual terminals can exchange signals.",
+            Text = "Injector and relay are separate black-box devices. Relay ADC/filter and output-contact behavior are modeled between the terminals and test-set BI.",
             Margin = new Thickness(0, 3, 0, 0),
             FontSize = 10.5,
             Foreground = Brush("#64748B")
@@ -93,8 +93,8 @@ public sealed class VirtualWiringWindow : Window
             timingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         timing.Child = timingGrid;
 
-        _pickupText = CreateTimingValue("BI2 PICKUP", 0, timingGrid);
-        _tripText = CreateTimingValue("BI1 TRIP", 1, timingGrid);
+        _pickupText = CreateTimingValue("BO2 → BI2 PICKUP", 0, timingGrid);
+        _tripText = CreateTimingValue("BO1 → BI1 TRIP", 1, timingGrid);
         _outputText = CreateTimingValue("INJECTOR OUTPUT", 2, timingGrid);
 
         var scroll = new ScrollViewer
@@ -107,7 +107,10 @@ public sealed class VirtualWiringWindow : Window
         var wiringStack = new StackPanel();
         scroll.Content = wiringStack;
 
-        wiringStack.Children.Add(SectionLabel("ANALOG SECONDARY WIRING · 4V + 4I"));
+        wiringStack.Children.Add(SectionLabel("RELAY FRONT-END / BINARY I/O REALISM"));
+        wiringStack.Children.Add(CreateRealismCard());
+
+        wiringStack.Children.Add(SectionLabel("ANALOG SECONDARY WIRING · 4V + 4I", new Thickness(0, 14, 0, 6)));
         foreach (var wire in _bench.Topology.AnalogWires)
             wiringStack.Children.Add(CreateAnalogWireRow(wire));
 
@@ -132,7 +135,7 @@ public sealed class VirtualWiringWindow : Window
         var identity = new StackPanel();
         identity.Children.Add(new TextBlock
         {
-            Text = "TOPOLOGY FINGERPRINT",
+            Text = "TOPOLOGY / FRONT-END IDENTITY",
             FontSize = 8.5,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("#64748B")
@@ -166,6 +169,38 @@ public sealed class VirtualWiringWindow : Window
         _timer.Start();
         Closed += (_, _) => _timer.Stop();
         RefreshStatus();
+    }
+
+    private FrameworkElement CreateRealismCard()
+    {
+        var frontEnd = _bench.FrontEndProfile;
+        var contact = _bench.ContactProfile;
+        var border = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = Brush("#DCE4EA"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(10, 9, 10, 9)
+        };
+        var stack = new StackPanel();
+        border.Child = stack;
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"ADC {frontEnd.AdcBits}-bit · {frontEnd.AdcSampleRateHz:N0} Hz · I FS {frontEnd.CurrentFullScaleRms:0.###} A RMS · V FS {frontEnd.VoltageFullScaleRms:0.###} V RMS · group delay {frontEnd.MeasurementGroupDelay.TotalMilliseconds:0.000} ms",
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 10,
+            Foreground = Brush("#172033")
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"Quantization {(frontEnd.QuantizationEnabled ? "ON" : "OFF")} · clipping {(frontEnd.ClippingEnabled ? "ON" : "OFF")} · BO pickup {contact.PickupOperateDelay.TotalMilliseconds:0.000} ms · BO trip {contact.TripOperateDelay.TotalMilliseconds:0.000} ms · bounce {contact.ContactBounceDuration.TotalMilliseconds:0.000} ms · BI debounce {contact.TestSetInputDebounce.TotalMilliseconds:0.000} ms",
+            Margin = new Thickness(0, 4, 0, 0),
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 9.5,
+            Foreground = Brush("#64748B")
+        });
+        return border;
     }
 
     private FrameworkElement CreateAnalogWireRow(VirtualAnalogWire wire)
@@ -283,7 +318,6 @@ public sealed class VirtualWiringWindow : Window
         foreach (var wire in _bench.Topology.BinaryWires.ToArray())
             _bench.SetWireConnected(wire.Id, true);
 
-        // Rebuild the visual rows so every checkbox reflects the restored state.
         var replacement = new VirtualWiringWindow(_bench) { Owner = Owner };
         replacement.Show();
         Close();
@@ -293,13 +327,13 @@ public sealed class VirtualWiringWindow : Window
     {
         var snapshot = _bench.TestSetSnapshot;
         _pickupText.Text = snapshot.PickupTime is { } pickup
-            ? $"{pickup.TotalMilliseconds:0.000} ms · BI2={(snapshot.PickupInput ? 1 : 0)}"
-            : $"— · BI2={(snapshot.PickupInput ? 1 : 0)}";
+            ? $"{pickup.TotalMilliseconds:0.000} ms · RAW={(snapshot.PickupContactRaw ? 1 : 0)} · BI2={(snapshot.PickupInput ? 1 : 0)}"
+            : $"— · RAW={(snapshot.PickupContactRaw ? 1 : 0)} · BI2={(snapshot.PickupInput ? 1 : 0)}";
         _tripText.Text = snapshot.TripTime is { } trip
-            ? $"{trip.TotalMilliseconds:0.000} ms · BI1={(snapshot.TripInput ? 1 : 0)}"
-            : $"— · BI1={(snapshot.TripInput ? 1 : 0)}";
+            ? $"{trip.TotalMilliseconds:0.000} ms · RAW={(snapshot.TripContactRaw ? 1 : 0)} · BI1={(snapshot.TripInput ? 1 : 0)}"
+            : $"— · RAW={(snapshot.TripContactRaw ? 1 : 0)} · BI1={(snapshot.TripInput ? 1 : 0)}";
         _outputText.Text = snapshot.OutputRunning ? "RUNNING" : snapshot.TripDetectedAt is not null ? "STOPPED BY BI1" : "STOPPED";
-        _fingerprintText.Text = _bench.Topology.Fingerprint()[..20] + "…";
+        _fingerprintText.Text = $"topology {_bench.Topology.Fingerprint()[..12]}… · front-end {_bench.FrontEndProfile.Fingerprint()[..12]}…";
     }
 
     private static TextBlock CreateTimingValue(string label, int column, Grid parent)
