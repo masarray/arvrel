@@ -228,7 +228,8 @@ dotnet test .\ARVREL.sln -c Release --no-build
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime authority and data flow;
 - [`docs/P0_METROLOGY_GRADE_TIMING_ENGINE.md`](docs/P0_METROLOGY_GRADE_TIMING_ENGINE.md) — metrology engine implementation detail;
 - [`docs/TRANSFORMER_PUBLIC_TEST.md`](docs/TRANSFORMER_PUBLIC_TEST.md) — transformer test workflow;
-- [`docs/AVR-IEC61850-SAS-TEST.md`](docs/AVR-IEC61850-SAS-TEST.md) — AVR/MMS laboratory workflow.
+- [`docs/AVR-IEC61850-SAS-TEST.md`](docs/AVR-IEC61850-SAS-TEST.md) — AVR/MMS laboratory workflow;
+- [`docs/PUBLIC_SITE.md`](docs/PUBLIC_SITE.md) — public-site, SEO, and release-synchronization maintenance contract.
 
 Historical `P*` documents are preserved as engineering milestone records and may describe an earlier state. They are not the current product-status authority.
 
