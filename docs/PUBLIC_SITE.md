@@ -47,7 +47,7 @@ Primary public routes:
 - evidence and trust: `/evidence-and-trust.html`
 - safety and limitations: `/safety-and-limitations.html`
 - quick start: `/quick-start.html`
-- engineering FAQ: `/faq.html`
+- engineering FAQ: `/faq.html` (`docs/faq.html` in the repository)
 - download and verification: `/download.html`
 - release status: `/release-status.html`
 - roadmap: `/roadmap.html`
