@@ -451,7 +451,13 @@ def validate_research_scenarios(failures: list[str]) -> None:
 
 def main() -> int:
     failures: list[str] = []
-    pages = sorted(SITE.rglob("*.html"))
+    verification = SITE / "googlec34c43149eef6100.html"
+    if not verification.is_file():
+        failures.append("docs/googlec34c43149eef6100.html: Google verification file is missing.")
+    elif verification.read_text(encoding="utf-8").strip() != "google-site-verification: googlec34c43149eef6100.html":
+        failures.append("docs/googlec34c43149eef6100.html: verification token is incorrect.")
+    # This exact plain-text ownership token is not an SEO landing page.
+    pages = sorted(page for page in SITE.rglob("*.html") if page != verification)
     if not pages:
         failures.append("No HTML pages found under docs/.")
 
